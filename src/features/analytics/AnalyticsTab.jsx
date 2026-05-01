@@ -52,6 +52,11 @@ function RadarChart({ scores }) {
 export default function AnalyticsTab({ checked, onboardingProfile, domainScores, dailyPct, streakCount, triggerRate, setShowSignature, setOnboardingProfile, exportNotes, exportCSV, exportBackup }) {
   const safeChecked = checked || {}
   const today = new Date().toDateString()
+  const activeDays = Object.keys(safeChecked).reduce((acc, dateStr) => {
+    const dayChecks = safeChecked[dateStr] || {}
+    acc[dateStr] = Object.values(dayChecks).some(Boolean)
+    return acc
+  }, {})
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
   const card = { background:'#fff', borderRadius:14, border:bdr, padding:'16px 18px', marginBottom:14 }
 

@@ -732,6 +732,7 @@ if (typeof window !== 'undefined') {
 
 export default function App() {
   const [tab, setTab] = useState('today')
+  const [todayPhaseOverride, setTodayPhaseOverride] = useState(null)
   const [checked,   setChecked]   = useLS('q_checked', {})
   const [weekDays,  setWeekDays]  = useLS('q_week', {})
   const [notes,     setNotes]     = useLS('q_notes', {})
@@ -1035,9 +1036,9 @@ export default function App() {
       {/* Topbar — single scrollable row */}
       <div style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:48, overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
         <div style={{ fontSize:16, fontWeight:700, letterSpacing:'-0.03em', flexShrink:0, marginRight:2 }}>Quintave</div>
-        <button onClick={() => setShowMorning(true)} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
-        <button onClick={() => setShowMidday(true)} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
-        <button onClick={() => setShowEvening(true)} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#7F77DD', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☽ Evening</button>
+        <button onClick={() => { setTodayPhaseOverride('morning'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
+        <button onClick={() => { setTodayPhaseOverride('midday'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
+        <button onClick={() => { setTodayPhaseOverride('evening'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#7F77DD', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☽ Evening</button>
         <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
         <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
         <button onClick={() => setShowPractitioner(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#E6F1FB', color:'#0C447C', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>◈ Coach</button>
@@ -1200,7 +1201,8 @@ export default function App() {
             setChecked={setChecked}
             onboardingProfile={onboardingProfile}
             domainScores={domainScores || {}}
-            onBreathwork={() => setShowBreathwork(true)}/>
+            onBreathwork={() => setShowBreathwork(true)}
+            selectedPhaseOverride={todayPhaseOverride}/>
 
           {/* Cross-impact legend */}
           {Object.values(crossImpact).some(v => v > 0) && (
