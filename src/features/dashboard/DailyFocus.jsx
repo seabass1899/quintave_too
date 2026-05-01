@@ -128,7 +128,7 @@ function StreakPanel({ plan }) {
 }
 
 function FailureState({ plan }) {
-  if (!plan.failureState?.active || plan.completionState.dailyMinimumMet) return null
+  if (!plan.failureState?.active) return null
   const missed = plan.failureState.status === 'missed'
   return (
     <div style={{ marginTop: 14, borderRadius: 14, background: missed ? '#FCEBEB' : '#FAECE7', border: '1px solid #D85A3035', padding: '14px 16px' }}>
@@ -237,6 +237,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     if (!plan.completionState.dailyMinimumMet) return
     setDayStatus(prev => {
       const current = prev?.[today]
+      if (current?.status === 'missed') return prev
       if (current?.status === 'locked' && current?.signal === scorePreview) return prev
       return {
         ...prev,
@@ -305,14 +306,14 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         <div style={{
           fontSize: 12,
           fontWeight: 850,
-          color: plan.completionState.dailyMinimumMet ? '#085041' : '#3C3489',
-          background: plan.completionState.dailyMinimumMet ? '#E1F5EE' : '#EEEDFE',
-          border: `1px solid ${plan.completionState.dailyMinimumMet ? '#1D9E7530' : '#7F77DD30'}`,
+          color: plan.failureState?.status === 'missed' ? '#712B13' : plan.completionState.dailyMinimumMet ? '#085041' : '#3C3489',
+          background: plan.failureState?.status === 'missed' ? '#FAECE7' : plan.completionState.dailyMinimumMet ? '#E1F5EE' : '#EEEDFE',
+          border: `1px solid ${plan.failureState?.status === 'missed' ? '#D85A3030' : plan.completionState.dailyMinimumMet ? '#1D9E7530' : '#7F77DD30'}`,
           borderRadius: 999,
           padding: '7px 11px',
           whiteSpace: 'nowrap'
         }}>
-          {plan.completionState.dailyMinimumMet ? 'Daily Minimum Complete ✓' : `Daily Minimum: ${plan.completionState.completeRequired}/${plan.dailyMinimum}`}
+          {plan.failureState?.status === 'missed' ? 'Daily Loop Missed' : plan.completionState.dailyMinimumMet ? 'Daily Minimum Complete ✓' : `Daily Minimum: ${plan.completionState.completeRequired}/${plan.dailyMinimum}`}
         </div>
       </div>
 

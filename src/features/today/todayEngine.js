@@ -334,7 +334,9 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const longestStreak = calculateLongestStreak(dayStatus)
   const hour = date.getHours()
   const existingStatus = dayStatus?.[dateKey]?.status || null
-  const failureActive = completeRequired < DAILY_MINIMUM && hour >= 20
+  const existingMissed = existingStatus === 'missed'
+  const failureActive = existingMissed || (completeRequired < DAILY_MINIMUM && hour >= 20)
+  const effectiveDailyMinimumMet = !existingMissed && completeRequired >= DAILY_MINIMUM
   const correctionDomain = impactSummary.neglectedDomain || domainById(weak)
   const tomorrowPrime = generateTomorrowPrime(correctionDomain?.id || weak)
 
@@ -351,8 +353,9 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
       completeRequired,
       totalRequired: requiredItems.length,
       totalComplete,
-      dailyMinimumMet: completeRequired >= DAILY_MINIMUM,
-      pct: Math.min(100, Math.round((completeRequired / DAILY_MINIMUM) * 100)),
+      dailyMinimumMet: effectiveDailyMinimumMet,
+      rawDailyMinimumMet: completeRequired >= DAILY_MINIMUM,
+      pct: existingMissed ? 0 : Math.min(100, Math.round((completeRequired / DAILY_MINIMUM) * 100)),
     },
     streak: {
       current: currentStreak,
@@ -361,7 +364,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
     },
     failureState: {
       active: failureActive,
-      status: existingStatus === 'missed' ? 'missed' : failureActive ? 'at_risk' : 'open',
+      status: existingMissed ? 'missed' : failureActive ? 'at_risk' : 'open',
       missing: Math.max(0, DAILY_MINIMUM - completeRequired),
       message: failureActive
         ? 'The operating loop is incomplete. Finish the minimum before the day closes or tomorrow begins from drift.'
