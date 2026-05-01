@@ -225,7 +225,25 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     if (selectedPhaseOverride) setSelectedPhase(selectedPhaseOverride)
   }, [selectedPhaseOverride])
 
-  const plan = useMemo(() => generateTodayPlan({ domainScores, checked, dayStatus, phaseLocking: true }), [domainScores, checked, dayStatus])
+  const isMissedToday = dayStatus?.[today]?.status === 'missed'
+  const effectiveChecked = useMemo(() => {
+    if (!isMissedToday) return checked
+    return { ...(checked || {}), [today]: {} }
+  }, [checked, isMissedToday, today])
+
+  useEffect(() => {
+    if (!isMissedToday) return
+    const todayChecks = checked?.[today] || {}
+    const hasCompletedUiState = Object.values(todayChecks).some(Boolean)
+    if (hasCompletedUiState) {
+      setChecked(prev => ({ ...(prev || {}), [today]: {} }))
+      setLastFeedback(null)
+      setCompletionEvents([])
+      setSelectedPhase('morning')
+    }
+  }, [isMissedToday, checked, today, setChecked])
+
+  const plan = useMemo(() => generateTodayPlan({ domainScores, checked: effectiveChecked, dayStatus, phaseLocking: true }), [domainScores, effectiveChecked, dayStatus])
   const requestedPhaseId = selectedPhase || selectedPhaseOverride || plan.currentPhase
   const activePhaseId = getResolvedPhaseId(plan, requestedPhaseId)
   const activePhase = plan.phases[activePhaseId]
@@ -246,7 +264,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
 
 
   const handleCheck = (item) => {
-    const wasChecked = !!checked?.[today]?.[item.key]
+    if (isMissedToday) return
+    const wasChecked = !!effectiveChecked?.[today]?.[item.key]
     setChecked(prev => ({
       ...prev,
       [today]: { ...(prev?.[today] || {}), [item.key]: !wasChecked }
@@ -378,7 +397,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           background: item.priority === 'Critical' && !item.isDone ? 'linear-gradient(90deg, rgba(216,90,48,0.055), transparent 60%)' : 'transparent',
           borderRadius: item.priority === 'Critical' ? 10 : 0
         }}>
-          <button onClick={() => handleCheck(item)}
+          <button onClick={() => handleCheck(item)} disabled={isMissedToday}
+            title={isMissedToday ? 'This day is closed as missed. Re-enter the loop tomorrow.' : item.isDone ? 'Mark incomplete' : 'Mark complete'}
             style={{
               width: 24,
               height: 24,
@@ -386,7 +406,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
               border: `1.8px solid ${item.priority === 'Critical' ? '#D85A30' : item.domain.color}`,
               background: item.isDone ? item.domain.color : 'transparent',
               color: '#fff',
-              cursor: 'pointer',
+              cursor: isMissedToday ? 'not-allowed' : 'pointer',
+              opacity: isMissedToday && !item.isDone ? 0.6 : 1,
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
