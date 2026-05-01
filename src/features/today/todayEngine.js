@@ -76,7 +76,7 @@ function weakestDomains(domainScores = {}) {
 }
 
 function completionFor(items, todayChecks = {}) {
-  const required = items.filter(i => i.priority !== 'Optional')
+  const required = items.filter(i => i.priority === 'Critical' || i.priority === 'Required')
   const completeRequired = required.filter(i => !!todayChecks[i.key]).length
   return {
     required: required.length,
@@ -186,7 +186,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, date = new 
   }
 
   const allItems = Object.values(phases).flatMap(p => p.items)
-  const requiredItems = allItems.filter(i => i.priority !== 'Optional')
+  const requiredItems = allItems.filter(i => i.priority === 'Critical' || i.priority === 'Required')
   const completeRequired = requiredItems.filter(i => !!todayChecks[i.key]).length
   const totalComplete = allItems.filter(i => !!todayChecks[i.key]).length
   const weak = weakestDomains(domainScores)[0]

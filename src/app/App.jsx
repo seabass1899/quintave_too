@@ -1072,6 +1072,16 @@ export default function App() {
               Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{displayName ? `, ${displayName}` : ''}.
             </div>
             <div style={{ fontSize:13, color:'#888', marginBottom:12 }}>Five frequency bodies. One daily tuning practice.</div>
+
+            {/* Today Engine — primary execution loop */}
+            <DailyFocus
+              checked={checked || {}}
+              setChecked={setChecked}
+              onboardingProfile={onboardingProfile}
+              domainScores={domainScores || {}}
+              onBreathwork={() => setShowBreathwork(true)}
+              selectedPhaseOverride={todayPhaseOverride}/>
+
             <div style={{ background: '#EEEDFE', borderRadius:10, padding:'12px 16px', borderLeft:'3px solid #7F77DD' }}>
               <div style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'#3C3489', marginBottom:4 }}>Today's tuning focus</div>
               <div style={{ fontSize:13, color:'#3C3489', lineHeight:1.6 }}>{COACHING_TIPS[coachingDomain]}</div>
@@ -1194,15 +1204,6 @@ export default function App() {
               <span>View my coherence signature</span>
             </button>
           </div>
-
-          {/* Daily Focus — intelligent recommendations */}
-          <DailyFocus
-            checked={checked || {}}
-            setChecked={setChecked}
-            onboardingProfile={onboardingProfile}
-            domainScores={domainScores || {}}
-            onBreathwork={() => setShowBreathwork(true)}
-            selectedPhaseOverride={todayPhaseOverride}/>
 
           {/* Cross-impact legend */}
           {Object.values(crossImpact).some(v => v > 0) && (
