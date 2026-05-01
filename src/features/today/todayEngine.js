@@ -287,6 +287,65 @@ export function calculateLongestStreak(dayStatus = {}) {
   return longest
 }
 
+
+
+export function transitionDayStatus({ previous = {}, date = new Date(), completionState = {}, impactSummary = {}, tomorrowPrime = null, cutoffHour = 20 } = {}) {
+  const dateKey = getDateKey(date)
+  const current = previous?.[dateKey] || null
+
+  // State authority rule: once a day is missed, UI-derived completion cannot auto-convert it back to locked.
+  // Recovery must happen through an explicit future flow, not through checkbox recalculation.
+  if (current?.status === 'missed') return previous
+
+  const completeRequired = completionState?.completeRequired || 0
+  const minimumMet = completeRequired >= DAILY_MINIMUM
+  const afterCutoff = date.getHours() >= cutoffHour
+
+  if (minimumMet) {
+    const signal = impactSummary?.totalImpact || 0
+    const strongestDomain = impactSummary?.strongestSignal?.domain?.id || null
+    const correctionDomain = impactSummary?.neglectedDomain?.id || tomorrowPrime?.domain?.id || null
+
+    if (current?.status === 'locked'
+      && current?.signal === signal
+      && current?.completedRequired === completeRequired
+      && current?.correctionDomain === correctionDomain
+      && current?.strongestDomain === strongestDomain) {
+      return previous
+    }
+
+    return {
+      ...previous,
+      [dateKey]: {
+        ...(current || {}),
+        status: 'locked',
+        lockedAt: current?.lockedAt || new Date().toISOString(),
+        signal,
+        strongestDomain,
+        correctionDomain,
+        completedRequired: completeRequired,
+      }
+    }
+  }
+
+  if (afterCutoff) {
+    return {
+      ...previous,
+      [dateKey]: {
+        ...(current || {}),
+        status: 'missed',
+        missedAt: current?.missedAt || new Date().toISOString(),
+        missing: Math.max(0, DAILY_MINIMUM - completeRequired),
+        correctionDomain: tomorrowPrime?.domain?.id || current?.correctionDomain || null,
+        completedRequired: completeRequired,
+      }
+    }
+  }
+
+  // Before cutoff, keep the day open. Preserve locked/missed above; otherwise do not persist noisy open-state recalculations.
+  return previous
+}
+
 export function generateTomorrowPrime(domainId) {
   const domain = domainById(domainId || 'd1')
   return {

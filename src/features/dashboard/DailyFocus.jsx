@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { generateTodayPlan, PHASES, getDateKey } from '../today/todayEngine'
+import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus } from '../today/todayEngine'
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
@@ -234,42 +234,15 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   const scorePreview = plan.impactSummary?.totalImpact || 0
 
   useEffect(() => {
-    if (!plan.completionState.dailyMinimumMet) return
-    setDayStatus(prev => {
-      const current = prev?.[today]
-      if (current?.status === 'missed') return prev
-      if (current?.status === 'locked' && current?.signal === scorePreview) return prev
-      return {
-        ...prev,
-        [today]: {
-          status: 'locked',
-          lockedAt: current?.lockedAt || new Date().toISOString(),
-          signal: scorePreview,
-          strongestDomain: plan.impactSummary?.strongestSignal?.domain?.id || null,
-          correctionDomain: plan.impactSummary?.neglectedDomain?.id || null,
-          completedRequired: plan.completionState.completeRequired,
-        }
-      }
-    })
-  }, [plan.completionState.dailyMinimumMet, plan.completionState.completeRequired, plan.impactSummary, scorePreview, setDayStatus, today])
-
-  useEffect(() => {
-    if (!plan.failureState?.active || plan.completionState.dailyMinimumMet) return
-    setDayStatus(prev => {
-      const current = prev?.[today]
-      if (current?.status === 'locked' || current?.status === 'missed') return prev
-      return {
-        ...prev,
-        [today]: {
-          status: 'missed',
-          missedAt: new Date().toISOString(),
-          missing: plan.failureState.missing,
-          correctionDomain: plan.tomorrowPrime?.domain?.id || plan.weakestDomain?.id || null,
-          completedRequired: plan.completionState.completeRequired,
-        }
-      }
-    })
-  }, [plan.failureState?.active, plan.failureState?.missing, plan.completionState.dailyMinimumMet, plan.completionState.completeRequired, plan.tomorrowPrime, plan.weakestDomain, setDayStatus, today])
+    setDayStatus(prev => transitionDayStatus({
+      previous: prev,
+      date: new Date(),
+      completionState: plan.completionState,
+      impactSummary: plan.impactSummary,
+      tomorrowPrime: plan.tomorrowPrime,
+      cutoffHour: 20,
+    }))
+  }, [plan.completionState.completeRequired, plan.completionState.rawDailyMinimumMet, plan.impactSummary, plan.tomorrowPrime, setDayStatus])
 
 
   const handleCheck = (item) => {
