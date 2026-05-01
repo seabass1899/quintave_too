@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { DOMAINS, PRACTICES, COHERENCE_STATES, getCoherenceState } from '../../data'
 
+const DAYS = ['S','M','T','W','T','F','S']
+
 function RadarChart({ scores }) {
   const size = 300
   const cx = size / 2, cy = size / 2, r = 95
