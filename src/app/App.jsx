@@ -1055,7 +1055,7 @@ export default function App() {
 
       {/* Tab bar */}
       <div style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
-        {[['today','Today'],['progress','Progress'],['analytics','Analytics'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
+        {[['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
           <button key={id} onClick={() => setTab(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
             {lbl}
@@ -1216,16 +1216,13 @@ export default function App() {
             </div>
           )}
 
-          {DOMAINS.map(domain => (
-            <DCard key={domain.id} domain={domain}
-              checked={checked} onCheck={handleCheck}
-              metrics={metrics} onMetric={handleMetric}
-              ratings={ratings} onRating={handleRating}
-              notes={notes} onNote={handleNote}
-              onBreathwork={() => setShowBreathwork(true)}
-              crossImpact={crossImpact}
-              onDeepDive={() => setOpenDomain(domain)}/>
-          ))}
+          <div style={{ ...card, marginTop:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Need the full practice library?</div>
+              <div style={{ fontSize:12, color:'#666', lineHeight:1.5 }}>Today is now focused on the execution loop. The complete domain practice cards live in Practice Library.</div>
+            </div>
+            <button onClick={() => setTab('library')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Open Practice Library</button>
+          </div>
 
           <TriggerMap triggers={triggers} setTriggers={setTriggers}/>
 
@@ -1246,6 +1243,33 @@ export default function App() {
               </div>
             </div>
           </div>
+        </>}
+
+        {/* ── PRACTICE LIBRARY — FULL DOMAIN PRACTICES ── */}
+        {tab === 'library' && <>
+          <div style={card}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:8 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#777', marginBottom:4 }}>Practice Library</div>
+                <h2 style={{ margin:0, fontSize:22, letterSpacing:'-0.03em' }}>All domain practices</h2>
+              </div>
+              <button onClick={() => setTab('today')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Return to Today</button>
+            </div>
+            <div style={{ fontSize:13, color:'#666', lineHeight:1.6 }}>
+              Use this area for exploration, manual tuning, and full-domain work. The Today page remains the focused execution loop.
+            </div>
+          </div>
+
+          {DOMAINS.map(domain => (
+            <DCard key={domain.id} domain={domain}
+              checked={checked} onCheck={handleCheck}
+              metrics={metrics} onMetric={handleMetric}
+              ratings={ratings} onRating={handleRating}
+              notes={notes} onNote={handleNote}
+              onBreathwork={() => setShowBreathwork(true)}
+              crossImpact={crossImpact}
+              onDeepDive={() => setOpenDomain(domain)}/>
+          ))}
         </>}
 
         {/* ── ANALYTICS — COHERENCE FRAMEWORK ── */}
