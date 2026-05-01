@@ -891,7 +891,9 @@ export default function App() {
   }, {})
 
   const exportBackup = () => {
-    const data = { checked, weekDays, notes, ratings, metrics, directive, execTarget, evening, weekAdj, triggers, exported: new Date().toISOString() }
+    let dayStatus = {}
+    try { dayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch {}
+    const data = { checked, weekDays, notes, ratings, metrics, directive, execTarget, evening, weekAdj, triggers, dayStatus, exported: new Date().toISOString() }
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}))
     a.download = `quintave_backup_${new Date().toISOString().slice(0,10)}.json`; a.click()
   }
@@ -914,7 +916,7 @@ export default function App() {
   }
   const importBackup = e => {
     const file=e.target.files[0];if(!file)return
-    const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.checked)setChecked(d.checked);if(d.weekDays)setWeekDays(d.weekDays);if(d.notes)setNotes(d.notes);if(d.ratings)setRatings(d.ratings);if(d.metrics)setMetrics(d.metrics);if(d.directive)setDirective(d.directive);if(d.execTarget)setExecTarget(d.execTarget);if(d.evening)setEvening(d.evening);if(d.weekAdj)setWeekAdj(d.weekAdj);if(d.triggers)setTriggers(d.triggers);alert('Backup restored.')}catch{alert('Invalid file.')}};r.readAsText(file)
+    const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.checked)setChecked(d.checked);if(d.weekDays)setWeekDays(d.weekDays);if(d.notes)setNotes(d.notes);if(d.ratings)setRatings(d.ratings);if(d.metrics)setMetrics(d.metrics);if(d.directive)setDirective(d.directive);if(d.execTarget)setExecTarget(d.execTarget);if(d.evening)setEvening(d.evening);if(d.weekAdj)setWeekAdj(d.weekAdj);if(d.triggers)setTriggers(d.triggers);if(d.dayStatus)localStorage.setItem('q_day_status', JSON.stringify(d.dayStatus));alert('Backup restored.')}catch{alert('Invalid file.')}};r.readAsText(file)
   }
 
   const bdr = '0.5px solid rgba(0,0,0,0.08)'

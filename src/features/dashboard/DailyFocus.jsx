@@ -1,7 +1,25 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { generateTodayPlan, PHASES } from '../today/todayEngine'
+import { generateTodayPlan, PHASES, getDateKey } from '../today/todayEngine'
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
+
+function usePersistentState(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key)
+      return raw ? JSON.parse(raw) : initialValue
+    } catch {
+      return initialValue
+    }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
+  }, [key, value])
+
+  return [value, setValue]
+}
+
 
 function firstUnlockedPhase(plan) {
   return PHASES.find(p => !plan.phases[p.id]?.locked)?.id || 'morning'
@@ -84,22 +102,64 @@ function formatImpact(scoreImpact = {}) {
     .join(' · ')
 }
 
+function StreakPanel({ plan }) {
+  const streak = plan.streak || { current: 0, longest: 0 }
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div style={{ border: bdr, borderRadius: 999, background: '#fff', padding: '7px 11px', fontSize: 12, fontWeight: 850, color: '#1a1a18' }}>
+        🔥 Current streak: {streak.current}
+      </div>
+      <div style={{ border: bdr, borderRadius: 999, background: '#FCFBF8', padding: '7px 11px', fontSize: 12, fontWeight: 750, color: '#666' }}>
+        Best: {streak.longest || streak.current}
+      </div>
+      <div style={{ border: bdr, borderRadius: 999, background: '#EEEDFE', padding: '7px 11px', fontSize: 12, fontWeight: 750, color: '#3C3489' }}>
+        Momentum persists when the daily minimum is locked in.
+      </div>
+    </div>
+  )
+}
+
+function FailureState({ plan }) {
+  if (!plan.failureState?.active || plan.completionState.dailyMinimumMet) return null
+  return (
+    <div style={{ marginTop: 14, borderRadius: 14, background: '#FAECE7', border: '1px solid #D85A3035', padding: '14px 16px' }}>
+      <div style={{ fontSize: 16, fontWeight: 950, color: '#712B13', letterSpacing: '-0.02em' }}>Loop Incomplete</div>
+      <div style={{ fontSize: 13, color: '#712B13', marginTop: 5, lineHeight: 1.55 }}>
+        The daily operating loop is still missing <strong>{plan.failureState.missing}</strong> required action{plan.failureState.missing === 1 ? '' : 's'}.
+        Complete the minimum before the day closes, or tomorrow starts from recovery instead of momentum.
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: '#633806', fontWeight: 750 }}>
+        Recovery instruction: complete the next unlocked critical practice first. Do not negotiate with the loop.
+      </div>
+    </div>
+  )
+}
+
 function DayLockedIn({ plan }) {
   const summary = plan.impactSummary || {}
   const strongest = summary.strongestSignal
   const correction = summary.neglectedDomain || plan.weakestDomain
   const ranked = summary.ranked || []
+  const streak = plan.streak || { current: 0, longest: 0 }
   return (
     <div style={{ marginTop: 14, borderRadius: 16, background: 'linear-gradient(135deg, #E1F5EE, #F7FCFA)', border: '1px solid #1D9E7535', padding: '16px 16px', boxShadow: '0 10px 24px rgba(29,158,117,0.10)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 950, color: '#085041', letterSpacing: '-0.03em' }}>Day Locked In ✓</div>
+          <div style={{ fontSize: 18, fontWeight: 950, color: '#085041', letterSpacing: '-0.03em' }}>Day Locked In ✓</div>
           <div style={{ fontSize: 13, color: '#085041', marginTop: 5, lineHeight: 1.55 }}>
-            You completed the minimum operating loop. Strongest signal: <strong>{strongest?.domain?.name || 'Coherence'}</strong>. Tomorrow’s correction starts with <strong>{correction?.name || 'the open loop'}</strong>.
+            The loop was completed. Signal was established. Tomorrow builds from this state — it does not reset from zero.
+          </div>
+          <div style={{ fontSize: 12, color: '#085041', marginTop: 7, lineHeight: 1.5 }}>
+            Strongest signal: <strong>{strongest?.domain?.name || 'Coherence'}</strong>. Tomorrow’s correction starts with <strong>{correction?.name || 'the open loop'}</strong>.
           </div>
         </div>
-        <div style={{ fontSize: 12, fontWeight: 900, color: '#085041', background: '#fff', border: '1px solid #1D9E7530', borderRadius: 999, padding: '7px 10px', whiteSpace: 'nowrap' }}>
-          +{summary.totalImpact || 0} total signal
+        <div style={{ display: 'grid', gap: 7, justifyItems: 'end' }}>
+          <div style={{ fontSize: 12, fontWeight: 900, color: '#085041', background: '#fff', border: '1px solid #1D9E7530', borderRadius: 999, padding: '7px 10px', whiteSpace: 'nowrap' }}>
+            +{summary.totalImpact || 0} weighted signal
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 900, color: '#3C3489', background: '#EEEDFE', border: '1px solid #7F77DD30', borderRadius: 999, padding: '7px 10px', whiteSpace: 'nowrap' }}>
+            🔥 Streak: {streak.current}
+          </div>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 7, marginTop: 14 }}>
@@ -121,23 +181,45 @@ function DayLockedIn({ plan }) {
   )
 }
 
+
 export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null }) {
-  const today = new Date().toDateString()
+  const today = getDateKey(new Date())
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
   const [lastFeedback, setLastFeedback] = useState(null)
   const [completionEvents, setCompletionEvents] = useState([])
+  const [dayStatus, setDayStatus] = usePersistentState('q_day_status', {})
 
   useEffect(() => {
     if (selectedPhaseOverride) setSelectedPhase(selectedPhaseOverride)
   }, [selectedPhaseOverride])
 
-  const plan = useMemo(() => generateTodayPlan({ domainScores, checked, phaseLocking: true }), [domainScores, checked])
+  const plan = useMemo(() => generateTodayPlan({ domainScores, checked, dayStatus, phaseLocking: true }), [domainScores, checked, dayStatus])
   const requestedPhaseId = selectedPhase || selectedPhaseOverride || plan.currentPhase
   const activePhaseId = getResolvedPhaseId(plan, requestedPhaseId)
   const activePhase = plan.phases[activePhaseId]
   const requestedWasLocked = requestedPhaseId && requestedPhaseId !== activePhaseId && plan.phases[requestedPhaseId]?.locked
 
   const scorePreview = plan.impactSummary?.totalImpact || 0
+
+  useEffect(() => {
+    if (!plan.completionState.dailyMinimumMet) return
+    setDayStatus(prev => {
+      const current = prev?.[today]
+      if (current?.status === 'locked' && current?.signal === scorePreview) return prev
+      return {
+        ...prev,
+        [today]: {
+          status: 'locked',
+          lockedAt: current?.lockedAt || new Date().toISOString(),
+          signal: scorePreview,
+          strongestDomain: plan.impactSummary?.strongestSignal?.domain?.id || null,
+          correctionDomain: plan.impactSummary?.neglectedDomain?.id || null,
+          completedRequired: plan.completionState.completeRequired,
+        }
+      }
+    })
+  }, [plan.completionState.dailyMinimumMet, plan.completionState.completeRequired, plan.impactSummary, scorePreview, setDayStatus, today])
+
 
   const handleCheck = (item) => {
     const wasChecked = !!checked?.[today]?.[item.key]
@@ -187,6 +269,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       <div style={{ height: 10, background: '#F0EFEC', borderRadius: 999, overflow: 'hidden', marginBottom: 13 }}>
         <div style={{ width: `${plan.completionState.pct}%`, height: '100%', background: plan.completionState.dailyMinimumMet ? '#1D9E75' : '#7F77DD', transition: 'width 220ms ease' }} />
       </div>
+
+      <StreakPanel plan={plan} />
 
       {requestedWasLocked && (
         <div style={{ background: '#FAECE7', color: '#712B13', border: '1px solid #D85A3030', borderRadius: 10, padding: '9px 12px', marginBottom: 11, fontSize: 12 }}>
@@ -306,7 +390,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       ))}
 
-      {plan.completionState.dailyMinimumMet && <DayLockedIn plan={plan} />}
+      {plan.completionState.dailyMinimumMet ? <DayLockedIn plan={plan} /> : <FailureState plan={plan} />}
     </div>
   )
 }

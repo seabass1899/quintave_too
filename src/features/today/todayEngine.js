@@ -94,11 +94,16 @@ function completionFor(items, todayChecks = {}) {
 }
 
 function getScoreImpact(item, priority) {
-  const baseByPriority = { Critical: 3, Required: 2, Adaptive: 1, Optional: 1 }
+  // Weighted signal model: Source is the root calibrator, Code/Field carry behavior/regulation weight.
+  const baseByPriority = { Critical: 4, Required: 3, Adaptive: 2, Optional: 1 }
+  const domainWeight = { d1: 1.5, d2: 1.0, d3: 1.15, d4: 1.1, d5: 1.25 }
   const primary = item?.phaseDomainId || item?.domain?.id || 'd1'
-  const impact = { [primary]: baseByPriority[priority] || 1 }
+  const base = baseByPriority[priority] || 1
+  const impact = { [primary]: Math.round(base * (domainWeight[primary] || 1)) }
+
   ;(item?.cross || []).forEach(domainId => {
-    impact[domainId] = (impact[domainId] || 0) + 1
+    const ripple = Math.max(1, Math.round(base * 0.45 * (domainWeight[domainId] || 1)))
+    impact[domainId] = (impact[domainId] || 0) + ripple
   })
   return impact
 }
@@ -217,8 +222,50 @@ function buildImpactSummary(allItems, todayChecks = {}) {
   }
 }
 
-export function generateTodayPlan({ domainScores = {}, checked = {}, date = new Date(), phaseLocking = true } = {}) {
-  const dateKey = date.toDateString()
+export function getDateKey(date = new Date()) {
+  return date.toDateString()
+}
+
+export function getPreviousDateKey(date = new Date(), daysBack = 1) {
+  const d = new Date(date)
+  d.setDate(d.getDate() - daysBack)
+  return d.toDateString()
+}
+
+export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
+  let streak = 0
+  for (let i = 0; i < 365; i++) {
+    const key = getPreviousDateKey(date, i)
+    if (dayStatus?.[key]?.status === 'locked') streak += 1
+    else break
+  }
+  return streak
+}
+
+export function calculateLongestStreak(dayStatus = {}) {
+  const lockedDates = Object.entries(dayStatus || {})
+    .filter(([, record]) => record?.status === 'locked')
+    .map(([key]) => new Date(key))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a - b)
+
+  let longest = 0
+  let current = 0
+  let previous = null
+  lockedDates.forEach(date => {
+    if (!previous) current = 1
+    else {
+      const diffDays = Math.round((date - previous) / 86400000)
+      current = diffDays === 1 ? current + 1 : 1
+    }
+    longest = Math.max(longest, current)
+    previous = date
+  })
+  return longest
+}
+
+export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true } = {}) {
+  const dateKey = getDateKey(date)
   const todayChecks = checked?.[dateKey] || {}
   const currentPhase = getCurrentPhase(date)
   const phases = {}
@@ -248,6 +295,11 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, date = new 
   const totalComplete = allItems.filter(i => !!todayChecks[i.key]).length
   const weak = weakestDomains(domainScores)[0]
   const impactSummary = buildImpactSummary(allItems, todayChecks)
+  const currentStreak = calculateTodayStreak(dayStatus, date)
+  const longestStreak = calculateLongestStreak(dayStatus)
+  const hour = date.getHours()
+  const existingStatus = dayStatus?.[dateKey]?.status || null
+  const failureActive = completeRequired < DAILY_MINIMUM && hour >= 20
 
   return {
     dailyMinimum: DAILY_MINIMUM,
@@ -261,6 +313,19 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, date = new 
       totalComplete,
       dailyMinimumMet: completeRequired >= DAILY_MINIMUM,
       pct: Math.min(100, Math.round((completeRequired / DAILY_MINIMUM) * 100)),
+    },
+    streak: {
+      current: currentStreak,
+      longest: longestStreak,
+      record: dayStatus?.[dateKey] || null,
+    },
+    failureState: {
+      active: failureActive,
+      status: existingStatus === 'missed' ? 'missed' : failureActive ? 'at_risk' : 'open',
+      missing: Math.max(0, DAILY_MINIMUM - completeRequired),
+      message: failureActive
+        ? 'The operating loop is incomplete. Finish the minimum before the day closes or tomorrow begins from drift.'
+        : '',
     },
   }
 }
