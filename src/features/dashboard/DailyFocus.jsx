@@ -127,7 +127,7 @@ function StreakPanel({ plan }) {
   )
 }
 
-function FailureState({ plan }) {
+function FailureState({ plan, onReopen }) {
   if (!plan.failureState?.active) return null
   const missed = plan.failureState.status === 'missed'
   return (
@@ -143,6 +143,24 @@ function FailureState({ plan }) {
       <div style={{ marginTop: 10, fontSize: 12, color: '#633806', fontWeight: 800 }}>
         Recovery instruction: start the next unlocked critical practice first. Do not negotiate with the loop.
       </div>
+      {missed && (
+        <button
+          onClick={onReopen}
+          style={{
+            marginTop: 12,
+            border: '1px solid #D85A3050',
+            background: '#fff',
+            color: '#712B13',
+            borderRadius: 10,
+            padding: '8px 12px',
+            fontSize: 12,
+            fontWeight: 900,
+            cursor: 'pointer'
+          }}
+        >
+          Reopen Today’s Loop
+        </button>
+      )}
     </div>
   )
 }
@@ -262,6 +280,29 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     }))
   }, [plan.completionState.completeRequired, plan.completionState.rawDailyMinimumMet, plan.impactSummary, plan.tomorrowPrime, setDayStatus])
 
+
+  const reopenMissedDay = () => {
+    setDayStatus(prev => {
+      const current = prev?.[today] || {}
+      return {
+        ...(prev || {}),
+        [today]: {
+          ...current,
+          status: 'active',
+          completedRequired: 0,
+          signal: 0,
+          missing: undefined,
+          missedAt: undefined,
+          reopenedAt: new Date().toISOString(),
+        }
+      }
+    })
+
+    setChecked(prev => ({ ...(prev || {}), [today]: {} }))
+    setLastFeedback(null)
+    setCompletionEvents([])
+    setSelectedPhase('morning')
+  }
 
   const handleCheck = (item) => {
     if (isMissedToday) return
@@ -436,7 +477,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       ))}
 
       {plan.completionState.dailyMinimumMet ? <DayLockedIn plan={plan} /> : <>
-        <FailureState plan={plan} />
+        <FailureState plan={plan} onReopen={reopenMissedDay} />
         <TomorrowPrime plan={plan} />
       </>}
     </div>
