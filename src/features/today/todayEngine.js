@@ -8,6 +8,22 @@ export const PHASES = [
 
 export const DAILY_MINIMUM = 4
 
+const MORNING_DOMAIN_ANCHORS = {
+  d1: ['d1', 'Stillness Exposure'],
+  d2: ['d2', 'Sun + Circadian Anchor'],
+  d3: ['d2', 'Breathwork'],
+  d4: ['d4', 'Morning Directive'],
+  d5: ['d5', 'Affirmation Installation'],
+}
+
+const TOMORROW_ENTRY_LABELS = {
+  d1: 'Stillness Exposure',
+  d2: 'Sun + Circadian Anchor',
+  d3: 'Breathwork',
+  d4: 'Morning Directive',
+  d5: 'Affirmation Installation',
+}
+
 const PHASE_POOLS = {
   morning: [
     ['d1', 'Stillness Exposure'],
@@ -148,20 +164,21 @@ function labelPractice(item, priority, why) {
   }
 }
 
-function buildPhaseItems(phase, domainScores, todayChecks) {
+function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null) {
   const weak = weakestDomains(domainScores)
   const pool = PHASE_POOLS[phase] || []
   const items = []
 
   if (phase === 'morning') {
-    const weakPick = pool.find(([domainId]) => domainId === weak[0]) || ['d1', 'Stillness Exposure']
-    items.push(labelPractice(findPractice(...weakPick), 'Critical', 'Weakest-domain anchor'))
+    const primedPick = primedDomainId ? MORNING_DOMAIN_ANCHORS[primedDomainId] : null
+    const weakPick = primedPick || pool.find(([domainId]) => domainId === weak[0]) || ['d1', 'Stillness Exposure']
+    items.push(labelPractice(findPractice(...weakPick), 'Critical', primedPick ? 'Yesterday\'s correction anchor' : 'Weakest-domain anchor'))
     items.push(labelPractice(findPractice('d4', 'Morning Directive'), 'Required', 'Initialize the conscious director'))
     items.push(labelPractice(findPractice('d2', 'Sun + Circadian Anchor'), 'Optional', 'Stabilize Form early'))
   }
 
   if (phase === 'midday') {
-    const morningPool = buildPhaseItems('morning', domainScores, todayChecks)
+    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId)
     const morningDone = morningPool.filter(i => !!todayChecks[i.key]).length
     let primary = ['d2', 'Breathwork']
     let reason = 'Midday nervous-system correction'
@@ -233,8 +250,14 @@ export function getPreviousDateKey(date = new Date(), daysBack = 1) {
 }
 
 export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
-  let streak = 0
-  for (let i = 0; i < 365; i++) {
+  const todayKey = getDateKey(date)
+  const todayStatus = dayStatus?.[todayKey]?.status
+  if (todayStatus === 'missed') return 0
+
+  let streak = todayStatus === 'locked' ? 1 : 0
+  const startBack = todayStatus === 'locked' ? 1 : 1
+
+  for (let i = startBack; i < 365; i++) {
     const key = getPreviousDateKey(date, i)
     if (dayStatus?.[key]?.status === 'locked') streak += 1
     else break
@@ -264,14 +287,26 @@ export function calculateLongestStreak(dayStatus = {}) {
   return longest
 }
 
+export function generateTomorrowPrime(domainId) {
+  const domain = domainById(domainId || 'd1')
+  return {
+    domain,
+    practiceName: TOMORROW_ENTRY_LABELS[domain.id] || 'Stillness Exposure',
+    reason: `${domain.name} is the next correction point. Begin there before adding anything else.`,
+  }
+}
+
 export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true } = {}) {
   const dateKey = getDateKey(date)
+  const previousDateKey = getPreviousDateKey(date, 1)
   const todayChecks = checked?.[dateKey] || {}
+  const previousStatus = dayStatus?.[previousDateKey] || null
+  const primedDomainId = previousStatus?.correctionDomain || null
   const currentPhase = getCurrentPhase(date)
   const phases = {}
 
   PHASES.forEach(p => {
-    const items = buildPhaseItems(p.id, domainScores, todayChecks)
+    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId)
     const completion = completionFor(items, todayChecks)
     phases[p.id] = {
       ...p,
@@ -300,11 +335,16 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const hour = date.getHours()
   const existingStatus = dayStatus?.[dateKey]?.status || null
   const failureActive = completeRequired < DAILY_MINIMUM && hour >= 20
+  const correctionDomain = impactSummary.neglectedDomain || domainById(weak)
+  const tomorrowPrime = generateTomorrowPrime(correctionDomain?.id || weak)
 
   return {
     dailyMinimum: DAILY_MINIMUM,
     currentPhase,
     weakestDomain: domainById(weak),
+    previousStatus,
+    primedDomain: primedDomainId ? domainById(primedDomainId) : null,
+    tomorrowPrime,
     phases,
     impactSummary,
     completionState: {

@@ -104,16 +104,24 @@ function formatImpact(scoreImpact = {}) {
 
 function StreakPanel({ plan }) {
   const streak = plan.streak || { current: 0, longest: 0 }
+  const current = streak.current || 0
+  const message = current >= 7
+    ? 'Signal continuity is becoming identity-level momentum.'
+    : current >= 3
+      ? 'Momentum is now visible. Protect the loop.'
+      : current > 0
+        ? 'Momentum begins here. Lock in tomorrow to compound it.'
+        : 'No active streak yet. Complete the daily minimum to start momentum.'
   return (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-      <div style={{ border: bdr, borderRadius: 999, background: '#fff', padding: '7px 11px', fontSize: 12, fontWeight: 850, color: '#1a1a18' }}>
-        🔥 Current streak: {streak.current}
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+      <div style={{ border: '1px solid #D85A3030', borderRadius: 999, background: current ? '#FAECE7' : '#fff', padding: '7px 11px', fontSize: 12, fontWeight: 900, color: current ? '#712B13' : '#1a1a18' }}>
+        🔥 Current streak: {current}
       </div>
-      <div style={{ border: bdr, borderRadius: 999, background: '#FCFBF8', padding: '7px 11px', fontSize: 12, fontWeight: 750, color: '#666' }}>
-        Best: {streak.longest || streak.current}
+      <div style={{ border: bdr, borderRadius: 999, background: '#FCFBF8', padding: '7px 11px', fontSize: 12, fontWeight: 800, color: '#666' }}>
+        Best: {streak.longest || current}
       </div>
-      <div style={{ border: bdr, borderRadius: 999, background: '#EEEDFE', padding: '7px 11px', fontSize: 12, fontWeight: 750, color: '#3C3489' }}>
-        Momentum persists when the daily minimum is locked in.
+      <div style={{ border: bdr, borderRadius: 999, background: current ? '#EEEDFE' : '#F8F7F4', padding: '7px 11px', fontSize: 12, fontWeight: 800, color: current ? '#3C3489' : '#666' }}>
+        {message}
       </div>
     </div>
   )
@@ -121,15 +129,38 @@ function StreakPanel({ plan }) {
 
 function FailureState({ plan }) {
   if (!plan.failureState?.active || plan.completionState.dailyMinimumMet) return null
+  const missed = plan.failureState.status === 'missed'
   return (
-    <div style={{ marginTop: 14, borderRadius: 14, background: '#FAECE7', border: '1px solid #D85A3035', padding: '14px 16px' }}>
-      <div style={{ fontSize: 16, fontWeight: 950, color: '#712B13', letterSpacing: '-0.02em' }}>Loop Incomplete</div>
-      <div style={{ fontSize: 13, color: '#712B13', marginTop: 5, lineHeight: 1.55 }}>
-        The daily operating loop is still missing <strong>{plan.failureState.missing}</strong> required action{plan.failureState.missing === 1 ? '' : 's'}.
-        Complete the minimum before the day closes, or tomorrow starts from recovery instead of momentum.
+    <div style={{ marginTop: 14, borderRadius: 14, background: missed ? '#FCEBEB' : '#FAECE7', border: '1px solid #D85A3035', padding: '14px 16px' }}>
+      <div style={{ fontSize: 16, fontWeight: 950, color: '#712B13', letterSpacing: '-0.02em' }}>
+        {missed ? 'Daily Loop Missed' : 'Loop At Risk'}
       </div>
-      <div style={{ marginTop: 10, fontSize: 12, color: '#633806', fontWeight: 750 }}>
-        Recovery instruction: complete the next unlocked critical practice first. Do not negotiate with the loop.
+      <div style={{ fontSize: 13, color: '#712B13', marginTop: 5, lineHeight: 1.55 }}>
+        {missed
+          ? 'The operating loop was not completed. Signal was not stabilized. Tomorrow begins from recovery — not momentum.'
+          : <>The daily operating loop is still missing <strong>{plan.failureState.missing}</strong> required action{plan.failureState.missing === 1 ? '' : 's'}. Complete the minimum before the day closes, or tomorrow starts from recovery instead of momentum.</>}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: '#633806', fontWeight: 800 }}>
+        Recovery instruction: start the next unlocked critical practice first. Do not negotiate with the loop.
+      </div>
+    </div>
+  )
+}
+
+function TomorrowPrime({ plan }) {
+  const prime = plan.tomorrowPrime
+  if (!prime?.domain) return null
+  return (
+    <div style={{ marginTop: 14, borderRadius: 14, background: '#FCFBF8', border: bdr, padding: '13px 15px', display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'center' }}>
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#777' }}>Tomorrow’s Entry Point</div>
+        <div style={{ marginTop: 5, fontSize: 15, fontWeight: 900, color: prime.domain.text }}>
+          Start with {prime.practiceName}
+        </div>
+        <div style={{ marginTop: 3, fontSize: 12, color: '#666', lineHeight: 1.45 }}>{prime.reason}</div>
+      </div>
+      <div style={{ flexShrink: 0, borderRadius: 999, padding: '7px 10px', background: prime.domain.bg, color: prime.domain.text, fontSize: 12, fontWeight: 900 }}>
+        {prime.domain.name}
       </div>
     </div>
   )
@@ -177,6 +208,7 @@ function DayLockedIn({ plan }) {
           ))}
         </div>
       )}
+      <TomorrowPrime plan={plan} />
     </div>
   )
 }
@@ -219,6 +251,24 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       }
     })
   }, [plan.completionState.dailyMinimumMet, plan.completionState.completeRequired, plan.impactSummary, scorePreview, setDayStatus, today])
+
+  useEffect(() => {
+    if (!plan.failureState?.active || plan.completionState.dailyMinimumMet) return
+    setDayStatus(prev => {
+      const current = prev?.[today]
+      if (current?.status === 'locked' || current?.status === 'missed') return prev
+      return {
+        ...prev,
+        [today]: {
+          status: 'missed',
+          missedAt: new Date().toISOString(),
+          missing: plan.failureState.missing,
+          correctionDomain: plan.tomorrowPrime?.domain?.id || plan.weakestDomain?.id || null,
+          completedRequired: plan.completionState.completeRequired,
+        }
+      }
+    })
+  }, [plan.failureState?.active, plan.failureState?.missing, plan.completionState.dailyMinimumMet, plan.completionState.completeRequired, plan.tomorrowPrime, plan.weakestDomain, setDayStatus, today])
 
 
   const handleCheck = (item) => {
@@ -390,7 +440,10 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       ))}
 
-      {plan.completionState.dailyMinimumMet ? <DayLockedIn plan={plan} /> : <FailureState plan={plan} />}
+      {plan.completionState.dailyMinimumMet ? <DayLockedIn plan={plan} /> : <>
+        <FailureState plan={plan} />
+        <TomorrowPrime plan={plan} />
+      </>}
     </div>
   )
 }
