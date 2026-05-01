@@ -891,7 +891,9 @@ export default function App() {
   }, {})
 
   const exportBackup = () => {
-    const data = { checked, weekDays, notes, ratings, metrics, directive, execTarget, evening, weekAdj, triggers, exported: new Date().toISOString() }
+    let dayStatus = {}
+    try { dayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch {}
+    const data = { checked, weekDays, notes, ratings, metrics, directive, execTarget, evening, weekAdj, triggers, dayStatus, exported: new Date().toISOString() }
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}))
     a.download = `quintave_backup_${new Date().toISOString().slice(0,10)}.json`; a.click()
   }
@@ -914,7 +916,7 @@ export default function App() {
   }
   const importBackup = e => {
     const file=e.target.files[0];if(!file)return
-    const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.checked)setChecked(d.checked);if(d.weekDays)setWeekDays(d.weekDays);if(d.notes)setNotes(d.notes);if(d.ratings)setRatings(d.ratings);if(d.metrics)setMetrics(d.metrics);if(d.directive)setDirective(d.directive);if(d.execTarget)setExecTarget(d.execTarget);if(d.evening)setEvening(d.evening);if(d.weekAdj)setWeekAdj(d.weekAdj);if(d.triggers)setTriggers(d.triggers);alert('Backup restored.')}catch{alert('Invalid file.')}};r.readAsText(file)
+    const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.checked)setChecked(d.checked);if(d.weekDays)setWeekDays(d.weekDays);if(d.notes)setNotes(d.notes);if(d.ratings)setRatings(d.ratings);if(d.metrics)setMetrics(d.metrics);if(d.directive)setDirective(d.directive);if(d.execTarget)setExecTarget(d.execTarget);if(d.evening)setEvening(d.evening);if(d.weekAdj)setWeekAdj(d.weekAdj);if(d.triggers)setTriggers(d.triggers);if(d.dayStatus)localStorage.setItem('q_day_status', JSON.stringify(d.dayStatus));alert('Backup restored.')}catch{alert('Invalid file.')}};r.readAsText(file)
   }
 
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
@@ -1055,7 +1057,7 @@ export default function App() {
 
       {/* Tab bar */}
       <div style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
-        {[['today','Today'],['progress','Progress'],['analytics','Analytics'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
+        {[['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
           <button key={id} onClick={() => setTab(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
             {lbl}
@@ -1072,6 +1074,16 @@ export default function App() {
               Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{displayName ? `, ${displayName}` : ''}.
             </div>
             <div style={{ fontSize:13, color:'#888', marginBottom:12 }}>Five frequency bodies. One daily tuning practice.</div>
+
+            {/* Today Engine — primary execution loop */}
+            <DailyFocus
+              checked={checked || {}}
+              setChecked={setChecked}
+              onboardingProfile={onboardingProfile}
+              domainScores={domainScores || {}}
+              onBreathwork={() => setShowBreathwork(true)}
+              selectedPhaseOverride={todayPhaseOverride}/>
+
             <div style={{ background: '#EEEDFE', borderRadius:10, padding:'12px 16px', borderLeft:'3px solid #7F77DD' }}>
               <div style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'#3C3489', marginBottom:4 }}>Today's tuning focus</div>
               <div style={{ fontSize:13, color:'#3C3489', lineHeight:1.6 }}>{COACHING_TIPS[coachingDomain]}</div>
@@ -1195,15 +1207,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Daily Focus — intelligent recommendations */}
-          <DailyFocus
-            checked={checked || {}}
-            setChecked={setChecked}
-            onboardingProfile={onboardingProfile}
-            domainScores={domainScores || {}}
-            onBreathwork={() => setShowBreathwork(true)}
-            selectedPhaseOverride={todayPhaseOverride}/>
-
           {/* Cross-impact legend */}
           {Object.values(crossImpact).some(v => v > 0) && (
             <div style={{ background:'#fff', borderRadius:10, border:bdr, padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
@@ -1216,16 +1219,13 @@ export default function App() {
             </div>
           )}
 
-          {DOMAINS.map(domain => (
-            <DCard key={domain.id} domain={domain}
-              checked={checked} onCheck={handleCheck}
-              metrics={metrics} onMetric={handleMetric}
-              ratings={ratings} onRating={handleRating}
-              notes={notes} onNote={handleNote}
-              onBreathwork={() => setShowBreathwork(true)}
-              crossImpact={crossImpact}
-              onDeepDive={() => setOpenDomain(domain)}/>
-          ))}
+          <div style={{ ...card, marginTop:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Need the full practice library?</div>
+              <div style={{ fontSize:12, color:'#666', lineHeight:1.5 }}>Today is now focused on the execution loop. The complete domain practice cards live in Practice Library.</div>
+            </div>
+            <button onClick={() => setTab('library')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Open Practice Library</button>
+          </div>
 
           <TriggerMap triggers={triggers} setTriggers={setTriggers}/>
 
@@ -1246,6 +1246,33 @@ export default function App() {
               </div>
             </div>
           </div>
+        </>}
+
+        {/* ── PRACTICE LIBRARY — FULL DOMAIN PRACTICES ── */}
+        {tab === 'library' && <>
+          <div style={card}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:8 }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#777', marginBottom:4 }}>Practice Library</div>
+                <h2 style={{ margin:0, fontSize:22, letterSpacing:'-0.03em' }}>All domain practices</h2>
+              </div>
+              <button onClick={() => setTab('today')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Return to Today</button>
+            </div>
+            <div style={{ fontSize:13, color:'#666', lineHeight:1.6 }}>
+              Use this area for exploration, manual tuning, and full-domain work. The Today page remains the focused execution loop.
+            </div>
+          </div>
+
+          {DOMAINS.map(domain => (
+            <DCard key={domain.id} domain={domain}
+              checked={checked} onCheck={handleCheck}
+              metrics={metrics} onMetric={handleMetric}
+              ratings={ratings} onRating={handleRating}
+              notes={notes} onNote={handleNote}
+              onBreathwork={() => setShowBreathwork(true)}
+              crossImpact={crossImpact}
+              onDeepDive={() => setOpenDomain(domain)}/>
+          ))}
         </>}
 
         {/* ── ANALYTICS — COHERENCE FRAMEWORK ── */}
