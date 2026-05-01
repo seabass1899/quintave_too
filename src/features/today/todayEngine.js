@@ -1,9 +1,9 @@
 import { DOMAINS, PRACTICES } from '../../data'
 
 export const PHASES = [
-  { id: 'morning', label: 'Morning', role: 'Initialize', required: 2, unlockHour: 0 },
-  { id: 'midday', label: 'Midday', role: 'Correct', required: 1, unlockHour: 11 },
-  { id: 'evening', label: 'Evening', role: 'Integrate', required: 1, unlockHour: 17 },
+  { id: 'morning', label: 'Morning', role: 'Initialize', required: 2, proceedMinimum: 1, unlockHour: 0 },
+  { id: 'midday', label: 'Midday', role: 'Correct', required: 1, proceedMinimum: 1, unlockHour: 11 },
+  { id: 'evening', label: 'Evening', role: 'Integrate', required: 1, proceedMinimum: 1, unlockHour: 17 },
 ]
 
 export const DAILY_MINIMUM = 4
@@ -33,6 +33,14 @@ const PHASE_POOLS = {
     ['d3', 'Forgiveness Protocol'],
     ['d3', 'Gratitude + Reframe'],
   ],
+}
+
+const DOMAIN_FEEDBACK = {
+  d1: { short: 'Source Stability', identity: 'You returned to the observer behind the noise.' },
+  d2: { short: 'Form Vitality', identity: 'You strengthened the physical vessel that carries the signal.' },
+  d3: { short: 'Field Regulation', identity: 'You processed charge instead of carrying it forward.' },
+  d4: { short: 'Mind Direction', identity: 'You reclaimed the director\'s chair of attention.' },
+  d5: { short: 'Code Override', identity: 'You interrupted automatic programming and chose differently.' },
 }
 
 export function getCurrentPhase(date = new Date()) {
@@ -85,14 +93,14 @@ function completionFor(items, todayChecks = {}) {
   }
 }
 
-function labelPractice(item, priority, why) {
-  return {
-    ...item,
-    priority,
-    why,
-    identityFeedback: getIdentityFeedback(item),
-    analyticFeedback: getAnalyticFeedback(item),
-  }
+function getScoreImpact(item, priority) {
+  const baseByPriority = { Critical: 3, Required: 2, Adaptive: 1, Optional: 1 }
+  const primary = item?.phaseDomainId || item?.domain?.id || 'd1'
+  const impact = { [primary]: baseByPriority[priority] || 1 }
+  ;(item?.cross || []).forEach(domainId => {
+    impact[domainId] = (impact[domainId] || 0) + 1
+  })
+  return impact
 }
 
 function getIdentityFeedback(item) {
@@ -106,13 +114,33 @@ function getIdentityFeedback(item) {
   if (name.includes('Pre-Sleep')) return 'You programmed the system before the subconscious window opened.'
   if (name.includes('Thought Audit')) return 'You observed thought instead of obeying it.'
   if (name.includes('Sleep')) return 'You protected the platform every other domain runs on.'
-  return `You strengthened ${item.domain?.name || 'the system'} coherence.`
+  if (name.includes('Sun')) return 'You anchored the vessel to the day instead of drifting into it.'
+  if (name.includes('Hydration')) return 'You restored physical signal flow.'
+  return DOMAIN_FEEDBACK[item?.domain?.id]?.identity || `You strengthened ${item.domain?.name || 'the system'} coherence.`
 }
 
-function getAnalyticFeedback(item) {
-  const cross = item?.cross?.length || 0
-  const primary = item?.domain?.name || 'Domain'
-  return `+2 ${primary} stability${cross ? ` · +${cross} cross-domain ripple` : ''}`
+function getAnalyticFeedback(item, scoreImpact) {
+  const primaryId = item?.phaseDomainId || item?.domain?.id
+  const primary = DOMAIN_FEEDBACK[primaryId]?.short || `${item?.domain?.name || 'Domain'} Stability`
+  const primaryPoints = scoreImpact?.[primaryId] || 0
+  const ripplePoints = Object.entries(scoreImpact || {})
+    .filter(([id]) => id !== primaryId)
+    .reduce((sum, [, value]) => sum + value, 0)
+  return `+${primaryPoints} ${primary}${ripplePoints ? ` · +${ripplePoints} cross-domain ripple` : ''}`
+}
+
+function labelPractice(item, priority, why) {
+  if (!item) return null
+  const scoreImpact = getScoreImpact(item, priority)
+  return {
+    ...item,
+    priority,
+    why,
+    scoreImpact,
+    scoreTotal: Object.values(scoreImpact).reduce((sum, value) => sum + value, 0),
+    identityFeedback: getIdentityFeedback(item),
+    analyticFeedback: getAnalyticFeedback(item, scoreImpact),
+  }
 }
 
 function buildPhaseItems(phase, domainScores, todayChecks) {
@@ -160,6 +188,35 @@ function buildPhaseItems(phase, domainScores, todayChecks) {
   return uniqueByKey(items).filter(Boolean)
 }
 
+function buildImpactSummary(allItems, todayChecks = {}) {
+  const completedItems = allItems.filter(i => !!todayChecks[i.key])
+  const domainImpact = DOMAINS.reduce((acc, d) => ({ ...acc, [d.id]: 0 }), {})
+
+  completedItems.forEach(item => {
+    Object.entries(item.scoreImpact || {}).forEach(([domainId, points]) => {
+      domainImpact[domainId] = (domainImpact[domainId] || 0) + points
+    })
+  })
+
+  const ranked = Object.entries(domainImpact)
+    .map(([domainId, points]) => ({ domain: domainById(domainId), points }))
+    .sort((a, b) => b.points - a.points)
+
+  const totalImpact = ranked.reduce((sum, d) => sum + d.points, 0)
+  const strongestSignal = ranked.find(d => d.points > 0) || ranked[0]
+  const neglectedDomain = ranked.slice().reverse().find(d => d.points === 0)?.domain || ranked[ranked.length - 1]?.domain || domainById('d1')
+
+  return {
+    completedItems,
+    domainImpact,
+    ranked,
+    totalImpact,
+    strongestSignal,
+    neglectedDomain,
+    feedbackLines: completedItems.slice(-3).map(i => i.identityFeedback),
+  }
+}
+
 export function generateTodayPlan({ domainScores = {}, checked = {}, date = new Date(), phaseLocking = true } = {}) {
   const dateKey = date.toDateString()
   const todayChecks = checked?.[dateKey] || {}
@@ -190,12 +247,14 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, date = new 
   const completeRequired = requiredItems.filter(i => !!todayChecks[i.key]).length
   const totalComplete = allItems.filter(i => !!todayChecks[i.key]).length
   const weak = weakestDomains(domainScores)[0]
+  const impactSummary = buildImpactSummary(allItems, todayChecks)
 
   return {
     dailyMinimum: DAILY_MINIMUM,
     currentPhase,
     weakestDomain: domainById(weak),
     phases,
+    impactSummary,
     completionState: {
       completeRequired,
       totalRequired: requiredItems.length,

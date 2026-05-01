@@ -75,10 +75,57 @@ function pickDomainFromScores(domainScores, type = 'strongest') {
   return entries[0][0]
 }
 
+function formatImpact(scoreImpact = {}) {
+  const labels = { d1: 'Source', d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
+  return Object.entries(scoreImpact)
+    .filter(([, points]) => points > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, points]) => `+${points} ${labels[id] || id}`)
+    .join(' · ')
+}
+
+function DayLockedIn({ plan }) {
+  const summary = plan.impactSummary || {}
+  const strongest = summary.strongestSignal
+  const correction = summary.neglectedDomain || plan.weakestDomain
+  const ranked = summary.ranked || []
+  return (
+    <div style={{ marginTop: 14, borderRadius: 16, background: 'linear-gradient(135deg, #E1F5EE, #F7FCFA)', border: '1px solid #1D9E7535', padding: '16px 16px', boxShadow: '0 10px 24px rgba(29,158,117,0.10)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 950, color: '#085041', letterSpacing: '-0.03em' }}>Day Locked In ✓</div>
+          <div style={{ fontSize: 13, color: '#085041', marginTop: 5, lineHeight: 1.55 }}>
+            You completed the minimum operating loop. Strongest signal: <strong>{strongest?.domain?.name || 'Coherence'}</strong>. Tomorrow’s correction starts with <strong>{correction?.name || 'the open loop'}</strong>.
+          </div>
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 900, color: '#085041', background: '#fff', border: '1px solid #1D9E7530', borderRadius: 999, padding: '7px 10px', whiteSpace: 'nowrap' }}>
+          +{summary.totalImpact || 0} total signal
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 7, marginTop: 14 }}>
+        {ranked.slice(0, 5).map(({ domain, points }) => (
+          <div key={domain.id} style={{ background: '#fff', border: `1px solid ${domain.color}28`, borderRadius: 11, padding: '8px 9px' }}>
+            <div style={{ fontSize: 11, color: domain.text, fontWeight: 850 }}>{domain.name}</div>
+            <div style={{ fontSize: 17, color: domain.color, fontWeight: 950, marginTop: 2 }}>+{points}</div>
+          </div>
+        ))}
+      </div>
+      {!!summary.feedbackLines?.length && (
+        <div style={{ marginTop: 13, display: 'grid', gap: 5 }}>
+          {summary.feedbackLines.map((line, idx) => (
+            <div key={`${line}-${idx}`} style={{ fontSize: 12, color: '#085041' }}>✓ {line}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null }) {
   const today = new Date().toDateString()
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
   const [lastFeedback, setLastFeedback] = useState(null)
+  const [completionEvents, setCompletionEvents] = useState([])
 
   useEffect(() => {
     if (selectedPhaseOverride) setSelectedPhase(selectedPhaseOverride)
@@ -90,10 +137,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   const activePhase = plan.phases[activePhaseId]
   const requestedWasLocked = requestedPhaseId && requestedPhaseId !== activePhaseId && plan.phases[requestedPhaseId]?.locked
 
-  const strongestId = pickDomainFromScores(domainScores, 'strongest')
-  const weakest = plan.weakestDomain
-  const strongestName = plan.phases.morning.items.find(i => i.domain.id === strongestId)?.domain?.name || 'Coherence'
-  const tomorrowCorrection = weakest?.name || 'the weakest open loop'
+  const scorePreview = plan.impactSummary?.totalImpact || 0
 
   const handleCheck = (item) => {
     const wasChecked = !!checked?.[today]?.[item.key]
@@ -102,12 +146,17 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       [today]: { ...(prev?.[today] || {}), [item.key]: !wasChecked }
     }))
     if (!wasChecked) {
-      setLastFeedback({
+      const event = {
+        id: `${Date.now()}-${item.key}`,
         title: item.identityFeedback,
         detail: item.analyticFeedback,
+        impact: formatImpact(item.scoreImpact),
         domain: item.domain,
         practice: item.name,
-      })
+        priority: item.priority,
+      }
+      setLastFeedback(event)
+      setCompletionEvents(prev => [event, ...prev].slice(0, 4))
       window.setTimeout(() => setLastFeedback(null), 4200)
     }
   }
@@ -118,7 +167,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         <div>
           <div style={{ fontSize: 18, fontWeight: 850, letterSpacing: '-0.03em' }}>Today’s Execution Loop</div>
           <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-            Complete the operating loop. Minimum required: <strong>{plan.completionState.completeRequired}/{plan.dailyMinimum}</strong>.
+            Complete the operating loop. Minimum required: <strong>{plan.completionState.completeRequired}/{plan.dailyMinimum}</strong>. Signal generated: <strong>+{scorePreview}</strong>.
           </div>
         </div>
         <div style={{
@@ -191,8 +240,23 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           marginBottom: 12,
           boxShadow: `0 8px 18px ${lastFeedback.domain.color}12`
         }}>
-          <div style={{ fontSize: 13, fontWeight: 850, color: lastFeedback.domain.text }}>✓ {lastFeedback.title}</div>
+          <div style={{ fontSize: 13, fontWeight: 900, color: lastFeedback.domain.text }}>✓ {lastFeedback.title}</div>
           <div style={{ fontSize: 12, color: lastFeedback.domain.color, marginTop: 4 }}>{lastFeedback.detail}</div>
+          <div style={{ fontSize: 11, color: '#555', marginTop: 4, fontWeight: 750 }}>{lastFeedback.impact}</div>
+        </div>
+      )}
+
+      {!!completionEvents.length && (
+        <div style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
+          {completionEvents.slice(0, 2).map(event => (
+            <div key={event.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', border: bdr, borderRadius: 10, padding: '8px 10px', background: '#FCFBF8' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#1a1a18' }}>{event.practice}</div>
+                <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>{event.title}</div>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 850, color: event.domain.color, whiteSpace: 'nowrap' }}>{event.impact}</div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -242,14 +306,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       ))}
 
-      {plan.completionState.dailyMinimumMet && (
-        <div style={{ marginTop: 14, borderRadius: 14, background: '#E1F5EE', border: '1px solid #1D9E7535', padding: '14px 15px' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: '#085041' }}>Day Locked In ✓</div>
-          <div style={{ fontSize: 13, color: '#085041', marginTop: 5, lineHeight: 1.55 }}>
-            You completed the minimum operating loop. Strongest signal: <strong>{strongestName}</strong>. Tomorrow’s correction starts with <strong>{tomorrowCorrection}</strong>.
-          </div>
-        </div>
-      )}
+      {plan.completionState.dailyMinimumMet && <DayLockedIn plan={plan} />}
     </div>
   )
 }
