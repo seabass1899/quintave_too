@@ -198,6 +198,11 @@ function DayLockedIn({ plan }) {
           <div style={{ fontSize: 13, color: '#085041', marginTop: 5, lineHeight: 1.55 }}>
             The loop was completed. Signal was established. Tomorrow builds from this state — it does not reset from zero.
           </div>
+          {streak.current === 1 && (
+            <div style={{ fontSize: 12, color: '#085041', marginTop: 6, fontWeight: 850 }}>
+              You established your first signal. Repeat tomorrow to build momentum.
+            </div>
+          )}
           <div style={{ fontSize: 12, color: '#085041', marginTop: 7, lineHeight: 1.5 }}>
             Strongest signal: <strong>{strongest?.domain?.name || 'Coherence'}</strong>. Tomorrow’s correction starts with <strong>{correction?.name || 'the open loop'}</strong>.
           </div>
@@ -244,6 +249,9 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   }, [selectedPhaseOverride])
 
   const isMissedToday = dayStatus?.[today]?.status === 'missed'
+  const isRecoveryMode = dayStatus?.[today]?.status === 'active' && !!dayStatus?.[today]?.reopenedAt
+  const hasCompletedDay = Object.values(dayStatus || {}).some(d => d?.status === 'locked')
+  const showOnboarding = !hasCompletedDay && !isMissedToday
   const effectiveChecked = useMemo(() => {
     if (!isMissedToday) return checked
     return { ...(checked || {}), [today]: {} }
@@ -329,6 +337,26 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
 
   return (
     <div style={{ background: '#fff', borderRadius: 16, border: bdr, padding: '18px 20px', marginBottom: 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
+      {showOnboarding && (
+        <div style={{
+          background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
+          border: '1px solid #DFE3F0',
+          borderRadius: 14,
+          padding: '15px 16px',
+          marginBottom: 16
+        }}>
+          <div style={{ fontSize: 15, fontWeight: 950, letterSpacing: '-0.02em', marginBottom: 7 }}>
+            Start your first loop
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.62, color: '#444' }}>
+            <strong>1.</strong> Complete 2 Morning actions to initialize the day.<br />
+            <strong>2.</strong> This unlocks Midday correction.<br />
+            <strong>3.</strong> Close the loop with Evening integration.<br /><br />
+            Locking the daily minimum builds momentum. Missing the loop resets it.<br />
+            <strong>Begin with the critical practice.</strong>
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 850, letterSpacing: '-0.03em' }}>Today’s Execution Loop</div>
@@ -355,6 +383,12 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       </div>
 
       <StreakPanel plan={plan} />
+
+      {isRecoveryMode && (
+        <div style={{ background: '#FAEEDA', color: '#633806', border: '1px solid #BA751735', borderRadius: 10, padding: '9px 12px', marginBottom: 11, fontSize: 12, fontWeight: 800 }}>
+          Recovery mode — rebuild today’s signal. Complete the daily minimum to lock the day in again.
+        </div>
+      )}
 
       {requestedWasLocked && (
         <div style={{ background: '#FAECE7', color: '#712B13', border: '1px solid #D85A3030', borderRadius: 10, padding: '9px 12px', marginBottom: 11, fontSize: 12 }}>
