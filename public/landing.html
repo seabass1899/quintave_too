@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quintave — Five Dimensions. One Daily Practice.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --source: #8B84E8;
+    --form: #2DB88A;
+    --field: #D4891F;
+    --mind: #4A9AE8;
+    --code: #E86840;
+    --bg: #0C0B0F;
+    --bg2: #13121A;
+    --bg3: #1A1826;
+    --surface: #1E1C2A;
+    --border: rgba(255,255,255,0.07);
+    --text: #F0EEF8;
+    --muted: #7A7890;
+    --subtle: #3A3850;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── Noise texture overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(12,11,15,0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .nav-cta {
+    padding: 9px 22px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .nav-cta:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); }
+
+  /* ── Sections ── */
+  section { position: relative; z-index: 1; }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Ambient glow circles */
+  .hero::after {
+    content: '';
+    position: absolute;
+    width: 800px; height: 800px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139,132,232,0.07) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--source);
+    margin-bottom: 28px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+
+  .hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(52px, 8vw, 96px);
+    font-weight: 300;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 12px;
+    opacity: 0;
+    animation: fadeUp 0.9s ease 0.35s forwards;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--source);
+  }
+
+  .hero-sub {
+    font-size: clamp(15px, 2vw, 18px);
+    color: var(--muted);
+    max-width: 520px;
+    margin: 0 auto 48px;
+    line-height: 1.75;
+    font-weight: 300;
+    opacity: 0;
+    animation: fadeUp 0.9s ease 0.5s forwards;
+  }
+
+  .hero-cta-group {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.9s ease 0.65s forwards;
+  }
+
+  .btn-primary {
+    padding: 15px 36px;
+    background: var(--source);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: all 0.25s;
+    display: inline-block;
+  }
+  .btn-primary:hover { background: #9D96F0; transform: translateY(-1px); }
+
+  .btn-secondary {
+    padding: 15px 36px;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: all 0.25s;
+    display: inline-block;
+  }
+  .btn-secondary:hover { border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.04); }
+
+  /* ── Five bodies visual ── */
+  .bodies-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 64px;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 1s ease 0.8s forwards;
+  }
+
+  .body-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 99px;
+    border: 1px solid;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+  }
+
+  .body-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 0 auto;
+    max-width: 800px;
+  }
+
+  /* ── Section layout ── */
+  .section-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 100px 48px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--source);
+    margin-bottom: 20px;
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 300;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 20px;
+  }
+
+  .section-body {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.8;
+    max-width: 560px;
+    font-weight: 300;
+  }
+
+  /* ── Framework section ── */
+  .framework-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: start;
+    margin-top: 0;
+  }
+
+  .domain-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .domain-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: all 0.25s;
+    cursor: default;
+  }
+  .domain-card:hover {
+    border-color: rgba(255,255,255,0.14);
+    transform: translateX(4px);
+  }
+
+  .domain-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .domain-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 3px;
+    letter-spacing: 0.02em;
+  }
+
+  .domain-role {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 4px;
+  }
+
+  .domain-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── Features ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 60px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .feature-cell {
+    background: var(--surface);
+    padding: 32px 28px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .feature-cell:hover { background: var(--bg3); }
+  .feature-cell:nth-child(3n) { border-right: none; }
+  .feature-cell:nth-child(n+4) { border-bottom: none; }
+
+  .feature-icon {
+    font-size: 22px;
+    margin-bottom: 14px;
+    display: block;
+  }
+
+  .feature-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: 0.01em;
+  }
+
+  .feature-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* ── States section ── */
+  .states-track {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 60px;
+  }
+
+  .state-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .state-row:hover { border-color: rgba(255,255,255,0.14); }
+
+  .state-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 300;
+    min-width: 48px;
+    color: var(--subtle);
+  }
+
+  .state-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    min-width: 120px;
+    letter-spacing: 0.01em;
+  }
+
+  .state-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    flex: 1;
+  }
+
+  .state-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Testimonial / quote ── */
+  .quote-section {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .quote-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 100px 48px;
+    text-align: center;
+  }
+
+  .big-quote {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(24px, 4vw, 42px);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.4;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+
+  .big-quote em { color: var(--source); font-style: normal; }
+
+  .quote-attr {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── CTA section ── */
+  .cta-section {
+    text-align: center;
+    padding: 120px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139,132,232,0.08) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .cta-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(36px, 5vw, 60px);
+    font-weight: 300;
+    line-height: 1.2;
+    color: var(--text);
+    margin-bottom: 20px;
+  }
+
+  .cta-sub {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 44px;
+    line-height: 1.7;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ── Footer ── */
+  footer {
+    padding: 40px 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .footer-copy {
+    font-size: 12px;
+    color: var(--subtle);
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Coherence meter visual ── */
+  .meter-wrap {
+    margin-top: 60px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+  }
+
+  .meter-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .meter-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .meter-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .meter-name {
+    font-size: 12px;
+    color: var(--text);
+    min-width: 56px;
+    font-weight: 400;
+  }
+
+  .meter-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 99px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    height: 6px;
+    border-radius: 99px;
+    transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .meter-pct {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  .coherence-score {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .score-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px;
+    font-weight: 300;
+    color: var(--source);
+    line-height: 1;
+  }
+
+  .score-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .state-badge {
+    margin-left: auto;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 99px;
+    background: rgba(139,132,232,0.12);
+    color: var(--source);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    nav { padding: 16px 20px; }
+    .section-inner { padding: 72px 24px; }
+    .framework-grid { grid-template-columns: 1fr; gap: 40px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .feature-cell { border-right: none !important; }
+    footer { flex-direction: column; gap: 12px; text-align: center; }
+    .state-row { flex-wrap: wrap; }
+    .state-number { min-width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <a href="#" class="nav-logo">Quintave</a>
+  <a href="https://quintave.vercel.app" class="nav-cta">Begin your baseline →</a>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="eyebrow">A coherence instrument</div>
+  <h1 class="hero-title">Your best life is<br>not <em>built.</em><br>It is revealed.</h1>
+  <p class="hero-sub">When all five frequency bodies are in alignment with Source, abundance, health, and freedom are not goals you pursue. They are what naturally emerges.</p>
+  <div class="hero-cta-group">
+    <a href="#start" class="btn-primary">Begin my baseline assessment</a>
+    <a href="#framework" class="btn-secondary">Explore the framework</a>
+  </div>
+  <div class="bodies-row">
+    <div class="body-pill" style="color:#8B84E8; border-color:rgba(139,132,232,0.25); background:rgba(139,132,232,0.06)">
+      <div class="body-dot" style="background:#8B84E8"></div> Source
+    </div>
+    <div class="body-pill" style="color:#2DB88A; border-color:rgba(45,184,138,0.25); background:rgba(45,184,138,0.06)">
+      <div class="body-dot" style="background:#2DB88A"></div> Form
+    </div>
+    <div class="body-pill" style="color:#D4891F; border-color:rgba(212,137,31,0.25); background:rgba(212,137,31,0.06)">
+      <div class="body-dot" style="background:#D4891F"></div> Field
+    </div>
+    <div class="body-pill" style="color:#4A9AE8; border-color:rgba(74,154,232,0.25); background:rgba(74,154,232,0.06)">
+      <div class="body-dot" style="background:#4A9AE8"></div> Mind
+    </div>
+    <div class="body-pill" style="color:#E86840; border-color:rgba(232,104,64,0.25); background:rgba(232,104,64,0.06)">
+      <div class="body-dot" style="background:#E86840"></div> Code
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Framework ── -->
+<section id="framework">
+  <div class="section-inner">
+    <div class="framework-grid">
+      <div>
+        <div class="section-label">The framework</div>
+        <h2 class="section-title">Five bodies.<br>One living system.</h2>
+        <p class="section-body" style="margin-bottom:24px">Most tools address one dimension of your experience. A fitness app for the body. A meditation app for the mind. A journal for emotions. They work in isolation — which is why results are so often temporary.</p>
+        <p class="section-body">Quintave is built on a different premise: your experience of life is shaped by how well all five dimensions are working together. When they align, everything changes.</p>
+
+        <!-- Coherence meter demo -->
+        <div class="meter-wrap">
+          <div class="meter-label">Sample coherence signature</div>
+          <div class="meter-bars">
+            <div class="meter-row">
+              <div class="meter-name">Source</div>
+              <div class="meter-track"><div class="meter-fill" style="background:#8B84E8; width:72%"></div></div>
+              <div class="meter-pct" style="color:#8B84E8">72%</div>
+            </div>
+            <div class="meter-row">
+              <div class="meter-name">Form</div>
+              <div class="meter-track"><div class="meter-fill" style="background:#2DB88A; width:58%"></div></div>
+              <div class="meter-pct" style="color:#2DB88A">58%</div>
+            </div>
+            <div class="meter-row">
+              <div class="meter-name">Field</div>
+              <div class="meter-track"><div class="meter-fill" style="background:#D4891F; width:41%"></div></div>
+              <div class="meter-pct" style="color:#D4891F">41%</div>
+            </div>
+            <div class="meter-row">
+              <div class="meter-name">Mind</div>
+              <div class="meter-track"><div class="meter-fill" style="background:#4A9AE8; width:65%"></div></div>
+              <div class="meter-pct" style="color:#4A9AE8">65%</div>
+            </div>
+            <div class="meter-row">
+              <div class="meter-name">Code</div>
+              <div class="meter-track"><div class="meter-fill" style="background:#E86840; width:33%"></div></div>
+              <div class="meter-pct" style="color:#E86840">33%</div>
+            </div>
+          </div>
+          <div class="coherence-score">
+            <div class="score-num">54</div>
+            <div class="score-label">/ 100 coherence score</div>
+            <div class="state-badge">Grounding</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="domain-cards">
+        <div class="domain-card">
+          <div class="domain-icon" style="background:rgba(139,132,232,0.1)">✦</div>
+          <div>
+            <div class="domain-name" style="color:#8B84E8">Source</div>
+            <div class="domain-role">The tuning fork · The eternal self</div>
+            <div class="domain-desc">The core of who you are beneath every thought, role, and circumstance. Source does not need development — it needs to be remembered. When it resonates clearly, all other bodies stabilize around it.</div>
+          </div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-icon" style="background:rgba(45,184,138,0.1)">♥</div>
+          <div>
+            <div class="domain-name" style="color:#2DB88A">Form</div>
+            <div class="domain-role">The physical vessel · The instrument</div>
+            <div class="domain-desc">The body the soul chose for this experience. A depleted instrument cannot produce coherent sound. Form practices are not about appearance — they are about the quality of signal the vessel can carry.</div>
+          </div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-icon" style="background:rgba(212,137,31,0.1)">∿</div>
+          <div>
+            <div class="domain-name" style="color:#D4891F">Field</div>
+            <div class="domain-role">The emotional body · The frequency sensor</div>
+            <div class="domain-desc">Emotion is frequency moving through the body. When it moves freely — named, felt, released — the Field is clear. Stored charge distorts the entire frequency signature.</div>
+          </div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-icon" style="background:rgba(74,154,232,0.1)">◈</div>
+          <div>
+            <div class="domain-name" style="color:#4A9AE8">Mind</div>
+            <div class="domain-role">The conscious director · The deliberate will</div>
+            <div class="domain-desc">The dimension of intentional thought and examined belief. A clear Mind amplifies Source. A reactive Mind amplifies fear and separation.</div>
+          </div>
+        </div>
+        <div class="domain-card">
+          <div class="domain-icon" style="background:rgba(232,104,64,0.1)">☽</div>
+          <div>
+            <div class="domain-name" style="color:#E86840">Code</div>
+            <div class="domain-role">The subconscious layer · The operating system</div>
+            <div class="domain-desc">The hidden programs running 95% of behavior. Written before age 7, executing automatically. Code is where the deepest patterns live — and where the most profound transformation happens.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Quote ── -->
+<section class="quote-section">
+  <div class="quote-inner">
+    <p class="big-quote">"The noise and distraction of modern life keeps the connection to <em>Source</em> perpetually suppressed. Quintave is the daily practice of closing that gap."</p>
+    <div class="quote-attr">The Foundation · Quintave Framework</div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section>
+  <div class="section-inner">
+    <div class="section-label">What's inside</div>
+    <h2 class="section-title">Built for the<br>full journey.</h2>
+    <p class="section-body">Every feature serves one purpose: bringing your five frequency bodies into coherence with who you actually are.</p>
+
+    <div class="features-grid">
+      <div class="feature-cell">
+        <span class="feature-icon">◎</span>
+        <div class="feature-title">Coherence baseline</div>
+        <div class="feature-desc">A 15-question assessment — three angles per frequency body — producing your personal coherence signature. More accurate than a single snapshot. The starting point for everything that follows.</div>
+      </div>
+      <div class="feature-cell">
+        <span class="feature-icon">⚡</span>
+        <div class="feature-title">Cross-impact scoring</div>
+        <div class="feature-desc">Practices ripple across dimensions. Completing Stillness Exposure in Source lifts Field, Mind, and Code simultaneously — because the system is interconnected, and your score reflects that.</div>
+      </div>
+      <div class="feature-cell">
+        <span class="feature-icon">✦</span>
+        <div class="feature-title">36 guided practices</div>
+        <div class="feature-desc">36 guided practices across all five frequency bodies — each with the mechanism, a 3-step protocol, a beginner version, and measurement guidance. Not instructions — understanding.</div>
+      </div>
+      <div class="feature-cell">
+        <span class="feature-icon">◈</span>
+        <div class="feature-title">Coherence mirror</div>
+        <div class="feature-desc">The Analytics tab shows your frequency state, resonance signature, 30-day trajectory, mastery thresholds, and primary interference — updated daily from your practice data.</div>
+      </div>
+      <div class="feature-cell">
+        <span class="feature-icon">⊡</span>
+        <div class="feature-title">System map</div>
+        <div class="feature-desc">An interactive diagram showing how the five bodies relate — which feeds which, what depletes what, and what happens when one collapses. Your actual resonance scores animate the nodes.</div>
+      </div>
+      <div class="feature-cell">
+        <span class="feature-icon">∿</span>
+        <div class="feature-title">The Foundation</div>
+        <div class="feature-desc">Seven expandable principles explaining the philosophical bedrock of the system — what you are, what this reality is, and what coherence actually means at the deepest level.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Three Daily Modes ── -->
+<section>
+  <div class="section-inner">
+    <div class="section-label">The daily arc</div>
+    <h2 class="section-title">Three modes.<br>One complete day.</h2>
+    <p class="section-body">Each mode is a distinct immersive practice sequence — fullscreen, sequential, designed for that specific moment in the day. Together they form a complete coherence arc from the moment you wake to the moment you sleep.</p>
+
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 48px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden;">
+
+      <!-- Morning -->
+      <div style="background: #0C0B0F; padding: 32px 28px; border-right: 1px solid rgba(255,255,255,0.06);">
+        <div style="font-size: 24px; margin-bottom: 14px;">☀</div>
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 8px;">Morning</div>
+        <div style="font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: #fff; margin-bottom: 12px; line-height: 1.3;">Set the frequency before you enter the field.</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.75; margin-bottom: 20px;">
+          The first 20 minutes determine the tone of the entire day. Before any external input can override your internal configuration, you install the frequency you have chosen.
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 11px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">7 practices</div>
+          <div style="font-size: 12px; color: rgba(139,132,232,0.8);">✦ Stillness Exposure</div>
+          <div style="font-size: 12px; color: rgba(139,132,232,0.8);">✦ Observer Drill</div>
+          <div style="font-size: 12px; color: rgba(45,184,138,0.8);">♥ Breathwork</div>
+          <div style="font-size: 12px; color: rgba(74,154,232,0.8);">◈ Morning Directive</div>
+          <div style="font-size: 12px; color: rgba(74,154,232,0.8);">◈ Visualization Practice</div>
+          <div style="font-size: 12px; color: rgba(212,137,31,0.8);">∿ Gratitude + Reframe</div>
+          <div style="font-size: 12px; color: rgba(232,104,64,0.8);">☽ Intention Installation</div>
+        </div>
+      </div>
+
+      <!-- Midday -->
+      <div style="background: #0A0F0C; padding: 32px 28px; border-right: 1px solid rgba(255,255,255,0.06);">
+        <div style="font-size: 24px; margin-bottom: 14px;">◈</div>
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 8px;">Midday</div>
+        <div style="font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: #fff; margin-bottom: 12px; line-height: 1.3;">Return to center when the day has pulled you out.</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.75; margin-bottom: 20px;">
+          By midday, the field has been pulling at you. The Midday reset is a deliberate return — 10 minutes to recalibrate the nervous system, audit the mind, and set the frequency for the afternoon.
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 11px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">5 practices</div>
+          <div style="font-size: 12px; color: rgba(139,132,232,0.8);">✦ 5 Recall Triggers</div>
+          <div style="font-size: 12px; color: rgba(45,184,138,0.8);">♥ Breathwork</div>
+          <div style="font-size: 12px; color: rgba(74,154,232,0.8);">◈ Thought Audit</div>
+          <div style="font-size: 12px; color: rgba(232,104,64,0.8);">☽ Pattern Interrupt</div>
+          <div style="font-size: 12px; color: rgba(74,154,232,0.8);">◈ Afternoon Directive</div>
+        </div>
+      </div>
+
+      <!-- Evening -->
+      <div style="background: #080810; padding: 32px 28px;">
+        <div style="font-size: 24px; margin-bottom: 14px;">☽</div>
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 8px;">Evening</div>
+        <div style="font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: #fff; margin-bottom: 12px; line-height: 1.3;">Process what the day generated. Close it cleanly.</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.75; margin-bottom: 20px;">
+          The evening is not the end of the day — it is the installation window for tomorrow. What you process before sleep determines how you wake. The subconscious works through the night on whatever you seed it with.
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 11px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">5 practices</div>
+          <div style="font-size: 12px; color: rgba(212,137,31,0.8);">∿ Name + Locate Emotion</div>
+          <div style="font-size: 12px; color: rgba(212,137,31,0.8);">∿ Emotional Log</div>
+          <div style="font-size: 12px; color: rgba(212,137,31,0.8);">∿ Gratitude + Reframe</div>
+          <div style="font-size: 12px; color: rgba(139,132,232,0.8);">✦ Field Integration</div>
+          <div style="font-size: 12px; color: rgba(232,104,64,0.8);">☽ Pre-Sleep Programming</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 20px; padding: 16px 20px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border);">
+      <div style="font-size: 13px; color: var(--muted); line-height: 1.75; text-align: center;">
+        Each mode auto-logs completed practices to your Today tab. Your coherence score updates in real time as you move through the day.
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── States ── -->
+<section>
+  <div class="section-inner">
+    <div class="section-label">The coherence spectrum</div>
+    <h2 class="section-title">Where are<br>you right now?</h2>
+    <p class="section-body">Your coherence state is not a judgment. It is a frequency reading — a precise description of where your five bodies are relative to each other and to Source. It changes as you practice.</p>
+
+    <div class="states-track">
+      <div class="state-row">
+        <div class="state-number">01</div>
+        <div class="state-name" style="color:#E24B4A">Scattered</div>
+        <div class="state-desc">The five bodies are pulling in different directions with no coherent center. Life feels reactive, heavy, and driven by circumstance rather than intention.</div>
+        <div class="state-dot" style="background:#E24B4A"></div>
+      </div>
+      <div class="state-row">
+        <div class="state-number">02</div>
+        <div class="state-name" style="color:#D4891F">Stirring</div>
+        <div class="state-desc">Something is waking up. The interference patterns are becoming visible. You are beginning to sense there is more to who you are than circumstances have suggested.</div>
+        <div class="state-dot" style="background:#D4891F"></div>
+      </div>
+      <div class="state-row">
+        <div class="state-number">03</div>
+        <div class="state-name" style="color:#4A9AE8">Grounding</div>
+        <div class="state-desc">The practices are anchoring. Each frequency body is finding its natural rhythm. You are building a foundation that will hold — this is where the deepest work happens.</div>
+        <div class="state-dot" style="background:#4A9AE8"></div>
+      </div>
+      <div class="state-row">
+        <div class="state-number">04</div>
+        <div class="state-name" style="color:#8B84E8">Aligning</div>
+        <div class="state-desc">All five bodies are moving into coherence with each other. Life is beginning to reflect what is happening inside. Synchronicity increases. Clarity deepens.</div>
+        <div class="state-dot" style="background:#8B84E8"></div>
+      </div>
+      <div class="state-row">
+        <div class="state-number">05</div>
+        <div class="state-name" style="color:#2DB88A">Whole</div>
+        <div class="state-desc">All five frequency bodies are in sustained coherence. Abundance, health, and freedom are not goals being pursued — they are natural expressions of a being in full alignment.</div>
+        <div class="state-dot" style="background:#2DB88A"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── CTA ── -->
+<section id="start" class="cta-section">
+  <div class="section-label" style="margin-bottom:20px">Begin today</div>
+  <h2 class="cta-title">Your coherence<br>signature awaits.</h2>
+  <p class="cta-sub">A 15-question baseline assessment that measures where each of your five frequency bodies currently resonates — and gives you a personalized starting point for the journey.</p>
+  <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap;">
+    <a href="https://quintave.vercel.app" class="btn-primary" style="font-size:15px; padding:16px 44px;">Begin my baseline assessment</a>
+  </div>
+  <p style="margin-top:20px; font-size:12px; color:var(--subtle)">Free to use · Stored locally on your device · No account required</p>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-logo">Quintave</div>
+  <div class="footer-copy">Five frequency bodies. One daily tuning practice. © 2026</div>
+</footer>
+
+<script>
+// Animate meter bars on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.width = entry.target.dataset.width
+    }
+  })
+}, { threshold: 0.3 })
+
+document.querySelectorAll('.meter-fill').forEach(el => {
+  const w = el.style.width
+  el.dataset.width = w
+  el.style.width = '0%'
+  observer.observe(el)
+})
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'))
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }) }
+  })
+})
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "Quintave — Coherence Instrument",
+  "short_name": "Quintave",
+  "description": "Five frequency bodies. One daily tuning practice.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F3F0",
+  "theme_color": "#1a1a18",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "productivity"],
+  "lang": "en"
+}
