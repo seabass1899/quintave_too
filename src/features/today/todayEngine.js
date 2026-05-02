@@ -328,6 +328,12 @@ export function transitionDayStatus({ previous = {}, date = new Date(), completi
     }
   }
 
+  // If the user explicitly reopens a missed day after cutoff, keep the day active.
+  // Otherwise the cutoff rule would instantly convert it back to missed before they can recover.
+  if (afterCutoff && current?.status === 'active' && current?.reopenedAt) {
+    return previous
+  }
+
   if (afterCutoff) {
     return {
       ...previous,
