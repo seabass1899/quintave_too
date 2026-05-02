@@ -99,7 +99,41 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 3
+export const TODAY_PLAN_VERSION = 4
+
+function getPracticeCrossCount(item) {
+  return Array.isArray(item?.cross) ? item.cross.length : 0
+}
+
+function isHighLeveragePractice(item) {
+  return getPracticeCrossCount(item) >= 2
+}
+
+function getLeverageLabel(item) {
+  const crossCount = getPracticeCrossCount(item)
+  if (crossCount >= 3) return `High leverage · ripples to ${crossCount} domains`
+  if (crossCount >= 2) return `High leverage · ripples to ${crossCount} domains`
+  return ''
+}
+
+function getPickLeverageScore(pick, weak = []) {
+  const item = pick ? findPractice(...pick) : null
+  if (!item) return -999
+  const primary = item.phaseDomainId || item.domain?.id
+  const crossCount = getPracticeCrossCount(item)
+  const weakBonus = weak?.[0] === primary ? 6 : weak?.slice(1, 3).includes(primary) ? 3 : 0
+  const leverageBonus = crossCount >= 3 ? 5 : crossCount >= 2 ? 3 : 0
+  return weakBonus + leverageBonus + crossCount
+}
+
+function bestAvailablePick(candidates = [], used = new Set(), weak = []) {
+  return candidates
+    .filter(([domainId, name]) => {
+      const item = findPractice(domainId, name)
+      return item && !used.has(item.key)
+    })
+    .sort((a, b) => getPickLeverageScore(b, weak) - getPickLeverageScore(a, weak))[0] || null
+}
 
 function uniqueByKey(items) {
   const seen = new Set()
@@ -127,15 +161,20 @@ function completionFor(items, todayChecks = {}) {
 }
 
 function getScoreImpact(item, priority) {
-  // Weighted signal model: Source is the root calibrator, Code/Field carry behavior/regulation weight.
-  const baseByPriority = { Critical: 4, Required: 3, Adaptive: 2, Optional: 1 }
+  // Final scoring model:
+  // Completion is discipline. Signal is quality. Cross-domain practices generate ripple.
+  const baseByPriority = { Critical: 6, Required: 4, Adaptive: 3, Optional: 2 }
   const domainWeight = { d1: 1.5, d2: 1.0, d3: 1.15, d4: 1.1, d5: 1.25 }
   const primary = item?.phaseDomainId || item?.domain?.id || 'd1'
-  const base = baseByPriority[priority] || 1
-  const impact = { [primary]: Math.round(base * (domainWeight[primary] || 1)) }
+  const base = baseByPriority[priority] || 2
+  const highLeverage = isHighLeveragePractice(item)
+  const multiplier = highLeverage ? 1.3 : 1
+  const primaryPoints = Math.max(1, Math.round(base * multiplier * (domainWeight[primary] || 1)))
+  const impact = { [primary]: primaryPoints }
 
   ;(item?.cross || []).forEach(domainId => {
-    const ripple = Math.max(1, Math.round(base * 0.45 * (domainWeight[domainId] || 1)))
+    const rippleBase = base * 0.45 * multiplier
+    const ripple = Math.max(1, Math.round(rippleBase * (domainWeight[domainId] || 1)))
     impact[domainId] = (impact[domainId] || 0) + ripple
   })
   return impact
@@ -169,13 +208,17 @@ function getAnalyticFeedback(item, scoreImpact) {
 
 function labelPractice(item, priority, why) {
   if (!item) return null
+  const highLeverage = isHighLeveragePractice(item)
   const scoreImpact = getScoreImpact(item, priority)
+  const scoreTotal = Object.values(scoreImpact).reduce((sum, value) => sum + value, 0)
   return {
     ...item,
     priority,
     why,
+    highLeverage,
+    leverageLabel: getLeverageLabel(item),
     scoreImpact,
-    scoreTotal: Object.values(scoreImpact).reduce((sum, value) => sum + value, 0),
+    scoreTotal,
     identityFeedback: getIdentityFeedback(item),
     analyticFeedback: getAnalyticFeedback(item, scoreImpact),
   }
@@ -361,12 +404,12 @@ export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
   const todayStatus = dayStatus?.[todayKey]?.status
   if (todayStatus === 'missed') return 0
 
-  let streak = todayStatus === 'locked' ? 1 : 0
+  let streak = (todayStatus === 'locked' && !dayStatus?.[todayKey]?.reopenedAt && !dayStatus?.[todayKey]?.missedAt) ? 1 : 0
   const startBack = todayStatus === 'locked' ? 1 : 1
 
   for (let i = startBack; i < 365; i++) {
     const key = getPreviousDateKey(date, i)
-    if (dayStatus?.[key]?.status === 'locked') streak += 1
+    if (dayStatus?.[key]?.status === 'locked' && !dayStatus?.[key]?.reopenedAt && !dayStatus?.[key]?.missedAt) streak += 1
     else break
   }
   return streak
@@ -374,7 +417,7 @@ export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
 
 export function calculateLongestStreak(dayStatus = {}) {
   const lockedDates = Object.entries(dayStatus || {})
-    .filter(([, record]) => record?.status === 'locked')
+    .filter(([, record]) => record?.status === 'locked' && !record?.reopenedAt && !record?.missedAt)
     .map(([key]) => new Date(key))
     .filter(date => !Number.isNaN(date.getTime()))
     .sort((a, b) => a - b)
