@@ -522,7 +522,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
               <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: item.domain.bg, color: item.domain.text }}>{item.domain.name}</span>
               <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#F7F6F3', color: '#666', border: bdr, fontWeight: 800 }}>+{item.scoreTotal || 0} signal</span>
             </div>
-            <div style={{ fontSize: 12, color: item.domain.color, marginTop: 3 }}>{item.why}</div>
+            <div style={{ fontSize: 11, color: '#777', marginTop: 5, fontWeight: 800 }}>Why this practice is here</div>
+            <div style={{ fontSize: 12, color: item.domain.color, marginTop: 2 }}>{item.why}</div>
             {item.highLeverage && item.leverageLabel && (
               <div style={{ fontSize: 11, color: '#BA7517', marginTop: 3, fontWeight: 800 }}>⚡ {item.leverageLabel}</div>
             )}

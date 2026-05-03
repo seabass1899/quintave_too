@@ -6,7 +6,7 @@ export const GRAY_ZONE_CORE_THRESHOLD = 93
 
 export const FREQUENCY_PLANES = [
   { level: 3, name: 'Red Zone · Interference Dominant', zone: 'Red Zone', range: '3.0–3.9', color: '#E24B4A', bg: '#FCEBEB', desc: 'The variable bodies are mostly driving the experience. Source is not yet stable as the reference signal.' },
-  { level: 4, name: 'Red Zone · Threshold Instability', zone: 'Red Zone', range: '4.0–4.9', color: '#D85A30', bg: '#FAECE7', desc: 'The player can touch stillness and direction, but interference still breaks the connection quickly.' },
+  { level: 4, name: 'Red Zone · Threshold Instability', zone: 'Red Zone', range: '4.0–4.9', color: '#D85A30', bg: '#FAECE7', desc: 'You can access stillness and direction, but interference can still break continuity quickly.' },
   { level: 5, name: 'Blue Zone · Source Gate', zone: 'Blue Zone', range: '5.0–5.9', color: '#7F77DD', bg: '#EEEDFE', desc: 'The beginning of reconnection. Source becomes accessible as a living reference point, not only an idea.' },
   { level: 6, name: 'Blue Zone · Stabilizing Access', zone: 'Blue Zone', range: '6.0–6.9', color: '#8B84E8', bg: '#EEEDFE', desc: 'Source access becomes more consistent. The day can be initialized and corrected without collapse first.' },
   { level: 7, name: 'Blue Zone · Directed Alignment', zone: 'Blue Zone', range: '7.0–7.9', color: '#378ADD', bg: '#E6F1FB', desc: 'Mind, Field, Code, and Form increasingly take direction from Source instead of external programming.' },
