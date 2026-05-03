@@ -721,8 +721,61 @@ function Ring({ pct, size = 86 }) {
     </svg>
   )
 }
+function FeedbackButton({ dailyPct, streakCount, weakest }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 16,
+        right: 16,
+        zIndex: 9999,
+      }}
+    >
+      <button
+        onClick={() => {
+          try {
+            trackEvent('feedback_opened', { source: 'floating_button' })
 
+            const feedback = prompt("What’s working? What’s confusing?")
+            if (!feedback || !feedback.trim()) return
 
+            const existing = JSON.parse(localStorage.getItem('q_feedback') || '[]')
+
+            const entry = {
+              text: feedback.trim(),
+              date: new Date().toISOString(),
+              state: {
+                dailyPct: dailyPct || 0,
+                streak: streakCount || 0,
+                weakest: weakest?.name || null,
+              },
+            }
+
+            localStorage.setItem('q_feedback', JSON.stringify([...existing, entry]))
+
+            alert('Feedback saved. Thank you.')
+          } catch (e) {
+            console.error('Feedback save failed:', e)
+            alert('Feedback could not be saved.')
+          }
+        }}
+        style={{
+          padding: '10px 14px',
+          borderRadius: 10,
+          border: '0.5px solid rgba(0,0,0,0.15)',
+          background: '#1a1a18',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: 'pointer',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.16)',
+        }}
+      >
+        Feedback
+      </button>
+    </div>
+  )
+}
 
 function LaunchMetrics() {
   const [events, setEvents] = useState(() => readEvents())
@@ -1448,6 +1501,12 @@ export default function App() {
 
         {/* ── SCHEDULE — adaptive ── */}
         {tab === 'schedule' && <ScheduleTab checked={checked}/>}
+
+        <FeedbackButton
+          dailyPct={dailyPct}
+          streakCount={streakCount}
+          weakest={weakest}
+        />
 
       </div>
     </div>
