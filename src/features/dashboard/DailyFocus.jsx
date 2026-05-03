@@ -37,6 +37,7 @@ function PhasePill({ phase, active, onClick }) {
   const locked = !!phase.locked
   return (
     <button
+      className="phase-pill tap-target"
       onClick={locked ? undefined : onClick}
       disabled={locked}
       title={locked ? phase.lockReason : `${phase.label}: ${done}/${req} complete`}
@@ -105,13 +106,17 @@ function formatImpact(scoreImpact = {}) {
 function StreakPanel({ plan }) {
   const streak = plan.streak || { current: 0, longest: 0 }
   const current = streak.current || 0
-  const message = current >= 7
-    ? 'Signal continuity is becoming identity-level momentum.'
-    : current >= 3
-      ? 'Momentum is now visible. Protect the loop.'
-      : current > 0
-        ? 'Momentum begins here. Lock in tomorrow to compound it.'
-        : 'No active streak yet. Complete the daily minimum to start momentum.'
+  const message = current >= 30
+    ? '30-day alignment field: continuity is becoming the default.'
+    : current >= 14
+      ? '14-day stabilization: the system is holding under repetition.'
+      : current >= 7
+        ? '7-day momentum: the alignment is no longer random.'
+        : current >= 3
+          ? '3-day momentum: stability is beginning to form.'
+          : current > 0
+            ? 'Momentum begins here. Lock in tomorrow to compound it.'
+            : 'No active momentum yet. Complete today’s minimum to begin.'
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
       <div style={{ border: '1px solid #D85A3030', borderRadius: 999, background: current ? '#FAECE7' : '#fff', padding: '7px 11px', fontSize: 12, fontWeight: 900, color: current ? '#712B13' : '#1a1a18' }}>
@@ -133,15 +138,15 @@ function FailureState({ plan, onReopen }) {
   return (
     <div style={{ marginTop: 14, borderRadius: 14, background: missed ? '#FCEBEB' : '#FAECE7', border: '1px solid #D85A3035', padding: '14px 16px' }}>
       <div style={{ fontSize: 16, fontWeight: 950, color: '#712B13', letterSpacing: '-0.02em' }}>
-        {missed ? 'Daily Loop Missed' : 'Loop At Risk'}
+        {missed ? 'Alignment Not Established' : 'Alignment At Risk'}
       </div>
       <div style={{ fontSize: 13, color: '#712B13', marginTop: 5, lineHeight: 1.55 }}>
         {missed
-          ? 'The operating loop was not completed. Signal was not stabilized. Tomorrow begins from recovery — not momentum.'
-          : <>The daily operating loop is still missing <strong>{plan.failureState.missing}</strong> required action{plan.failureState.missing === 1 ? '' : 's'}. Complete the minimum before the day closes, or tomorrow starts from recovery instead of momentum.</>}
+          ? 'Today’s alignment was not completed. Signal was not stabilized. Tomorrow begins from recovery — not momentum.'
+          : <>Today’s alignment is still missing <strong>{plan.failureState.missing}</strong> required action{plan.failureState.missing === 1 ? '' : 's'}. Complete the minimum before the day closes, or tomorrow starts from recovery instead of momentum.</>}
       </div>
       <div style={{ marginTop: 10, fontSize: 12, color: '#633806', fontWeight: 800 }}>
-        Recovery instruction: start the next unlocked critical practice first. Do not negotiate with the loop.
+        Recovery instruction: start the next unlocked critical practice first. Do not negotiate with the alignment.
       </div>
       {missed && (
         <button
@@ -158,7 +163,7 @@ function FailureState({ plan, onReopen }) {
             cursor: 'pointer'
           }}
         >
-          Reopen Today’s Loop
+          Resume Today’s Alignment
         </button>
       )}
     </div>
@@ -196,7 +201,7 @@ function DayLockedIn({ plan }) {
         <div>
           <div style={{ fontSize: 18, fontWeight: 950, color: '#085041', letterSpacing: '-0.03em' }}>Day Locked In ✓</div>
           <div style={{ fontSize: 13, color: '#085041', marginTop: 5, lineHeight: 1.55 }}>
-            The loop was completed. Signal was established. Tomorrow builds from this state — it does not reset from zero.
+            Today’s alignment was completed. Signal was established. Tomorrow builds from this state — it does not reset from zero.
           </div>
           {streak.current === 1 && (
             <div style={{ fontSize: 12, color: '#085041', marginTop: 6, fontWeight: 850 }}>
@@ -204,7 +209,7 @@ function DayLockedIn({ plan }) {
             </div>
           )}
           <div style={{ fontSize: 12, color: '#085041', marginTop: 7, lineHeight: 1.5 }}>
-            Strongest signal: <strong>{strongest?.domain?.name || 'Coherence'}</strong>. Tomorrow’s correction starts with <strong>{correction?.name || 'the open loop'}</strong>.
+            Strongest signal: <strong>{strongest?.domain?.name || 'Coherence'}</strong>. Tomorrow’s correction starts with <strong>{correction?.name || 'the open alignment point'}</strong>.
           </div>
         </div>
         <div style={{ display: 'grid', gap: 7, justifyItems: 'end' }}>
@@ -216,7 +221,7 @@ function DayLockedIn({ plan }) {
           </div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 7, marginTop: 14 }}>
+      <div className="domain-impact-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 7, marginTop: 14 }}>
         {ranked.slice(0, 5).map(({ domain, points }) => (
           <div key={domain.id} style={{ background: '#fff', border: `1px solid ${domain.color}28`, borderRadius: 11, padding: '8px 9px' }}>
             <div style={{ fontSize: 11, color: domain.text, fontWeight: 850 }}>{domain.name}</div>
@@ -356,7 +361,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 16, border: bdr, padding: '18px 20px', marginBottom: 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
+    <div className="today-card" style={{ background: '#fff', borderRadius: 16, border: bdr, padding: '18px 20px', marginBottom: 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
       {showOnboarding && (
         <div style={{
           background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
@@ -366,25 +371,25 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           marginBottom: 16
         }}>
           <div style={{ fontSize: 15, fontWeight: 950, letterSpacing: '-0.02em', marginBottom: 7 }}>
-            Start your first loop
+            Start your first alignment
           </div>
           <div style={{ fontSize: 13, lineHeight: 1.62, color: '#444' }}>
             <strong>1.</strong> Complete 2 Morning actions to initialize the day.<br />
             <strong>2.</strong> This unlocks Midday correction.<br />
-            <strong>3.</strong> Close the loop with Evening integration.<br /><br />
-            Locking the daily minimum builds momentum. Missing the loop resets it.<br />
+            <strong>3.</strong> Complete the alignment with Evening integration.<br /><br />
+            Locking the daily minimum builds momentum. Missing the alignment resets it.<br />
             <strong>Begin with the visible CRITICAL practice — it is today’s anchor.</strong>
           </div>
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+      <div className="today-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 850, letterSpacing: '-0.03em' }}>Today’s Execution Loop</div>
+          <div style={{ fontSize: 18, fontWeight: 850, letterSpacing: '-0.03em' }}>Today’s Alignment</div>
           <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-            Complete the operating loop. Minimum required: <strong>{plan.completionState.completeRequired}/{plan.dailyMinimum}</strong>. Signal generated: <strong>+{scorePreview}</strong>.
+            Complete today’s alignment. Minimum required: <strong>{plan.completionState.completeRequired}/{plan.dailyMinimum}</strong>. Signal generated: <strong>+{scorePreview}</strong>.
           </div>
         </div>
-        <div style={{
+        <div className="status-pill" style={{
           fontSize: 12,
           fontWeight: 850,
           color: plan.failureState?.status === 'missed' ? '#712B13' : plan.completionState.dailyMinimumMet ? '#085041' : '#3C3489',
@@ -394,7 +399,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           padding: '7px 11px',
           whiteSpace: 'nowrap'
         }}>
-          {plan.failureState?.status === 'missed' ? 'Daily Loop Missed' : plan.completionState.dailyMinimumMet ? 'Daily Minimum Complete ✓' : `Daily Minimum: ${plan.completionState.completeRequired}/${plan.dailyMinimum}`}
+          {plan.failureState?.status === 'missed' ? 'Alignment Not Established' : plan.completionState.dailyMinimumMet ? 'Daily Minimum Complete ✓' : `Daily Minimum: ${plan.completionState.completeRequired}/${plan.dailyMinimum}`}
         </div>
       </div>
 
@@ -416,7 +421,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
+      <div className="phase-tabs" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
         {PHASES.map(p => (
           <PhasePill
             key={p.id}
@@ -434,7 +439,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         padding: '12px 14px',
         marginBottom: 12
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+        <div className="day-locked-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', color: activePhase.locked ? '#D85A30' : '#555' }}>
               {activePhase.label} · {activePhase.role}
@@ -444,7 +449,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
                 ? `Complete ${activePhase.completion.required} Morning actions to set the day's signal.`
                 : activePhase.id === 'midday'
                   ? 'Correct drift and interrupt automatic loops before the day runs you.'
-                  : 'Close the loop, integrate the signal, and prime tomorrow.'}
+                  : 'Complete the alignment, integrate the signal, and prime tomorrow.'}
             </div>
           </div>
           <div style={{ fontSize: 13, fontWeight: 850, color: '#1a1a18', whiteSpace: 'nowrap' }}>
@@ -483,7 +488,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       )}
 
       {activePhase.items.map(item => (
-        <div key={`${activePhase.id}-${item.key}`} style={{
+        <div className="practice-row" key={`${activePhase.id}-${item.key}`} style={{
           display: 'flex',
           alignItems: 'center',
           gap: 11,
@@ -492,8 +497,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           background: item.priority === 'Critical' && !item.isDone ? 'linear-gradient(90deg, rgba(216,90,48,0.055), transparent 60%)' : 'transparent',
           borderRadius: item.priority === 'Critical' ? 10 : 0
         }}>
-          <button onClick={() => handleCheck(item)} disabled={isMissedToday}
-            title={isMissedToday ? 'This day is closed as missed. Re-enter the loop tomorrow.' : item.isDone ? 'Mark incomplete' : 'Mark complete'}
+          <button className="practice-check tap-target" onClick={() => handleCheck(item)} disabled={isMissedToday}
+            title={isMissedToday ? 'This day is closed as missed. Resume alignment tomorrow.' : item.isDone ? 'Mark incomplete' : 'Mark complete'}
             style={{
               width: 24,
               height: 24,
