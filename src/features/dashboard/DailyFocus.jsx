@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus } from '../today/todayEngine'
+import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
@@ -243,6 +243,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   const [lastFeedback, setLastFeedback] = useState(null)
   const [completionEvents, setCompletionEvents] = useState([])
   const [dayStatus, setDayStatus] = usePersistentState('q_day_status', {})
+  const [todayPlans, setTodayPlans] = usePersistentState('q_today_plan', {})
 
   useEffect(() => {
     if (selectedPhaseOverride) setSelectedPhase(selectedPhaseOverride)
@@ -269,7 +270,26 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     }
   }, [isMissedToday, checked, today, setChecked])
 
-  const plan = useMemo(() => generateTodayPlan({ domainScores, checked: effectiveChecked, dayStatus, phaseLocking: true }), [domainScores, effectiveChecked, dayStatus])
+  const todayPlanSnapshot = todayPlans?.[today]
+  const basePlan = useMemo(() => generateTodayPlan({ domainScores, checked: effectiveChecked, dayStatus, phaseLocking: true }), [domainScores, effectiveChecked, dayStatus])
+
+  useEffect(() => {
+    const existing = todayPlans?.[today]
+    if (existing?.version === TODAY_PLAN_VERSION && existing?.dateKey === today) return
+    setTodayPlans(prev => ({
+      ...(prev || {}),
+      [today]: createTodayPlanSnapshot(basePlan, new Date())
+    }))
+  }, [today, todayPlans, basePlan, setTodayPlans])
+
+  const plan = useMemo(() => generateTodayPlan({
+    domainScores,
+    checked: effectiveChecked,
+    dayStatus,
+    phaseLocking: true,
+    planSnapshot: todayPlanSnapshot,
+  }), [domainScores, effectiveChecked, dayStatus, todayPlanSnapshot])
+
   const requestedPhaseId = selectedPhase || selectedPhaseOverride || plan.currentPhase
   const activePhaseId = getResolvedPhaseId(plan, requestedPhaseId)
   const activePhase = plan.phases[activePhaseId]
@@ -353,7 +373,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
             <strong>2.</strong> This unlocks Midday correction.<br />
             <strong>3.</strong> Close the loop with Evening integration.<br /><br />
             Locking the daily minimum builds momentum. Missing the loop resets it.<br />
-            <strong>Begin with the critical practice.</strong>
+            <strong>Begin with the visible CRITICAL practice — it is today’s anchor.</strong>
           </div>
         </div>
       )}
@@ -496,9 +516,16 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a18' }}>{item.name}</span>
               <PriorityBadge priority={item.priority} />
+              {item.highLeverage && (
+                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#FFF3E0', border: '1px solid #FFB74D55', color: '#E65100', fontWeight: 900, whiteSpace: 'nowrap' }}>⚡ High leverage</span>
+              )}
               <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: item.domain.bg, color: item.domain.text }}>{item.domain.name}</span>
+              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#F7F6F3', color: '#666', border: bdr, fontWeight: 800 }}>+{item.scoreTotal || 0} signal</span>
             </div>
             <div style={{ fontSize: 12, color: item.domain.color, marginTop: 3 }}>{item.why}</div>
+            {item.highLeverage && item.leverageLabel && (
+              <div style={{ fontSize: 11, color: '#BA7517', marginTop: 3, fontWeight: 800 }}>⚡ {item.leverageLabel}</div>
+            )}
             {item.isDone && <div style={{ fontSize: 12, color: '#1D9E75', marginTop: 3 }}>✓ {item.identityFeedback}</div>}
           </div>
           {item.hasTimer && (
