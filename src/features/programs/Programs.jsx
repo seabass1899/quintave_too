@@ -133,7 +133,7 @@ export default function Programs({ checked = {}, domainScores = {} }) {
         <div style={{ fontSize: 11, fontWeight: 900, color: '#777', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Programs</div>
         <div style={{ fontSize: 24, fontWeight: 950, letterSpacing: '-0.04em', marginTop: 4 }}>System Intelligence Layer</div>
         <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginTop: 6, maxWidth: 760 }}>
-          Programs are read-only intervention models. The system selects from this library based on domain state, leverage, phase timing, and today’s correction path. You execute the selected loop; you do not manually steer the engine from here.
+          Programs are read-only intervention models. The system selects from this library based on domain state, leverage, phase timing, and today’s correction path. You execute the selected alignment; you do not manually steer the engine from here.
         </div>
       </div>
 

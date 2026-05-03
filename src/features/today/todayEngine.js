@@ -184,7 +184,7 @@ function getIdentityFeedback(item) {
   const name = item?.name || ''
   if (name.includes('Stillness')) return 'You returned to the observer behind the noise.'
   if (name.includes('Morning Directive')) return 'You claimed the day before the day claimed you.'
-  if (name.includes('Pattern Interrupt')) return 'You interrupted an automatic loop and chose differently.'
+  if (name.includes('Pattern Interrupt')) return 'You interrupted an automatic pattern and chose differently.'
   if (name.includes('Recall')) return 'You remembered yourself inside the motion of the day.'
   if (name.includes('Emotion')) return 'You read the emotional field instead of being consumed by it.'
   if (name.includes('Breath')) return 'You regulated the vessel and restored signal clarity.'
@@ -326,7 +326,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
       d4: ['d4', 'Thought Audit'],
       d5: ['d5', 'Pre-Sleep Programming'],
     }
-    push(byDomain[undoneWeak] || ['d5', 'Pre-Sleep Programming'], 'Critical', 'Close the day’s weakest open loop')
+    push(byDomain[undoneWeak] || ['d5', 'Pre-Sleep Programming'], 'Critical', 'Close the day’s weakest open alignment point')
     push(['d3', 'Gratitude + Reframe'], 'Optional', 'Shift the final emotional tone')
   }
 
@@ -399,17 +399,22 @@ export function getPreviousDateKey(date = new Date(), daysBack = 1) {
   return d.toDateString()
 }
 
+function isLockedDay(record) {
+  // Today-page streak = visible consistency. A recovered day that is completed counts as a completed alignment.
+  // Frequency/Gray-Zone math can still use a stricter clean-streak concept elsewhere.
+  return record?.status === 'locked'
+}
+
 export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
   const todayKey = getDateKey(date)
   const todayStatus = dayStatus?.[todayKey]?.status
   if (todayStatus === 'missed') return 0
 
-  let streak = (todayStatus === 'locked' && !dayStatus?.[todayKey]?.reopenedAt && !dayStatus?.[todayKey]?.missedAt) ? 1 : 0
-  const startBack = todayStatus === 'locked' ? 1 : 1
+  let streak = isLockedDay(dayStatus?.[todayKey]) ? 1 : 0
 
-  for (let i = startBack; i < 365; i++) {
+  for (let i = 1; i < 365; i++) {
     const key = getPreviousDateKey(date, i)
-    if (dayStatus?.[key]?.status === 'locked' && !dayStatus?.[key]?.reopenedAt && !dayStatus?.[key]?.missedAt) streak += 1
+    if (isLockedDay(dayStatus?.[key])) streak += 1
     else break
   }
   return streak
@@ -417,7 +422,7 @@ export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
 
 export function calculateLongestStreak(dayStatus = {}) {
   const lockedDates = Object.entries(dayStatus || {})
-    .filter(([, record]) => record?.status === 'locked' && !record?.reopenedAt && !record?.missedAt)
+    .filter(([, record]) => isLockedDay(record))
     .map(([key]) => new Date(key))
     .filter(date => !Number.isNaN(date.getTime()))
     .sort((a, b) => a - b)
@@ -582,7 +587,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
       status: existingMissed ? 'missed' : failureActive ? 'at_risk' : 'open',
       missing: Math.max(0, DAILY_MINIMUM - completeRequired),
       message: failureActive
-        ? 'The operating loop is incomplete. Finish the minimum before the day closes or tomorrow begins from drift.'
+        ? 'Today’s alignment is incomplete. Finish the minimum before the day closes or tomorrow begins from drift.'
         : '',
     },
   }

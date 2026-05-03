@@ -1076,7 +1076,7 @@ export default function App() {
             </div>
             <div style={{ fontSize:13, color:'#888', marginBottom:12 }}>Five frequency bodies. One daily tuning practice.</div>
 
-            {/* Today Engine — primary execution loop */}
+            {/* Today Engine — primary alignment flow */}
             <DailyFocus
               checked={checked || {}}
               setChecked={setChecked}
@@ -1223,7 +1223,7 @@ export default function App() {
           <div style={{ ...card, marginTop:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
             <div>
               <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Need the full practice library?</div>
-              <div style={{ fontSize:12, color:'#666', lineHeight:1.5 }}>Today is now focused on the execution loop. The complete domain practice cards live in Practice Library.</div>
+              <div style={{ fontSize:12, color:'#666', lineHeight:1.5 }}>Today is now focused on the alignment flow. The complete domain practice cards live in Practice Library.</div>
             </div>
             <button onClick={() => setTab('library')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Open Practice Library</button>
           </div>
@@ -1260,7 +1260,7 @@ export default function App() {
               <button onClick={() => setTab('today')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Return to Today</button>
             </div>
             <div style={{ fontSize:13, color:'#666', lineHeight:1.6 }}>
-              Use this area for exploration, manual tuning, and full-domain work. The Today page remains the focused execution loop.
+              Use this area for exploration, manual tuning, and full-domain work. The Today page remains the focused alignment flow.
             </div>
           </div>
 
