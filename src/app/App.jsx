@@ -19,6 +19,7 @@ import HistoryTab from '../features/history/HistoryTab'
 import ScheduleTab from '../features/schedule/ScheduleTab'
 import AnalyticsTab from '../features/analytics/AnalyticsTab'
 import FrequencyLayer from '../features/frequency/FrequencyLayer'
+import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -721,6 +722,75 @@ function Ring({ pct, size = 86 }) {
   )
 }
 
+
+
+function LaunchMetrics() {
+  const [events, setEvents] = useState(() => readEvents())
+  const summary = getAnalyticsSummary(events)
+  const count = (name) => summary.counts[name] || 0
+  const recent = [...events].slice(-12).reverse()
+  const metricCard = (label, value, note) => (
+    <div style={{ background:'#fff', borderRadius:14, border:'0.5px solid rgba(0,0,0,0.08)', padding:'16px 18px' }}>
+      <div style={{ fontSize:11, color:'#777', textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:800, marginBottom:8 }}>{label}</div>
+      <div style={{ fontSize:28, fontWeight:900, letterSpacing:'-0.04em' }}>{value}</div>
+      {note && <div style={{ fontSize:12, color:'#777', marginTop:4, lineHeight:1.45 }}>{note}</div>}
+    </div>
+  )
+  const exportEvents = () => {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(events, null, 2)], { type:'application/json' }))
+    a.download = `quintave_events_${new Date().toISOString().slice(0,10)}.json`
+    a.click()
+  }
+  return (
+    <div>
+      <div style={{ background:'#fff', borderRadius:14, border:'0.5px solid rgba(0,0,0,0.08)', padding:'16px 18px', marginBottom:14 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+          <div>
+            <div style={{ fontSize:11, color:'#777', textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:900, marginBottom:4 }}>Launch instrumentation</div>
+            <h2 style={{ margin:0, fontSize:22, letterSpacing:'-0.03em' }}>User action signals</h2>
+            <div style={{ fontSize:13, color:'#666', marginTop:6, lineHeight:1.6 }}>Local-only event tracking for beta testing. Use this to validate landing visits, CTA clicks, app opens, first alignment completion, and next-day returns.</div>
+          </div>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            <button onClick={() => { setEvents(readEvents()) }} style={{ padding:'8px 14px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.08)', background:'#fff', fontSize:12, fontWeight:800, cursor:'pointer' }}>Refresh</button>
+            <button onClick={exportEvents} style={{ padding:'8px 14px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.08)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer' }}>Export events</button>
+            <button onClick={() => { if (confirm('Clear launch event log?')) { clearAnalytics(); setEvents([]) } }} style={{ padding:'8px 14px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.08)', background:'#fff', fontSize:12, fontWeight:800, cursor:'pointer' }}>Clear events</button>
+          </div>
+        </div>
+      </div>
+      <div className="today-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4, minmax(0,1fr))', gap:12, marginBottom:14 }}>
+        {metricCard('Landing visits', count('landing_visit'), 'Visitor reached /landing.html')}
+        {metricCard('CTA clicks', count('landing_cta_click'), 'Visitor clicked into the app')}
+        {metricCard('App opens', count('app_open'), `${summary.uniqueSessions} session${summary.uniqueSessions === 1 ? '' : 's'}`)}
+        {metricCard('First alignments', count('first_alignment_completed'), 'First daily minimum completed')}
+      </div>
+      <div className="today-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:12, marginBottom:14 }}>
+        {metricCard('Next-day returns', count('return_next_day'), 'Opened again the following day')}
+        {metricCard('Practices completed', count('practice_completed'), 'Total practice completions')}
+        {metricCard('Feedback clicks', count('feedback_opened'), 'Users who opened feedback link')}
+      </div>
+      <div style={{ background:'#fff', borderRadius:14, border:'0.5px solid rgba(0,0,0,0.08)', padding:'16px 18px' }}>
+        <div style={{ fontSize:14, fontWeight:900, marginBottom:10 }}>Recent events</div>
+        {recent.length === 0 ? (
+          <div style={{ fontSize:13, color:'#777' }}>No events recorded yet.</div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {recent.map(ev => (
+              <div key={ev.id} style={{ display:'flex', justifyContent:'space-between', gap:12, borderBottom:'0.5px solid rgba(0,0,0,0.08)', paddingBottom:8 }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:800 }}>{ev.name}</div>
+                  <div style={{ fontSize:11, color:'#777' }}>{ev.path} · {ev.date}</div>
+                </div>
+                <div style={{ fontSize:11, color:'#777', whiteSpace:'nowrap' }}>{new Date(ev.ts).toLocaleTimeString()}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 // Global error handler for mobile
@@ -762,6 +832,8 @@ export default function App() {
   const [showTodayDetails, setShowTodayDetails] = useState(false)
   const rippleTimer  = useRef(null)
   const milestoneTimer = useRef(null)
+
+  useEffect(() => { trackAppOpen() }, [])
 
   const today = tk()
   const todayChecks = checked[today] || {}
@@ -931,6 +1003,18 @@ export default function App() {
 
   const displayName = onboardingProfile?.userName?.trim().split(' ')[0] || ''
 
+  const handleTabChange = (nextTab) => {
+    setTab(nextTab)
+    trackEvent('tab_viewed', { tab: nextTab })
+  }
+
+  const openFeedback = () => {
+    trackEvent('feedback_opened', { source: 'topbar' })
+    const subject = encodeURIComponent('Quintave beta feedback')
+    const body = encodeURIComponent('What worked?\n\nWhat felt confusing?\n\nWhat would make Quintave easier to use daily?\n')
+    window.location.href = `mailto:?subject=${subject}&body=${body}`
+  }
+
   return (
     <div className="app-shell">
       <style>{`
@@ -1071,15 +1155,16 @@ export default function App() {
       {/* Topbar — single scrollable row */}
       <div className="topbar" style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:48, overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
         <div style={{ fontSize:16, fontWeight:700, letterSpacing:'-0.03em', flexShrink:0, marginRight:2 }}>Quintave</div>
-        <button onClick={() => { setTodayPhaseOverride('morning'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
-        <button onClick={() => { setTodayPhaseOverride('midday'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
-        <button onClick={() => { setTodayPhaseOverride('evening'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#7F77DD', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☽ Evening</button>
+        <button onClick={() => { setTodayPhaseOverride('morning'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
+        <button onClick={() => { setTodayPhaseOverride('midday'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
+        <button onClick={() => { setTodayPhaseOverride('evening'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#7F77DD', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☽ Evening</button>
         <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
         <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
         <button onClick={() => setShowPractitioner(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#E6F1FB', color:'#0C447C', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>◈ Coach</button>
         <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
         <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
         <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
+        <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
         <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
         <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
           Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
@@ -1090,8 +1175,8 @@ export default function App() {
 
       {/* Tab bar */}
       <div className="tabbar" style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
-        {[['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['frequency','Frequency'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
-          <button key={id} onClick={() => setTab(id)}
+        {[['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['frequency','Frequency'],['launch','Launch'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
+          <button key={id} onClick={() => handleTabChange(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
             {lbl}
           </button>
@@ -1264,7 +1349,7 @@ export default function App() {
               <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Need the full practice library?</div>
               <div style={{ fontSize:12, color:'#666', lineHeight:1.5 }}>Today is now focused on the alignment flow. The complete domain practice cards live in Practice Library.</div>
             </div>
-            <button onClick={() => setTab('library')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Open Practice Library</button>
+            <button onClick={() => handleTabChange('library')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Open Practice Library</button>
           </div>
 
           <div className={showTodayDetails ? '' : 'desktop-details'}><TriggerMap triggers={triggers} setTriggers={setTriggers}/></div>
@@ -1296,7 +1381,7 @@ export default function App() {
                 <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#777', marginBottom:4 }}>Practice Library</div>
                 <h2 style={{ margin:0, fontSize:22, letterSpacing:'-0.03em' }}>All domain practices</h2>
               </div>
-              <button onClick={() => setTab('today')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Return to Today</button>
+              <button onClick={() => handleTabChange('today')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Return to Today</button>
             </div>
             <div style={{ fontSize:13, color:'#666', lineHeight:1.6 }}>
               Use this area for exploration, manual tuning, and full-domain work. The Today page remains the focused alignment flow.
@@ -1335,6 +1420,8 @@ export default function App() {
           onboardingProfile={onboardingProfile}
           domainScores={domainScores || {}}
         />}
+
+        {tab === 'launch' && <LaunchMetrics />}
 
         {/* ── HISTORY ── */}
         {tab === 'history' && <HistoryTab
