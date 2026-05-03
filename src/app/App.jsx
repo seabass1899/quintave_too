@@ -17,8 +17,8 @@ import NoiseAudit from '../features/modes/NoiseAudit'
 import PractitionerView from '../features/practitioner/PractitionerView'
 import HistoryTab from '../features/history/HistoryTab'
 import ScheduleTab from '../features/schedule/ScheduleTab'
-import FrequencyLayer from '../features/frequency/FrequencyLayer'
 import AnalyticsTab from '../features/analytics/AnalyticsTab'
+import FrequencyLayer from '../features/frequency/FrequencyLayer'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -1290,13 +1290,13 @@ export default function App() {
           exportCSV={exportCSV}
           exportBackup={exportBackup}/>}
 
-        {/* ── FREQUENCY LAYER ── */}
+
         {tab === 'frequency' && <FrequencyLayer
+          checked={checked || {}}
           onboardingProfile={onboardingProfile}
           domainScores={domainScores || {}}
-          checked={checked || {}}/>}
+        />}
 
-        
         {/* ── HISTORY ── */}
         {tab === 'history' && <HistoryTab
           checked={checked || {}}
