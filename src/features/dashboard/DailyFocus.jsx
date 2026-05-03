@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
+import { trackEvent } from '../../app/utils/analytics'
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
@@ -249,6 +250,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   const [completionEvents, setCompletionEvents] = useState([])
   const [dayStatus, setDayStatus] = usePersistentState('q_day_status', {})
   const [todayPlans, setTodayPlans] = usePersistentState('q_today_plan', {})
+  const firstAlignmentTracked = useRef(false)
 
   useEffect(() => {
     if (selectedPhaseOverride) setSelectedPhase(selectedPhaseOverride)
@@ -314,7 +316,23 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   }, [plan.completionState.completeRequired, plan.completionState.rawDailyMinimumMet, plan.impactSummary, plan.tomorrowPrime, setDayStatus])
 
 
+  useEffect(() => {
+    if (!plan.completionState.dailyMinimumMet || firstAlignmentTracked.current) return
+    const trackedKey = `q_first_alignment_tracked_${today}`
+    if (localStorage.getItem(trackedKey) === '1') return
+    firstAlignmentTracked.current = true
+    localStorage.setItem(trackedKey, '1')
+    trackEvent('first_alignment_completed', {
+      date: today,
+      requiredCompleted: plan.completionState.completeRequired,
+      signal: plan.impactSummary?.totalImpact || 0,
+      phase: activePhaseId,
+    })
+  }, [plan.completionState.dailyMinimumMet, plan.completionState.completeRequired, plan.impactSummary, activePhaseId, today])
+
+
   const reopenMissedDay = () => {
+    trackEvent('alignment_reopened', { date: today })
     setDayStatus(prev => {
       const current = prev?.[today] || {}
       return {
@@ -345,6 +363,13 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       [today]: { ...(prev?.[today] || {}), [item.key]: !wasChecked }
     }))
     if (!wasChecked) {
+      trackEvent('practice_completed', {
+        date: today,
+        practice: item.name,
+        priority: item.priority,
+        domain: item.domain?.name,
+        key: item.key,
+      })
       const event = {
         id: `${Date.now()}-${item.key}`,
         title: item.identityFeedback,
