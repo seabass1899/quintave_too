@@ -759,6 +759,7 @@ export default function App() {
   const [showPractitioner, setShowPractitioner] = useState(false)
   const [showMidday,     setShowMidday]     = useState(false)
   const [showEvening,    setShowEvening]    = useState(false)
+  const [showTodayDetails, setShowTodayDetails] = useState(false)
   const rippleTimer  = useRef(null)
   const milestoneTimer = useRef(null)
 
@@ -931,8 +932,39 @@ export default function App() {
   const displayName = onboardingProfile?.userName?.trim().split(' ')[0] || ''
 
   return (
-    <div style={{ minHeight:'100vh', background:'#F4F3F0', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color:'#1a1a18' }}>
-      <style>{`@keyframes rippleFadeIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+    <div className="app-shell">
+      <style>{`
+        @keyframes rippleFadeIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+        .app-shell { min-height: 100vh; background: #F4F3F0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color: #1a1a18; }
+        .app-container { max-width: 1060px; margin: 0 auto; padding: 24px 18px; }
+        .topbar, .tabbar, .phase-tabs { -webkit-overflow-scrolling: touch; }
+        .tap-target { min-height: 44px; }
+        .mobile-details-toggle { display:none; }
+        @media (max-width: 760px) {
+          .app-container { padding: 14px 10px 24px; }
+          .app-greeting { font-size: 18px !important; line-height: 1.15; }
+          .topbar { height: 46px !important; padding: 0 8px !important; gap: 5px !important; }
+          .topbar button, .topbar label { min-height: 34px !important; padding: 6px 10px !important; }
+          .tabbar { padding: 0 8px !important; }
+          .tabbar button { padding: 10px 12px !important; font-size: 12px !important; }
+          .today-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+          .today-card { border-radius: 14px !important; padding: 14px 12px !important; margin-bottom: 12px !important; }
+          .today-header { flex-direction: column !important; align-items: flex-start !important; }
+          .status-pill { align-self: flex-start !important; }
+          .phase-tabs { display:flex !important; overflow-x:auto !important; gap:8px !important; padding-bottom:8px !important; }
+          .phase-pill { min-height: 42px !important; padding: 10px 13px !important; flex: 0 0 auto !important; }
+          .practice-row { align-items: flex-start !important; padding: 14px 0 !important; }
+          .practice-check { width: 34px !important; height: 34px !important; margin-top: 2px !important; }
+          .day-locked-header { flex-direction: column !important; }
+          .domain-impact-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+          .mobile-details-toggle { display:flex !important; }
+          .desktop-details { display:none !important; }
+          .mobile-hidden-by-default { display:none !important; }
+          .signature-cta { justify-content: stretch !important; }
+          .signature-cta button { width: 100% !important; justify-content: center !important; min-height:44px !important; }
+          .secondary-card { padding: 14px !important; border-radius: 12px !important; }
+        }
+      `}</style>
 
       {showNoise && <NoiseAudit onClose={() => setShowNoise(false)}/>}
       {showPractitioner && (
@@ -1037,7 +1069,7 @@ export default function App() {
       )}
 
       {/* Topbar — single scrollable row */}
-      <div style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:48, overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
+      <div className="topbar" style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:48, overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
         <div style={{ fontSize:16, fontWeight:700, letterSpacing:'-0.03em', flexShrink:0, marginRight:2 }}>Quintave</div>
         <button onClick={() => { setTodayPhaseOverride('morning'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
         <button onClick={() => { setTodayPhaseOverride('midday'); setTab('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
@@ -1057,7 +1089,7 @@ export default function App() {
       </div>
 
       {/* Tab bar */}
-      <div style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
+      <div className="tabbar" style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
         {[['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['frequency','Frequency'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
           <button key={id} onClick={() => setTab(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
@@ -1066,12 +1098,12 @@ export default function App() {
         ))}
       </div>
 
-      <div style={{ maxWidth:1060, margin:'0 auto', padding:'24px 18px' }}>
+      <div className="app-container">
 
         {/* ── TODAY ── */}
         {tab === 'today' && <>
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.03em', marginBottom:2 }}>
+            <div className="app-greeting" style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.03em', marginBottom:2 }}>
               Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{displayName ? `, ${displayName}` : ''}.
             </div>
             <div style={{ fontSize:13, color:'#888', marginBottom:12 }}>Five frequency bodies. One daily tuning practice.</div>
@@ -1091,7 +1123,7 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:14, marginBottom:16, alignItems:'stretch' }}>
+          <div className="today-grid" style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:14, marginBottom:16, alignItems:'stretch' }}>
             <div style={{ ...card, marginBottom:0, display:'flex', gap:18, alignItems:'center' }}>
               <Ring pct={dailyPct}/>
               <div>
@@ -1200,7 +1232,7 @@ export default function App() {
           })()}
 
           {/* Signature CTA */}
-          <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:12 }}>
+          <div className="signature-cta" style={{ display:'flex', justifyContent:'flex-end', marginBottom:12 }}>
             <button onClick={() => setShowSignature(true)}
               style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 18px', borderRadius:99, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:12, fontWeight:700, cursor:'pointer', letterSpacing:'-0.01em' }}>
               <span style={{ fontSize:14 }}>✦</span>
@@ -1208,9 +1240,16 @@ export default function App() {
             </button>
           </div>
 
+          <div className="mobile-details-toggle" style={{ display:'none', justifyContent:'stretch', marginBottom:12 }}>
+            <button onClick={() => setShowTodayDetails(v => !v)}
+              style={{ width:'100%', minHeight:44, borderRadius:10, border:bdr, background:'#fff', color:'#1a1a18', fontSize:13, fontWeight:800, cursor:'pointer' }}>
+              {showTodayDetails ? 'Hide supporting details' : 'Show supporting details'}
+            </button>
+          </div>
+
           {/* Cross-impact legend */}
           {Object.values(crossImpact).some(v => v > 0) && (
-            <div style={{ background:'#fff', borderRadius:10, border:bdr, padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <div className={showTodayDetails ? '' : 'desktop-details'} style={{ background:'#fff', borderRadius:10, border:bdr, padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
               <div style={{ fontSize:12, fontWeight:600, color:'#1a1a18' }}>⚡ Ripple field active:</div>
               {DOMAINS.filter(d => crossImpact[d.id] > 0).map(d => (
                 <div key={d.id} style={{ fontSize:11, padding:'2px 10px', borderRadius:99, background:d.bg, color:d.text, fontWeight:500 }}>
@@ -1220,7 +1259,7 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ ...card, marginTop:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+          <div className={showTodayDetails ? 'secondary-card' : 'desktop-details secondary-card'} style={{ ...card, marginTop:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
             <div>
               <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Need the full practice library?</div>
               <div style={{ fontSize:12, color:'#666', lineHeight:1.5 }}>Today is now focused on the alignment flow. The complete domain practice cards live in Practice Library.</div>
@@ -1228,9 +1267,9 @@ export default function App() {
             <button onClick={() => setTab('library')} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1a1a18', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Open Practice Library</button>
           </div>
 
-          <TriggerMap triggers={triggers} setTriggers={setTriggers}/>
+          <div className={showTodayDetails ? '' : 'desktop-details'}><TriggerMap triggers={triggers} setTriggers={setTriggers}/></div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+          <div className={showTodayDetails ? 'today-grid' : 'desktop-details today-grid'} style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
             <div style={card}>
               <div style={{ fontSize:14, fontWeight:600, marginBottom:10 }}>▽ Field Integration</div>
               <textarea value={evening[today]||''} onChange={e=>setEvening({...evening,[today]:e.target.value})}
