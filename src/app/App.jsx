@@ -18,6 +18,7 @@ import PractitionerView from '../features/practitioner/PractitionerView'
 import HistoryTab from '../features/history/HistoryTab'
 import ScheduleTab from '../features/schedule/ScheduleTab'
 import AnalyticsTab from '../features/analytics/AnalyticsTab'
+import FrequencyLayer from '../features/frequency/FrequencyLayer'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -1057,7 +1058,7 @@ export default function App() {
 
       {/* Tab bar */}
       <div style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
-        {[['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
+        {[['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['frequency','Frequency'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']].map(([id,lbl]) => (
           <button key={id} onClick={() => setTab(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
             {lbl}
@@ -1289,7 +1290,13 @@ export default function App() {
           exportCSV={exportCSV}
           exportBackup={exportBackup}/>}
 
-        
+
+        {tab === 'frequency' && <FrequencyLayer
+          checked={checked || {}}
+          onboardingProfile={onboardingProfile}
+          domainScores={domainScores || {}}
+        />}
+
         {/* ── HISTORY ── */}
         {tab === 'history' && <HistoryTab
           checked={checked || {}}
