@@ -84,6 +84,57 @@ function findPractice(domainId, practiceName) {
   }
 }
 
+function findPracticeByKey(key) {
+  if (!key || typeof key !== 'string') return null
+  const [domainId, indexRaw] = key.split('_')
+  const index = Number(indexRaw)
+  const practice = (PRACTICES[domainId] || [])[index]
+  if (!practice) return null
+  const domain = domainById(domainId)
+  return {
+    ...practice,
+    key,
+    domain,
+    phaseDomainId: domainId,
+  }
+}
+
+export const TODAY_PLAN_VERSION = 4
+
+function getPracticeCrossCount(item) {
+  return Array.isArray(item?.cross) ? item.cross.length : 0
+}
+
+function isHighLeveragePractice(item) {
+  return getPracticeCrossCount(item) >= 2
+}
+
+function getLeverageLabel(item) {
+  const crossCount = getPracticeCrossCount(item)
+  if (crossCount >= 3) return `High leverage · ripples to ${crossCount} domains`
+  if (crossCount >= 2) return `High leverage · ripples to ${crossCount} domains`
+  return ''
+}
+
+function getPickLeverageScore(pick, weak = []) {
+  const item = pick ? findPractice(...pick) : null
+  if (!item) return -999
+  const primary = item.phaseDomainId || item.domain?.id
+  const crossCount = getPracticeCrossCount(item)
+  const weakBonus = weak?.[0] === primary ? 6 : weak?.slice(1, 3).includes(primary) ? 3 : 0
+  const leverageBonus = crossCount >= 3 ? 5 : crossCount >= 2 ? 3 : 0
+  return weakBonus + leverageBonus + crossCount
+}
+
+function bestAvailablePick(candidates = [], used = new Set(), weak = []) {
+  return candidates
+    .filter(([domainId, name]) => {
+      const item = findPractice(domainId, name)
+      return item && !used.has(item.key)
+    })
+    .sort((a, b) => getPickLeverageScore(b, weak) - getPickLeverageScore(a, weak))[0] || null
+}
+
 function uniqueByKey(items) {
   const seen = new Set()
   return items.filter(item => {
@@ -110,15 +161,20 @@ function completionFor(items, todayChecks = {}) {
 }
 
 function getScoreImpact(item, priority) {
-  // Weighted signal model: Source is the root calibrator, Code/Field carry behavior/regulation weight.
-  const baseByPriority = { Critical: 4, Required: 3, Adaptive: 2, Optional: 1 }
+  // Final scoring model:
+  // Completion is discipline. Signal is quality. Cross-domain practices generate ripple.
+  const baseByPriority = { Critical: 6, Required: 4, Adaptive: 3, Optional: 2 }
   const domainWeight = { d1: 1.5, d2: 1.0, d3: 1.15, d4: 1.1, d5: 1.25 }
   const primary = item?.phaseDomainId || item?.domain?.id || 'd1'
-  const base = baseByPriority[priority] || 1
-  const impact = { [primary]: Math.round(base * (domainWeight[primary] || 1)) }
+  const base = baseByPriority[priority] || 2
+  const highLeverage = isHighLeveragePractice(item)
+  const multiplier = highLeverage ? 1.3 : 1
+  const primaryPoints = Math.max(1, Math.round(base * multiplier * (domainWeight[primary] || 1)))
+  const impact = { [primary]: primaryPoints }
 
   ;(item?.cross || []).forEach(domainId => {
-    const ripple = Math.max(1, Math.round(base * 0.45 * (domainWeight[domainId] || 1)))
+    const rippleBase = base * 0.45 * multiplier
+    const ripple = Math.max(1, Math.round(rippleBase * (domainWeight[domainId] || 1)))
     impact[domainId] = (impact[domainId] || 0) + ripple
   })
   return impact
@@ -128,7 +184,7 @@ function getIdentityFeedback(item) {
   const name = item?.name || ''
   if (name.includes('Stillness')) return 'You returned to the observer behind the noise.'
   if (name.includes('Morning Directive')) return 'You claimed the day before the day claimed you.'
-  if (name.includes('Pattern Interrupt')) return 'You interrupted an automatic loop and chose differently.'
+  if (name.includes('Pattern Interrupt')) return 'You interrupted an automatic pattern and chose differently.'
   if (name.includes('Recall')) return 'You remembered yourself inside the motion of the day.'
   if (name.includes('Emotion')) return 'You read the emotional field instead of being consumed by it.'
   if (name.includes('Breath')) return 'You regulated the vessel and restored signal clarity.'
@@ -152,33 +208,100 @@ function getAnalyticFeedback(item, scoreImpact) {
 
 function labelPractice(item, priority, why) {
   if (!item) return null
+  const highLeverage = isHighLeveragePractice(item)
   const scoreImpact = getScoreImpact(item, priority)
+  const scoreTotal = Object.values(scoreImpact).reduce((sum, value) => sum + value, 0)
   return {
     ...item,
     priority,
     why,
+    highLeverage,
+    leverageLabel: getLeverageLabel(item),
     scoreImpact,
-    scoreTotal: Object.values(scoreImpact).reduce((sum, value) => sum + value, 0),
+    scoreTotal,
     identityFeedback: getIdentityFeedback(item),
     analyticFeedback: getAnalyticFeedback(item, scoreImpact),
   }
 }
 
-function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null) {
+function rotationIndex(date = new Date(), length = 1) {
+  if (!length) return 0
+  const start = new Date(date.getFullYear(), 0, 0)
+  const diff = date - start
+  const dayOfYear = Math.floor(diff / 86400000)
+  return Math.abs(dayOfYear) % length
+}
+
+function firstAvailablePick(candidates = [], used = new Set()) {
+  return candidates.find(([domainId, name]) => {
+    const item = findPractice(domainId, name)
+    return item && !used.has(item.key)
+  }) || null
+}
+
+function buildFrozenPhaseItems(phase, planSnapshot) {
+  const phaseSnapshot = planSnapshot?.phases?.[phase]
+  if (!phaseSnapshot?.items?.length) return null
+  const items = phaseSnapshot.items
+    .map(saved => labelPractice(findPracticeByKey(saved.key), saved.priority, saved.why))
+    .filter(Boolean)
+  return uniqueByKey(items)
+}
+
+function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null) {
+  const frozen = buildFrozenPhaseItems(phase, planSnapshot)
+  if (frozen) return frozen
+
   const weak = weakestDomains(domainScores)
   const pool = PHASE_POOLS[phase] || []
   const items = []
+  const used = new Set()
+  const push = (pick, priority, why) => {
+    const item = pick ? findPractice(...pick) : null
+    if (!item || used.has(item.key)) return false
+    used.add(item.key)
+    items.push(labelPractice(item, priority, why))
+    return true
+  }
 
   if (phase === 'morning') {
     const primedPick = primedDomainId ? MORNING_DOMAIN_ANCHORS[primedDomainId] : null
     const weakPick = primedPick || pool.find(([domainId]) => domainId === weak[0]) || ['d1', 'Stillness Exposure']
-    items.push(labelPractice(findPractice(...weakPick), 'Critical', primedPick ? 'Yesterday\'s correction anchor' : 'Weakest-domain anchor'))
-    items.push(labelPractice(findPractice('d4', 'Morning Directive'), 'Required', 'Initialize the conscious director'))
-    items.push(labelPractice(findPractice('d2', 'Sun + Circadian Anchor'), 'Optional', 'Stabilize Form early'))
+    push(weakPick, 'Critical', primedPick ? 'Yesterday\'s correction anchor' : 'Weakest-domain anchor')
+
+    // The morning directive is the default required anchor. If it is already the critical item
+    // because Mind is the correction domain, Visualization becomes the required Mind expansion.
+    const requiredCandidates = [
+      ['d4', 'Morning Directive'],
+      ['d4', 'Visualization Practice'],
+      ['d1', 'Observer Drill'],
+    ]
+    push(firstAvailablePick(requiredCandidates, used), 'Required', used.has(findPractice('d4', 'Morning Directive')?.key) ? 'Install directed mental imagery' : 'Initialize the conscious director')
+
+    // Optional support rotates so high-leverage practices surface over time instead of Sun always occupying the slot.
+    const optionalRotation = [
+      ['d2', 'Sun + Circadian Anchor'],
+      ['d2', 'Breathwork'],
+      ['d4', 'Visualization Practice'],
+      ['d1', 'Observer Drill'],
+      ['d5', 'Affirmation Installation'],
+    ]
+    const rotated = [...optionalRotation.slice(rotationIndex(date, optionalRotation.length)), ...optionalRotation.slice(0, rotationIndex(date, optionalRotation.length))]
+    const optionalPick = firstAvailablePick(rotated, used)
+    const optionalReason = optionalPick?.[1] === 'Visualization Practice'
+      ? 'Rehearse the state before the day tests it'
+      : optionalPick?.[1] === 'Breathwork'
+        ? 'Regulate the vessel before external input'
+        : optionalPick?.[1] === 'Observer Drill'
+          ? 'Strengthen witness awareness early'
+          : optionalPick?.[1] === 'Affirmation Installation'
+            ? 'Install the chosen identity signal'
+            : 'Stabilize Form early'
+    push(optionalPick, 'Optional', optionalReason)
   }
 
   if (phase === 'midday') {
-    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId)
+    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot)
     const morningDone = morningPool.filter(i => !!todayChecks[i.key]).length
     let primary = ['d2', 'Breathwork']
     let reason = 'Midday nervous-system correction'
@@ -186,9 +309,9 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
     else if (weak[0] === 'd5') { primary = ['d5', 'Pattern Interrupt']; reason = 'Primary Code correction' }
     else if (weak[0] === 'd3') { primary = ['d3', 'Name + Locate Emotion']; reason = 'Field charge correction' }
     else if (weak[0] === 'd4') { primary = ['d4', 'Thought Audit']; reason = 'Mind drift correction' }
-    items.push(labelPractice(findPractice(...primary), 'Critical', reason))
-    items.push(labelPractice(findPractice('d5', 'Pattern Interrupt'), 'Adaptive', 'Interrupt reactive drift'))
-    items.push(labelPractice(findPractice('d2', 'Hydration Protocol'), 'Optional', 'Maintain physical signal'))
+    push(primary, 'Critical', reason)
+    push(['d5', 'Pattern Interrupt'], 'Adaptive', 'Interrupt reactive drift')
+    push(['d2', 'Hydration Protocol'], 'Optional', 'Maintain physical signal')
   }
 
   if (phase === 'evening') {
@@ -203,11 +326,38 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
       d4: ['d4', 'Thought Audit'],
       d5: ['d5', 'Pre-Sleep Programming'],
     }
-    items.push(labelPractice(findPractice(...(byDomain[undoneWeak] || ['d5', 'Pre-Sleep Programming'])), 'Critical', 'Close the day’s weakest open loop'))
-    items.push(labelPractice(findPractice('d3', 'Gratitude + Reframe'), 'Optional', 'Shift the final emotional tone'))
+    push(byDomain[undoneWeak] || ['d5', 'Pre-Sleep Programming'], 'Critical', 'Close the day’s weakest open alignment point')
+    push(['d3', 'Gratitude + Reframe'], 'Optional', 'Shift the final emotional tone')
   }
 
   return uniqueByKey(items).filter(Boolean)
+}
+
+export function createTodayPlanSnapshot(plan, date = new Date()) {
+  const dateKey = getDateKey(date)
+  return {
+    version: TODAY_PLAN_VERSION,
+    dateKey,
+    createdAt: new Date().toISOString(),
+    primedDomain: plan?.primedDomain?.id || null,
+    weakestDomain: plan?.weakestDomain?.id || null,
+    phases: Object.fromEntries(
+      Object.entries(plan?.phases || {}).map(([phaseId, phase]) => [phaseId, {
+        items: (phase.items || []).map(item => ({
+          key: item.key,
+          priority: item.priority,
+          why: item.why,
+        }))
+      }])
+    )
+  }
+}
+
+function isValidPlanSnapshot(snapshot, date = new Date()) {
+  if (!snapshot) return false
+  if (snapshot.version !== TODAY_PLAN_VERSION) return false
+  if (snapshot.dateKey !== getDateKey(date)) return false
+  return !!snapshot?.phases?.morning?.items?.length
 }
 
 function buildImpactSummary(allItems, todayChecks = {}) {
@@ -249,17 +399,22 @@ export function getPreviousDateKey(date = new Date(), daysBack = 1) {
   return d.toDateString()
 }
 
+function isLockedDay(record) {
+  // Today-page streak = visible consistency. A recovered day that is completed counts as a completed alignment.
+  // Frequency/Gray-Zone math can still use a stricter clean-streak concept elsewhere.
+  return record?.status === 'locked'
+}
+
 export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
   const todayKey = getDateKey(date)
   const todayStatus = dayStatus?.[todayKey]?.status
   if (todayStatus === 'missed') return 0
 
-  let streak = todayStatus === 'locked' ? 1 : 0
-  const startBack = todayStatus === 'locked' ? 1 : 1
+  let streak = isLockedDay(dayStatus?.[todayKey]) ? 1 : 0
 
-  for (let i = startBack; i < 365; i++) {
+  for (let i = 1; i < 365; i++) {
     const key = getPreviousDateKey(date, i)
-    if (dayStatus?.[key]?.status === 'locked') streak += 1
+    if (isLockedDay(dayStatus?.[key])) streak += 1
     else break
   }
   return streak
@@ -267,7 +422,7 @@ export function calculateTodayStreak(dayStatus = {}, date = new Date()) {
 
 export function calculateLongestStreak(dayStatus = {}) {
   const lockedDates = Object.entries(dayStatus || {})
-    .filter(([, record]) => record?.status === 'locked')
+    .filter(([, record]) => isLockedDay(record))
     .map(([key]) => new Date(key))
     .filter(date => !Number.isNaN(date.getTime()))
     .sort((a, b) => a - b)
@@ -328,6 +483,12 @@ export function transitionDayStatus({ previous = {}, date = new Date(), completi
     }
   }
 
+  // If the user explicitly reopens a missed day after cutoff, keep the day active.
+  // Otherwise the cutoff rule would instantly convert it back to missed before they can recover.
+  if (afterCutoff && current?.status === 'active' && current?.reopenedAt) {
+    return previous
+  }
+
   if (afterCutoff) {
     return {
       ...previous,
@@ -355,7 +516,7 @@ export function generateTomorrowPrime(domainId) {
   }
 }
 
-export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true } = {}) {
+export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true, planSnapshot = null } = {}) {
   const dateKey = getDateKey(date)
   const previousDateKey = getPreviousDateKey(date, 1)
   const todayChecks = checked?.[dateKey] || {}
@@ -365,7 +526,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const phases = {}
 
   PHASES.forEach(p => {
-    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId)
+    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null)
     const completion = completionFor(items, todayChecks)
     phases[p.id] = {
       ...p,
@@ -426,7 +587,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
       status: existingMissed ? 'missed' : failureActive ? 'at_risk' : 'open',
       missing: Math.max(0, DAILY_MINIMUM - completeRequired),
       message: failureActive
-        ? 'The operating loop is incomplete. Finish the minimum before the day closes or tomorrow begins from drift.'
+        ? 'Today’s alignment is incomplete. Finish the minimum before the day closes or tomorrow begins from drift.'
         : '',
     },
   }
