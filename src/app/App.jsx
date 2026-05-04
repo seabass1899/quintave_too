@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { supabase } from '../app/supabaseClient'
 import { useLocalStorage as useLS } from './state/useLocalStorage'
 import Onboarding from '../features/onboarding/Onboarding'
 import { PROTOCOLS } from '../data/protocols'
@@ -889,6 +890,19 @@ export default function App() {
   const milestoneTimer = useRef(null)
 
   useEffect(() => { trackAppOpen() }, [])
+    useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => {
+      listener.subscription.unsubscribe()
+    }
+  }, [])
 
   const today = tk()
   const todayChecks = checked[today] || {}
