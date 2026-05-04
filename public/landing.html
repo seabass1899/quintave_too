@@ -512,44 +512,5 @@
     <div>Quintave</div>
     <div>Daily alignment across Source, Form, Field, Mind, and Code. © 2026</div>
   </footer>
-
-<script>
-(function () {
-  const KEY = 'q_events';
-  const SESSION_KEY = 'q_session_id';
-  function sessionId() {
-    let id = sessionStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = Date.now() + '-' + Math.random().toString(16).slice(2);
-      sessionStorage.setItem(SESSION_KEY, id);
-    }
-    return id;
-  }
-  function readEvents() {
-    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
-  }
-  function track(name, payload) {
-    const ev = {
-      id: Date.now() + '-' + Math.random().toString(16).slice(2),
-      name,
-      payload: payload || {},
-      path: window.location.pathname,
-      sessionId: sessionId(),
-      ts: new Date().toISOString(),
-      date: new Date().toDateString()
-    };
-    try { localStorage.setItem(KEY, JSON.stringify(readEvents().concat(ev).slice(-1000))); } catch {}
-  }
-  track('landing_visit', { source: document.referrer || 'direct' });
-  document.querySelectorAll('a').forEach((a) => {
-    const text = (a.textContent || '').toLowerCase();
-    const href = a.getAttribute('href') || '';
-    if (text.includes('alignment') || href.includes('index') || href === '/') {
-      a.addEventListener('click', () => track('landing_cta_click', { href, text: a.textContent.trim() }));
-    }
-  });
-})();
-</script>
-
 </body>
 </html>

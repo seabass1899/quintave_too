@@ -745,18 +745,17 @@ function FeedbackButton({ dailyPct, streakCount, weakest }) {
               text: feedback.trim(),
               date: new Date().toISOString(),
               state: {
-                dailyPct: dailyPct || 0,
-                streak: streakCount || 0,
-                weakest: weakest?.name || null,
+                dailyPct,
+                streak: streakCount,
+                weakest: weakest?.name || weakest?.id || null,
               },
             }
 
             localStorage.setItem('q_feedback', JSON.stringify([...existing, entry]))
-
             alert('Feedback saved. Thank you.')
           } catch (e) {
-            console.error('Feedback save failed:', e)
-            alert('Feedback could not be saved.')
+            console.error('Feedback capture failed:', e)
+            alert('Feedback could not be saved in this browser session.')
           }
         }}
         style={{
@@ -768,8 +767,11 @@ function FeedbackButton({ dailyPct, streakCount, weakest }) {
           fontSize: 12,
           fontWeight: 700,
           cursor: 'pointer',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.16)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          opacity: 0.92,
         }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = 1 }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.92 }}
       >
         Feedback
       </button>
@@ -1502,13 +1504,9 @@ export default function App() {
         {/* ── SCHEDULE — adaptive ── */}
         {tab === 'schedule' && <ScheduleTab checked={checked}/>}
 
-        <FeedbackButton
-          dailyPct={dailyPct}
-          streakCount={streakCount}
-          weakest={weakest}
-        />
-
       </div>
+
+      <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} />
     </div>
   )
 }
