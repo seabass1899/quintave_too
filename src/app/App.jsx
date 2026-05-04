@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { supabase } from '../app/supabaseClient'
 import { useLocalStorage as useLS } from './state/useLocalStorage'
 import Onboarding from '../features/onboarding/Onboarding'
 import { PROTOCOLS } from '../data/protocols'
@@ -20,6 +19,9 @@ import HistoryTab from '../features/history/HistoryTab'
 import ScheduleTab from '../features/schedule/ScheduleTab'
 import AnalyticsTab from '../features/analytics/AnalyticsTab'
 import FrequencyLayer from '../features/frequency/FrequencyLayer'
+import AuthBox from '../features/auth/AuthBox'
+import SyncControls from '../features/sync/SyncControls'
+import { supabase, getSession } from './supabaseClient'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 
 // Local fallback in case of import resolution issues on some browsers
@@ -859,6 +861,9 @@ if (typeof window !== 'undefined') {
 
 export default function App() {
   const [tab, setTab] = useState('today')
+  const [session, setSession] = useState(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [showAuth, setShowAuth] = useState(false)
   const [todayPhaseOverride, setTodayPhaseOverride] = useState(null)
   const [checked,   setChecked]   = useLS('q_checked', {})
   const [weekDays,  setWeekDays]  = useLS('q_week', {})
@@ -890,17 +895,31 @@ export default function App() {
   const milestoneTimer = useRef(null)
 
   useEffect(() => { trackAppOpen() }, [])
-    useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-    })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
+
+  useEffect(() => {
+    let mounted = true
+
+    getSession()
+      .then((currentSession) => {
+        if (!mounted) return
+        setSession(currentSession)
+        setAuthReady(true)
+      })
+      .catch(() => {
+        if (!mounted) return
+        setSession(null)
+        setAuthReady(true)
+      })
+
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      if (!authReady) setAuthReady(true)
     })
 
     return () => {
-      listener.subscription.unsubscribe()
+      mounted = false
+      data?.subscription?.unsubscribe?.()
     }
   }, [])
 
@@ -1119,6 +1138,7 @@ export default function App() {
         }
       `}</style>
 
+      {showAuth && <AuthBox onSkip={() => setShowAuth(false)} />}
       {showNoise && <NoiseAudit onClose={() => setShowNoise(false)}/>}
       {showPractitioner && (
         <div style={{ position:'fixed', inset:0, zIndex:700, overflowY:'auto' }}>
@@ -1234,6 +1254,7 @@ export default function App() {
         <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
         <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
         <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
+        <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
         <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
         <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
           Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
