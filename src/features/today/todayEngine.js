@@ -51,6 +51,60 @@ const PHASE_POOLS = {
   ],
 }
 
+
+// Adaptive domain pools allow the Today Engine to personalize the daily alignment
+// without changing the underlying practice library. The engine chooses inside the
+// correct domain instead of serving the same static anchor to every user.
+const MORNING_ADAPTIVE_POOLS = {
+  d1: [
+    ['d1', 'Observer Drill'],
+    ['d1', 'Stillness Exposure'],
+    ['d1', '5 Recall Triggers'],
+    ['d1', 'Non-Local Body Scan'],
+  ],
+  d2: [
+    ['d2', 'Sun + Circadian Anchor'],
+    ['d2', 'Breathwork'],
+    ['d2', 'Hydration Protocol'],
+    ['d2', 'Training / Mobility'],
+  ],
+  d3: [
+    ['d2', 'Breathwork'],
+    ['d3', 'Name + Locate Emotion'],
+    ['d3', 'Somatic Body Scan'],
+    ['d3', '90-Second Rule'],
+  ],
+  d4: [
+    ['d4', 'Morning Directive'],
+    ['d4', 'Visualization Practice'],
+    ['d4', 'Thought Audit'],
+    ['d4', 'Daily Mantra Installation'],
+  ],
+  d5: [
+    ['d5', 'Pattern Interrupt'],
+    ['d5', 'Affirmation Installation'],
+    ['d5', 'Trigger Mapping'],
+    ['d5', 'Theta / Shadow Work'],
+  ],
+}
+
+const REQUIRED_MORNING_POOL = [
+  ['d4', 'Morning Directive'],
+  ['d4', 'Visualization Practice'],
+  ['d1', 'Observer Drill'],
+  ['d5', 'Affirmation Installation'],
+  ['d2', 'Breathwork'],
+]
+
+const OPTIONAL_MORNING_POOL = [
+  ['d2', 'Sun + Circadian Anchor'],
+  ['d2', 'Breathwork'],
+  ['d2', 'Hydration Protocol'],
+  ['d4', 'Visualization Practice'],
+  ['d1', 'Observer Drill'],
+  ['d5', 'Affirmation Installation'],
+]
+
 const DOMAIN_FEEDBACK = {
   d1: { short: 'Source Stability', identity: 'You returned to the observer behind the noise.' },
   d2: { short: 'Form Vitality', identity: 'You strengthened the physical vessel that carries the signal.' },
@@ -99,7 +153,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 4
+export const TODAY_PLAN_VERSION = 5
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -144,10 +198,118 @@ function uniqueByKey(items) {
   })
 }
 
-function weakestDomains(domainScores = {}) {
+function storageAvailable() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+}
+
+function safeReadJSON(key, fallback) {
+  if (!storageAvailable()) return fallback
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function stableHash(input = '') {
+  let hash = 2166136261
+  const str = String(input)
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return Math.abs(hash >>> 0)
+}
+
+function getSelectorSeed() {
+  if (!storageAvailable()) return 'server-seed'
+  const existing = localStorage.getItem('q_selector_seed')
+  if (existing) return existing
+  const seed = `seed_${Date.now()}_${Math.random().toString(36).slice(2)}`
+  localStorage.setItem('q_selector_seed', seed)
+  return seed
+}
+
+function normalizeOnboardingScore(value) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return null
+  // Older onboarding scores may be 1–10; domain scores are 0–100.
+  return value <= 10 ? Math.round(value * 10) : Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function getOnboardingScores() {
+  const profile = safeReadJSON('q_onboarding', null)
+  const scores = profile?.scores || {}
+  return DOMAINS.reduce((acc, domain) => {
+    const score = normalizeOnboardingScore(scores[domain.id])
+    if (score !== null) acc[domain.id] = score
+    return acc
+  }, {})
+}
+
+function seededFallbackScore(domainId, date = new Date()) {
+  const seed = getSelectorSeed()
+  const dateScope = `${date.getFullYear()}-${date.getMonth()}`
+  // 35–55 creates a neutral-but-varied baseline for users who have not completed onboarding.
+  return 35 + (stableHash(`${seed}|${dateScope}|${domainId}`) % 21)
+}
+
+function effectiveDomainScore(domainId, domainScores = {}, date = new Date()) {
+  const live = typeof domainScores?.[domainId] === 'number' ? domainScores[domainId] : null
+  const onboarding = getOnboardingScores()[domainId]
+  if (live !== null && live > 0 && onboarding !== undefined) return Math.round(live * 0.65 + onboarding * 0.35)
+  if (live !== null && live > 0) return live
+  if (onboarding !== undefined) return onboarding
+  return seededFallbackScore(domainId, date)
+}
+
+function weakestDomains(domainScores = {}, date = new Date()) {
   return [...DOMAINS]
-    .sort((a, b) => (domainScores[a.id] ?? 0) - (domainScores[b.id] ?? 0))
+    .map(domain => ({ ...domain, effectiveScore: effectiveDomainScore(domain.id, domainScores, date) }))
+    .sort((a, b) => a.effectiveScore - b.effectiveScore)
     .map(d => d.id)
+}
+
+function getRecentPracticeHistory(checked = {}, date = new Date(), daysBack = 7) {
+  const history = []
+  for (let i = daysBack; i >= 1; i--) {
+    const key = getPreviousDateKey(date, i)
+    const dayChecks = checked?.[key] || {}
+    Object.entries(dayChecks).forEach(([practiceKey, done]) => {
+      if (done) history.push({ key: practiceKey, date: key })
+    })
+  }
+  return history
+}
+
+function scoreCandidate(item, { weak = [], used = new Set(), history = [], date = new Date(), phase = '', slot = '', preferredDomainId = null } = {}) {
+  if (!item || used.has(item.key)) return -9999
+  const primary = item.phaseDomainId || item.domain?.id
+  const cross = item.cross || []
+  const crossCount = getPracticeCrossCount(item)
+  const recentIndex = history.slice(-8).findIndex(h => h.key === item.key)
+  const repeatedRecently = recentIndex >= 0
+  const immediateRepeat = history.slice(-3).some(h => h.key === item.key)
+  const weakBonus = weak?.[0] === primary ? 10 : weak?.slice(1, 3).includes(primary) ? 5 : 0
+  const preferredBonus = preferredDomainId === primary ? 9 : cross.includes(preferredDomainId) ? 4 : 0
+  const leverageBonus = crossCount >= 3 ? 7 : crossCount >= 2 ? 5 : crossCount
+  const repeatPenalty = immediateRepeat ? -18 : repeatedRecently ? -8 : 0
+  const deterministicJitter = (stableHash(`${getSelectorSeed()}|${getDateKey(date)}|${phase}|${slot}|${item.key}`) % 1000) / 1000
+  return weakBonus + preferredBonus + leverageBonus + repeatPenalty + deterministicJitter
+}
+
+function smartPick(candidates = [], used = new Set(), context = {}) {
+  const ranked = candidates
+    .map(([domainId, name]) => findPractice(domainId, name))
+    .filter(Boolean)
+    .map(item => ({ item, score: scoreCandidate(item, { ...context, used }) }))
+    .filter(entry => entry.score > -9999)
+    .sort((a, b) => b.score - a.score)
+  return ranked[0]?.item || null
+}
+
+function pickToTuple(item) {
+  return item ? [item.phaseDomainId || item.domain?.id, item.name] : null
 }
 
 function completionFor(items, todayChecks = {}) {
@@ -233,10 +395,8 @@ function rotationIndex(date = new Date(), length = 1) {
 }
 
 function firstAvailablePick(candidates = [], used = new Set()) {
-  return candidates.find(([domainId, name]) => {
-    const item = findPractice(domainId, name)
-    return item && !used.has(item.key)
-  }) || null
+  const item = smartPick(candidates, used)
+  return pickToTuple(item)
 }
 
 function buildFrozenPhaseItems(phase, planSnapshot) {
@@ -248,12 +408,13 @@ function buildFrozenPhaseItems(phase, planSnapshot) {
   return uniqueByKey(items)
 }
 
-function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null) {
+function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null, checked = {}) {
   const frozen = buildFrozenPhaseItems(phase, planSnapshot)
   if (frozen) return frozen
 
-  const weak = weakestDomains(domainScores)
+  const weak = weakestDomains(domainScores, date)
   const pool = PHASE_POOLS[phase] || []
+  const history = getRecentPracticeHistory(checked, date, 7)
   const items = []
   const used = new Set()
   const push = (pick, priority, why) => {
@@ -264,30 +425,37 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
     return true
   }
 
+  const pushSmart = (candidates, priority, why, slot, preferredDomainId = null) => {
+    const item = smartPick(candidates, used, { weak, history, date, phase, slot, preferredDomainId })
+    return push(pickToTuple(item), priority, why)
+  }
+
   if (phase === 'morning') {
-    const primedPick = primedDomainId ? MORNING_DOMAIN_ANCHORS[primedDomainId] : null
-    const weakPick = primedPick || pool.find(([domainId]) => domainId === weak[0]) || ['d1', 'Stillness Exposure']
-    push(weakPick, 'Critical', primedPick ? 'Yesterday\'s correction anchor' : 'Weakest-domain anchor')
+    const targetDomain = primedDomainId || weak[0] || 'd1'
+    const adaptivePool = MORNING_ADAPTIVE_POOLS[targetDomain] || MORNING_ADAPTIVE_POOLS.d1
 
-    // The morning directive is the default required anchor. If it is already the critical item
-    // because Mind is the correction domain, Visualization becomes the required Mind expansion.
-    const requiredCandidates = [
-      ['d4', 'Morning Directive'],
-      ['d4', 'Visualization Practice'],
-      ['d1', 'Observer Drill'],
-    ]
-    push(firstAvailablePick(requiredCandidates, used), 'Required', used.has(findPractice('d4', 'Morning Directive')?.key) ? 'Install directed mental imagery' : 'Initialize the conscious director')
+    // Critical: selected from the current correction domain, with anti-repeat and leverage weighting.
+    pushSmart(
+      adaptivePool,
+      'Critical',
+      primedDomainId ? 'Yesterday\'s correction anchor' : 'Adaptive weakest-domain anchor',
+      'critical',
+      targetDomain
+    )
 
-    // Optional support rotates so high-leverage practices surface over time instead of Sun always occupying the slot.
-    const optionalRotation = [
-      ['d2', 'Sun + Circadian Anchor'],
-      ['d2', 'Breathwork'],
-      ['d4', 'Visualization Practice'],
-      ['d1', 'Observer Drill'],
-      ['d5', 'Affirmation Installation'],
+    // Required: still initializes conscious control, but can rotate when Morning Directive was just used.
+    const requiredWhy = used.has(findPractice('d4', 'Morning Directive')?.key)
+      ? 'Install directed mental imagery'
+      : 'Initialize the conscious director'
+    pushSmart(REQUIRED_MORNING_POOL, 'Required', requiredWhy, 'required', weak[1] || 'd4')
+
+    // Optional: support the weakest domain or the physical vessel without repeating yesterday's exact pattern.
+    const rotated = [
+      ...OPTIONAL_MORNING_POOL.slice(rotationIndex(date, OPTIONAL_MORNING_POOL.length)),
+      ...OPTIONAL_MORNING_POOL.slice(0, rotationIndex(date, OPTIONAL_MORNING_POOL.length))
     ]
-    const rotated = [...optionalRotation.slice(rotationIndex(date, optionalRotation.length)), ...optionalRotation.slice(0, rotationIndex(date, optionalRotation.length))]
-    const optionalPick = firstAvailablePick(rotated, used)
+    const optionalItem = smartPick(rotated, used, { weak, history, date, phase, slot: 'optional', preferredDomainId: weak[2] || targetDomain })
+    const optionalPick = pickToTuple(optionalItem)
     const optionalReason = optionalPick?.[1] === 'Visualization Practice'
       ? 'Rehearse the state before the day tests it'
       : optionalPick?.[1] === 'Breathwork'
@@ -296,22 +464,38 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
           ? 'Strengthen witness awareness early'
           : optionalPick?.[1] === 'Affirmation Installation'
             ? 'Install the chosen identity signal'
-            : 'Stabilize Form early'
+            : optionalPick?.[1] === 'Hydration Protocol'
+              ? 'Restore physical signal flow early'
+              : 'Stabilize Form early'
     push(optionalPick, 'Optional', optionalReason)
   }
 
   if (phase === 'midday') {
-    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot)
+    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot, checked)
     const morningDone = morningPool.filter(i => !!todayChecks[i.key]).length
-    let primary = ['d2', 'Breathwork']
+    let primaryCandidates = [['d2', 'Breathwork'], ['d4', 'Thought Audit'], ['d5', 'Pattern Interrupt']]
     let reason = 'Midday nervous-system correction'
-    if (morningDone === 0) { primary = ['d1', '5 Recall Triggers']; reason = 'Recover the morning signal' }
-    else if (weak[0] === 'd5') { primary = ['d5', 'Pattern Interrupt']; reason = 'Primary Code correction' }
-    else if (weak[0] === 'd3') { primary = ['d3', 'Name + Locate Emotion']; reason = 'Field charge correction' }
-    else if (weak[0] === 'd4') { primary = ['d4', 'Thought Audit']; reason = 'Mind drift correction' }
-    push(primary, 'Critical', reason)
-    push(['d5', 'Pattern Interrupt'], 'Adaptive', 'Interrupt reactive drift')
-    push(['d2', 'Hydration Protocol'], 'Optional', 'Maintain physical signal')
+
+    if (morningDone === 0) {
+      primaryCandidates = [['d1', '5 Recall Triggers'], ['d1', 'Observer Drill'], ['d2', 'Breathwork']]
+      reason = 'Recover the morning signal'
+    } else if (weak[0] === 'd5') {
+      primaryCandidates = [['d5', 'Pattern Interrupt'], ['d5', 'Trigger Mapping'], ['d4', 'Thought Audit']]
+      reason = 'Primary Code correction'
+    } else if (weak[0] === 'd3') {
+      primaryCandidates = [['d3', 'Name + Locate Emotion'], ['d2', 'Breathwork'], ['d3', '90-Second Rule']]
+      reason = 'Field charge correction'
+    } else if (weak[0] === 'd4') {
+      primaryCandidates = [['d4', 'Thought Audit'], ['d4', 'Visualization Practice'], ['d1', '5 Recall Triggers']]
+      reason = 'Mind drift correction'
+    } else if (weak[0] === 'd2') {
+      primaryCandidates = [['d2', 'Hydration Protocol'], ['d2', 'Breathwork'], ['d2', 'Training / Mobility']]
+      reason = 'Form stabilization correction'
+    }
+
+    pushSmart(primaryCandidates, 'Critical', reason, 'critical', weak[0])
+    pushSmart(PHASE_POOLS.midday, 'Adaptive', 'Interrupt reactive drift', 'adaptive', weak[1] || weak[0])
+    pushSmart([['d2', 'Hydration Protocol'], ['d2', 'Breathwork'], ['d1', '5 Recall Triggers']], 'Optional', 'Maintain physical signal', 'optional', 'd2')
   }
 
   if (phase === 'evening') {
@@ -319,15 +503,16 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
       const allKeys = Object.keys(todayChecks).filter(k => todayChecks[k])
       return !allKeys.some(k => k.startsWith(`${domainId}_`))
     }) || weak[0]
+
     const byDomain = {
-      d1: ['d5', 'Pre-Sleep Programming'],
-      d2: ['d5', 'Pre-Sleep Programming'],
-      d3: ['d3', 'Emotional Log'],
-      d4: ['d4', 'Thought Audit'],
-      d5: ['d5', 'Pre-Sleep Programming'],
+      d1: [['d5', 'Pre-Sleep Programming'], ['d1', 'Deathlessness Contemplation'], ['d1', 'Non-Local Body Scan']],
+      d2: [['d5', 'Pre-Sleep Programming'], ['d2', 'Sleep 7h+'], ['d2', 'Breathwork']],
+      d3: [['d3', 'Emotional Log'], ['d3', 'Forgiveness Protocol'], ['d3', 'Somatic Body Scan']],
+      d4: [['d4', 'Thought Audit'], ['d4', 'Belief Audit'], ['d4', 'Visualization Practice']],
+      d5: [['d5', 'Pre-Sleep Programming'], ['d5', 'Dream Log'], ['d5', 'Inner Child Check-In']],
     }
-    push(byDomain[undoneWeak] || ['d5', 'Pre-Sleep Programming'], 'Critical', 'Close the day’s weakest open alignment point')
-    push(['d3', 'Gratitude + Reframe'], 'Optional', 'Shift the final emotional tone')
+    pushSmart(byDomain[undoneWeak] || byDomain.d5, 'Critical', 'Close the day’s weakest open alignment point', 'critical', undoneWeak)
+    pushSmart([['d3', 'Gratitude + Reframe'], ['d3', 'Emotional Log'], ['d5', 'Dream Log']], 'Optional', 'Shift the final emotional tone', 'optional', 'd3')
   }
 
   return uniqueByKey(items).filter(Boolean)
@@ -516,7 +701,7 @@ export function generateTomorrowPrime(domainId) {
   }
 }
 
-export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true, planSnapshot = null } = {}) {
+export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true, planSnapshot = null, onboardingProfile = null } = {}) {
   const dateKey = getDateKey(date)
   const previousDateKey = getPreviousDateKey(date, 1)
   const todayChecks = checked?.[dateKey] || {}
@@ -526,7 +711,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const phases = {}
 
   PHASES.forEach(p => {
-    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null)
+    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked)
     const completion = completionFor(items, todayChecks)
     phases[p.id] = {
       ...p,
@@ -548,7 +733,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const requiredItems = allItems.filter(i => i.priority === 'Critical' || i.priority === 'Required')
   const completeRequired = requiredItems.filter(i => !!todayChecks[i.key]).length
   const totalComplete = allItems.filter(i => !!todayChecks[i.key]).length
-  const weak = weakestDomains(domainScores)[0]
+  const weak = weakestDomains(domainScores, date)[0]
   const impactSummary = buildImpactSummary(allItems, todayChecks)
   const currentStreak = calculateTodayStreak(dayStatus, date)
   const longestStreak = calculateLongestStreak(dayStatus)
