@@ -153,7 +153,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 5
+export const TODAY_PLAN_VERSION = 6
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -399,17 +399,23 @@ function firstAvailablePick(candidates = [], used = new Set()) {
   return pickToTuple(item)
 }
 
-function buildFrozenPhaseItems(phase, planSnapshot) {
+function buildFrozenPhaseItems(phase, planSnapshot, dayUsed = new Set()) {
   const phaseSnapshot = planSnapshot?.phases?.[phase]
   if (!phaseSnapshot?.items?.length) return null
   const items = phaseSnapshot.items
     .map(saved => labelPractice(findPracticeByKey(saved.key), saved.priority, saved.why))
     .filter(Boolean)
+    .filter(item => {
+      // Day-level de-duplication: a practice should not appear in multiple phases.
+      if (dayUsed.has(item.key)) return false
+      dayUsed.add(item.key)
+      return true
+    })
   return uniqueByKey(items)
 }
 
-function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null, checked = {}) {
-  const frozen = buildFrozenPhaseItems(phase, planSnapshot)
+function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null, checked = {}, dayUsed = new Set()) {
+  const frozen = buildFrozenPhaseItems(phase, planSnapshot, dayUsed)
   if (frozen) return frozen
 
   const weak = weakestDomains(domainScores, date)
@@ -417,16 +423,21 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   const history = getRecentPracticeHistory(checked, date, 7)
   const items = []
   const used = new Set()
+  const combinedUsed = () => new Set([...used, ...dayUsed])
+
   const push = (pick, priority, why) => {
     const item = pick ? findPractice(...pick) : null
-    if (!item || used.has(item.key)) return false
+    // Phase-level and day-level de-duplication. The same practice should never
+    // be served in Morning, Midday, and Evening on the same date.
+    if (!item || used.has(item.key) || dayUsed.has(item.key)) return false
     used.add(item.key)
+    dayUsed.add(item.key)
     items.push(labelPractice(item, priority, why))
     return true
   }
 
   const pushSmart = (candidates, priority, why, slot, preferredDomainId = null) => {
-    const item = smartPick(candidates, used, { weak, history, date, phase, slot, preferredDomainId })
+    const item = smartPick(candidates, combinedUsed(), { weak, history, date, phase, slot, preferredDomainId })
     return push(pickToTuple(item), priority, why)
   }
 
@@ -471,7 +482,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   }
 
   if (phase === 'midday') {
-    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot, checked)
+    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot, checked, new Set(dayUsed))
     const morningDone = morningPool.filter(i => !!todayChecks[i.key]).length
     let primaryCandidates = [['d2', 'Breathwork'], ['d4', 'Thought Audit'], ['d5', 'Pattern Interrupt']]
     let reason = 'Midday nervous-system correction'
@@ -710,8 +721,10 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const currentPhase = getCurrentPhase(date)
   const phases = {}
 
+  const dayUsed = new Set()
+
   PHASES.forEach(p => {
-    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked)
+    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed)
     const completion = completionFor(items, todayChecks)
     phases[p.id] = {
       ...p,
