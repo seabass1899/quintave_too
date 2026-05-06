@@ -891,19 +891,11 @@ export default function App() {
   const [showMidday,     setShowMidday]     = useState(false)
   const [showEvening,    setShowEvening]    = useState(false)
   const [showTodayDetails, setShowTodayDetails] = useState(false)
-  const [debug, setDebug] = useState(false)
   const rippleTimer  = useRef(null)
   const milestoneTimer = useRef(null)
 
   useEffect(() => { trackAppOpen() }, [])
 
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'd' || e.key === 'D') setDebug(d => !d)
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -1548,10 +1540,6 @@ export default function App() {
         {tab === 'schedule' && <ScheduleTab checked={checked}/>}
 
       </div>
-
-      {debug && (
-        <DiagnosticsPanel plan={null} domainScores={domainScores}/>
-      )}
 
       <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} />
     </div>
