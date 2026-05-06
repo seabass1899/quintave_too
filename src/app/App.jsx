@@ -23,7 +23,6 @@ import AuthBox from '../features/auth/AuthBox'
 import SyncControls from '../features/sync/SyncControls'
 import { supabase, getSession } from './supabaseClient'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
-import FeedbackButton from '../components/FeedbackButton'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -725,7 +724,63 @@ function Ring({ pct, size = 86 }) {
     </svg>
   )
 }
-// FeedbackButton moved to src/components/FeedbackButton.jsx
+function FeedbackButton({ dailyPct, streakCount, weakest }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 16,
+        right: 16,
+        zIndex: 9999,
+      }}
+    >
+      <button
+        onClick={() => {
+          try {
+            trackEvent('feedback_opened', { source: 'floating_button' })
+
+            const feedback = prompt("What’s working? What’s confusing?")
+            if (!feedback || !feedback.trim()) return
+
+            const existing = JSON.parse(localStorage.getItem('q_feedback') || '[]')
+
+            const entry = {
+              text: feedback.trim(),
+              date: new Date().toISOString(),
+              state: {
+                dailyPct,
+                streak: streakCount,
+                weakest: weakest?.name || weakest?.id || null,
+              },
+            }
+
+            localStorage.setItem('q_feedback', JSON.stringify([...existing, entry]))
+            alert('Feedback saved. Thank you.')
+          } catch (e) {
+            console.error('Feedback capture failed:', e)
+            alert('Feedback could not be saved in this browser session.')
+          }
+        }}
+        style={{
+          padding: '10px 14px',
+          borderRadius: 10,
+          border: '0.5px solid rgba(0,0,0,0.15)',
+          background: '#1a1a18',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          opacity: 0.92,
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = 1 }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.92 }}
+      >
+        Feedback
+      </button>
+    </div>
+  )
+}
 
 function LaunchMetrics() {
   const [events, setEvents] = useState(() => readEvents())
@@ -836,11 +891,19 @@ export default function App() {
   const [showMidday,     setShowMidday]     = useState(false)
   const [showEvening,    setShowEvening]    = useState(false)
   const [showTodayDetails, setShowTodayDetails] = useState(false)
+  const [debug, setDebug] = useState(false)
   const rippleTimer  = useRef(null)
   const milestoneTimer = useRef(null)
 
   useEffect(() => { trackAppOpen() }, [])
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'd' || e.key === 'D') setDebug(d => !d)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -1485,6 +1548,10 @@ export default function App() {
         {tab === 'schedule' && <ScheduleTab checked={checked}/>}
 
       </div>
+
+      {debug && (
+        <DiagnosticsPanel plan={null} domainScores={domainScores}/>
+      )}
 
       <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} />
     </div>
