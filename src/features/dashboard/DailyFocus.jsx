@@ -245,6 +245,17 @@ function DayLockedIn({ plan }) {
 function SystemReadPanel({ decision }) {
   if (!decision) return null
 
+  const labels = {
+    d1: 'Source',
+    d2: 'Form',
+    d3: 'Field',
+    d4: 'Mind',
+    d5: 'Code',
+  }
+
+  const primary = labels[decision.primaryBlockerId] || 'System'
+  const secondary = labels[decision.secondaryBlockerId] || null
+
   return (
     <div style={{
       background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
@@ -264,23 +275,51 @@ function SystemReadPanel({ decision }) {
         Today’s System Read
       </div>
 
-      <div style={{ fontSize: 15, fontWeight: 950, color: '#1a1a18' }}>
-        Primary blocker: {decision.primaryBlocker?.name || 'System coherence'}
+      <div style={{
+        fontSize: 15,
+        fontWeight: 950,
+        color: '#1a1a18'
+      }}>
+        Primary blocker: {primary}
       </div>
 
-      {decision.secondaryBlocker && (
-        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-          Secondary pressure: <strong>{decision.secondaryBlocker.name}</strong>
+      {secondary && secondary !== primary && (
+        <div style={{
+          fontSize: 12,
+          color: '#666',
+          marginTop: 4
+        }}>
+          Secondary pressure: <strong>{secondary}</strong>
         </div>
       )}
 
-      <div style={{ fontSize: 12, color: '#444', marginTop: 7, lineHeight: 1.55 }}>
-        <strong>System response:</strong> {decision.strategy || 'Stabilize the weakest open alignment point.'}
+      <div style={{
+        fontSize: 12,
+        color: '#444',
+        marginTop: 7,
+        lineHeight: 1.55
+      }}>
+        <strong>System response:</strong>{' '}
+        {decision.strategy?.replaceAll('_', ' ') || 'stabilize'}
       </div>
 
-      {decision.reason && (
-        <div style={{ fontSize: 12, color: '#555', marginTop: 5, lineHeight: 1.55 }}>
-          {decision.reason}
+      <div style={{
+        fontSize: 12,
+        color: '#555',
+        marginTop: 5,
+        lineHeight: 1.55
+      }}>
+        {decision.reason}
+      </div>
+
+      {decision.explanation && (
+        <div style={{
+          fontSize: 12,
+          color: '#666',
+          marginTop: 7,
+          lineHeight: 1.55
+        }}>
+          {decision.explanation}
         </div>
       )}
     </div>
