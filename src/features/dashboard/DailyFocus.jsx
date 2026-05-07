@@ -242,6 +242,50 @@ function DayLockedIn({ plan }) {
   )
 }
 
+function SystemReadPanel({ decision }) {
+  if (!decision) return null
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
+      border: '1px solid #DFE3F0',
+      borderRadius: 14,
+      padding: '13px 15px',
+      marginBottom: 14
+    }}>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 950,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: '#777',
+        marginBottom: 6
+      }}>
+        Today’s System Read
+      </div>
+
+      <div style={{ fontSize: 15, fontWeight: 950, color: '#1a1a18' }}>
+        Primary blocker: {decision.primaryBlocker?.name || 'System coherence'}
+      </div>
+
+      {decision.secondaryBlocker && (
+        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Secondary pressure: <strong>{decision.secondaryBlocker.name}</strong>
+        </div>
+      )}
+
+      <div style={{ fontSize: 12, color: '#444', marginTop: 7, lineHeight: 1.55 }}>
+        <strong>System response:</strong> {decision.strategy || 'Stabilize the weakest open alignment point.'}
+      </div>
+
+      {decision.reason && (
+        <div style={{ fontSize: 12, color: '#555', marginTop: 5, lineHeight: 1.55 }}>
+          {decision.reason}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null }) {
   const today = getDateKey(new Date())
@@ -387,6 +431,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
 
   return (
     <div className="today-card" style={{ background: '#fff', borderRadius: 16, border: bdr, padding: '18px 20px', marginBottom: 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
+    <SystemReadPanel decision={plan.decision} />
       {showOnboarding && (
         <div style={{
           background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
