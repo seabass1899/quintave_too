@@ -373,7 +373,7 @@ function getPhaseFitBonus(item, phase = '', slot = '') {
 }
 
 function whyFromDecision(decision, phase, slot, item, fallback) {
-  const domainName = domainById(item?.phaseDomainId || item?.domain?.id || decision?.primaryBlockerId || 'd1').name
+  const domainName = domainById(decision?.primaryBlockerId || item?.phaseDomainId || item?.domain?.id || 'd1').name
   if (!decision) return fallback
   if (slot === 'critical') {
     if (phase === 'morning') return `${domainName} is today's primary correction point. ${decision.strategy === 'recovery_first' ? 'Recovery comes before expansion.' : 'Begin here before adding anything else.'}`
