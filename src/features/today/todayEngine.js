@@ -153,7 +153,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 6
+export const TODAY_PLAN_VERSION = 7
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -270,6 +270,122 @@ function weakestDomains(domainScores = {}, date = new Date()) {
     .map(d => d.id)
 }
 
+function getDomainDiagnostics(domainScores = {}, date = new Date()) {
+  return [...DOMAINS]
+    .map(domain => ({
+      ...domain,
+      effectiveScore: effectiveDomainScore(domain.id, domainScores, date),
+      liveScore: typeof domainScores?.[domain.id] === 'number' ? domainScores[domain.id] : null,
+      onboardingScore: getOnboardingScores()[domain.id] ?? null,
+    }))
+    .sort((a, b) => a.effectiveScore - b.effectiveScore)
+}
+
+function getRecentStatusFlags(dayStatus = {}, date = new Date()) {
+  const todayKey = getDateKey(date)
+  const previousKey = getPreviousDateKey(date, 1)
+  const current = dayStatus?.[todayKey] || null
+  const previous = dayStatus?.[previousKey] || null
+  return {
+    current,
+    previous,
+    isRecovery: current?.status === 'active' && !!current?.reopenedAt,
+    missedYesterday: previous?.status === 'missed',
+    previousCorrectionDomain: previous?.correctionDomain || null,
+    previousStrongestDomain: previous?.strongestDomain || null,
+  }
+}
+
+function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), primedDomainId = null } = {}) {
+  const diagnostics = getDomainDiagnostics(domainScores, date)
+  const status = getRecentStatusFlags(dayStatus, date)
+  const history = getRecentPracticeHistory(checked, date, 7)
+  const weakest = diagnostics[0] || domainById('d1')
+  const secondary = diagnostics[1] || weakest
+  const strongest = diagnostics[diagnostics.length - 1] || weakest
+
+  const inheritedDomain = primedDomainId || status.previousCorrectionDomain || null
+  const primaryBlockerId = inheritedDomain || weakest.id
+  const secondaryBlockerId = secondary.id === primaryBlockerId ? (diagnostics[2]?.id || secondary.id) : secondary.id
+
+  const instabilityFlags = []
+  if (status.missedYesterday) instabilityFlags.push('missed_previous_day')
+  if (status.isRecovery) instabilityFlags.push('recovery_mode')
+  diagnostics.filter(d => d.effectiveScore < 35).slice(0, 2).forEach(d => instabilityFlags.push(`low_${d.id}`))
+
+  const reason = inheritedDomain
+    ? `${domainById(inheritedDomain).name} carried forward as yesterday's correction point.`
+    : `${weakest.name} is the lowest active frequency body today.`
+
+  const strategy = status.missedYesterday || status.isRecovery
+    ? 'recovery_first'
+    : weakest.effectiveScore < 40
+      ? 'stabilize_blocker'
+      : diagnostics.some(d => d.effectiveScore < 55)
+        ? 'harmonize_lagging_body'
+        : 'advance_with_balance'
+
+  const explanation = strategy === 'recovery_first'
+    ? 'The system is prioritizing recovery before expansion. Today starts with the correction domain before adding optional signal.'
+    : strategy === 'stabilize_blocker'
+      ? 'The system detected a low-domain blocker. Today begins with the smallest practice that stabilizes that frequency body.'
+      : strategy === 'harmonize_lagging_body'
+        ? 'The system is closing the gap between frequency bodies so advancement is not built on imbalance.'
+        : 'The system is preserving balance while adding signal through higher-leverage practices.'
+
+  return {
+    version: 'alignment-decision-v1',
+    dateKey: getDateKey(date),
+    primaryBlockerId,
+    secondaryBlockerId,
+    strongestDomainId: strongest.id,
+    reason,
+    strategy,
+    explanation,
+    instabilityFlags,
+    domainDiagnostics: diagnostics.map(d => ({
+      id: d.id,
+      name: d.name,
+      effectiveScore: d.effectiveScore,
+      liveScore: d.liveScore,
+      onboardingScore: d.onboardingScore,
+    })),
+    recentPracticeKeys: history.slice(-8).map(h => h.key),
+  }
+}
+
+function getPhaseFitBonus(item, phase = '', slot = '') {
+  const name = item?.name || ''
+  if (phase === 'morning') {
+    if (slot === 'critical' && /Stillness|Directive|Sun|Observer|Affirmation|Breathwork|Pattern Interrupt|Emotion|Hydration|Visualization/.test(name)) return 5
+    if (slot === 'required' && /Directive|Visualization|Observer|Affirmation|Breathwork/.test(name)) return 4
+    return 1
+  }
+  if (phase === 'midday') {
+    if (/Pattern Interrupt|Recall|Emotion|Breathwork|Thought Audit|Hydration|90-Second|Training/.test(name)) return 5
+    return 0
+  }
+  if (phase === 'evening') {
+    if (/Pre-Sleep|Emotional Log|Gratitude|Forgiveness|Dream|Belief|Body Scan|Sleep/.test(name)) return 5
+    return 0
+  }
+  return 0
+}
+
+function whyFromDecision(decision, phase, slot, item, fallback) {
+  const domainName = domainById(item?.phaseDomainId || item?.domain?.id || decision?.primaryBlockerId || 'd1').name
+  if (!decision) return fallback
+  if (slot === 'critical') {
+    if (phase === 'morning') return `${domainName} is today's primary correction point. ${decision.strategy === 'recovery_first' ? 'Recovery comes before expansion.' : 'Begin here before adding anything else.'}`
+    if (phase === 'midday') return `${domainName} is the drift point being corrected before the day runs on autopilot.`
+    if (phase === 'evening') return `${domainName} is the open alignment point being closed before sleep.`
+  }
+  if (slot === 'required') return `Required stabilizer selected to support ${domainById(decision.primaryBlockerId).name} without repeating the critical practice.`
+  if (slot === 'adaptive') return `Adaptive correction selected from the next weakest signal: ${domainById(decision.secondaryBlockerId).name}.`
+  if (slot === 'optional') return `Optional support selected to add signal without overloading the system.`
+  return fallback
+}
+
 function getRecentPracticeHistory(checked = {}, date = new Date(), daysBack = 7) {
   const history = []
   for (let i = daysBack; i >= 1; i--) {
@@ -282,7 +398,7 @@ function getRecentPracticeHistory(checked = {}, date = new Date(), daysBack = 7)
   return history
 }
 
-function scoreCandidate(item, { weak = [], used = new Set(), history = [], date = new Date(), phase = '', slot = '', preferredDomainId = null } = {}) {
+function scoreCandidate(item, { weak = [], used = new Set(), history = [], date = new Date(), phase = '', slot = '', preferredDomainId = null, decision = null } = {}) {
   if (!item || used.has(item.key)) return -9999
   const primary = item.phaseDomainId || item.domain?.id
   const cross = item.cross || []
@@ -292,10 +408,13 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], date 
   const immediateRepeat = history.slice(-3).some(h => h.key === item.key)
   const weakBonus = weak?.[0] === primary ? 10 : weak?.slice(1, 3).includes(primary) ? 5 : 0
   const preferredBonus = preferredDomainId === primary ? 9 : cross.includes(preferredDomainId) ? 4 : 0
+  const decisionBonus = decision?.primaryBlockerId === primary ? 14 : decision?.secondaryBlockerId === primary ? 7 : 0
+  const recoveryBonus = decision?.strategy === 'recovery_first' && decision?.primaryBlockerId === primary ? 6 : 0
   const leverageBonus = crossCount >= 3 ? 7 : crossCount >= 2 ? 5 : crossCount
-  const repeatPenalty = immediateRepeat ? -18 : repeatedRecently ? -8 : 0
+  const phaseFitBonus = getPhaseFitBonus(item, phase, slot)
+  const repeatPenalty = immediateRepeat ? -22 : repeatedRecently ? -10 : 0
   const deterministicJitter = (stableHash(`${getSelectorSeed()}|${getDateKey(date)}|${phase}|${slot}|${item.key}`) % 1000) / 1000
-  return weakBonus + preferredBonus + leverageBonus + repeatPenalty + deterministicJitter
+  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + leverageBonus + phaseFitBonus + repeatPenalty + deterministicJitter
 }
 
 function smartPick(candidates = [], used = new Set(), context = {}) {
@@ -414,7 +533,7 @@ function buildFrozenPhaseItems(phase, planSnapshot, dayUsed = new Set()) {
   return uniqueByKey(items)
 }
 
-function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null, checked = {}, dayUsed = new Set()) {
+function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null, checked = {}, dayUsed = new Set(), decision = null) {
   const frozen = buildFrozenPhaseItems(phase, planSnapshot, dayUsed)
   if (frozen) return frozen
 
@@ -437,12 +556,12 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   }
 
   const pushSmart = (candidates, priority, why, slot, preferredDomainId = null) => {
-    const item = smartPick(candidates, combinedUsed(), { weak, history, date, phase, slot, preferredDomainId })
-    return push(pickToTuple(item), priority, why)
+    const item = smartPick(candidates, combinedUsed(), { weak, history, date, phase, slot, preferredDomainId, decision })
+    return push(pickToTuple(item), priority, whyFromDecision(decision, phase, slot, item, why))
   }
 
   if (phase === 'morning') {
-    const targetDomain = primedDomainId || weak[0] || 'd1'
+    const targetDomain = decision?.primaryBlockerId || primedDomainId || weak[0] || 'd1'
     const adaptivePool = MORNING_ADAPTIVE_POOLS[targetDomain] || MORNING_ADAPTIVE_POOLS.d1
 
     // Critical: selected from the current correction domain, with anti-repeat and leverage weighting.
@@ -465,7 +584,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
       ...OPTIONAL_MORNING_POOL.slice(rotationIndex(date, OPTIONAL_MORNING_POOL.length)),
       ...OPTIONAL_MORNING_POOL.slice(0, rotationIndex(date, OPTIONAL_MORNING_POOL.length))
     ]
-    const optionalItem = smartPick(rotated, used, { weak, history, date, phase, slot: 'optional', preferredDomainId: weak[2] || targetDomain })
+    const optionalItem = smartPick(rotated, combinedUsed(), { weak, history, date, phase, slot: 'optional', preferredDomainId: weak[2] || targetDomain, decision })
     const optionalPick = pickToTuple(optionalItem)
     const optionalReason = optionalPick?.[1] === 'Visualization Practice'
       ? 'Rehearse the state before the day tests it'
@@ -482,7 +601,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   }
 
   if (phase === 'midday') {
-    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot, checked, new Set(dayUsed))
+    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot, checked, new Set(dayUsed), decision)
     const morningDone = morningPool.filter(i => !!todayChecks[i.key]).length
     let primaryCandidates = [['d2', 'Breathwork'], ['d4', 'Thought Audit'], ['d5', 'Pattern Interrupt']]
     let reason = 'Midday nervous-system correction'
@@ -537,6 +656,7 @@ export function createTodayPlanSnapshot(plan, date = new Date()) {
     createdAt: new Date().toISOString(),
     primedDomain: plan?.primedDomain?.id || null,
     weakestDomain: plan?.weakestDomain?.id || null,
+    decision: plan?.decision || null,
     phases: Object.fromEntries(
       Object.entries(plan?.phases || {}).map(([phaseId, phase]) => [phaseId, {
         items: (phase.items || []).map(item => ({
@@ -718,13 +838,14 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const todayChecks = checked?.[dateKey] || {}
   const previousStatus = dayStatus?.[previousDateKey] || null
   const primedDomainId = previousStatus?.correctionDomain || null
+  const decision = buildAlignmentDecision({ domainScores, checked, dayStatus, date, primedDomainId })
   const currentPhase = getCurrentPhase(date)
   const phases = {}
 
   const dayUsed = new Set()
 
   PHASES.forEach(p => {
-    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed)
+    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed, decision)
     const completion = completionFor(items, todayChecks)
     phases[p.id] = {
       ...p,
@@ -761,6 +882,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   return {
     dailyMinimum: DAILY_MINIMUM,
     currentPhase,
+    decision,
     weakestDomain: domainById(weak),
     previousStatus,
     primedDomain: primedDomainId ? domainById(primedDomainId) : null,
