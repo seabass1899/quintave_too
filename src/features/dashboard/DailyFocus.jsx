@@ -2,6 +2,15 @@ import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
 import { trackEvent } from '../../app/utils/analytics'
 
+const STRATEGY_LABELS = {
+  recovery_first: 'Recovery and stabilization',
+  stabilize_blocker: 'Stabilize the weakest frequency body',
+  harmonize_lagging_body: 'Restore cross-domain harmony',
+  advance_with_balance: 'Advance signal without imbalance',
+}
+
+
+
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
 function usePersistentState(key, initialValue) {
@@ -300,7 +309,7 @@ function SystemReadPanel({ decision }) {
         lineHeight: 1.55
       }}>
         <strong>System response:</strong>{' '}
-        {decision.strategy?.replaceAll('_', ' ') || 'stabilize'}
+        {STRATEGY_LABELS[decision.strategy] || decision.strategy?.replaceAll('_', ' ') || 'Stabilize the weakest frequency body'}
       </div>
 
       <div style={{
