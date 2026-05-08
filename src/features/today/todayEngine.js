@@ -153,7 +153,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 7
+export const TODAY_PLAN_VERSION = 8
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -300,6 +300,7 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   const diagnostics = getDomainDiagnostics(domainScores, date)
   const status = getRecentStatusFlags(dayStatus, date)
   const history = getRecentPracticeHistory(checked, date, 7)
+  const behaviorStats = getPracticeBehaviorStats(checked, date, 7)
   const weakest = diagnostics[0] || domainById('d1')
   const secondary = diagnostics[1] || weakest
   const strongest = diagnostics[diagnostics.length - 1] || weakest
@@ -313,6 +314,15 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   if (status.isRecovery) instabilityFlags.push('recovery_mode')
   diagnostics.filter(d => d.effectiveScore < 35).slice(0, 2).forEach(d => instabilityFlags.push(`low_${d.id}`))
 
+  const primaryDomainStats = behaviorStats.byDomain?.[primaryBlockerId] || { assigned: 0, completed: 0, skipped: 0 }
+  const behaviorMode = primaryDomainStats.skipped >= 2
+    ? 'lower_friction'
+    : primaryDomainStats.completed >= 3
+      ? 'increase_depth'
+      : primaryDomainStats.completed >= 1
+        ? 'reinforce_momentum'
+        : 'establish_baseline'
+
   const reason = inheritedDomain
     ? `${domainById(inheritedDomain).name} carried forward as yesterday's correction point.`
     : `${weakest.name} is the lowest active frequency body today.`
@@ -325,13 +335,23 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
         ? 'harmonize_lagging_body'
         : 'advance_with_balance'
 
-  const explanation = strategy === 'recovery_first'
+  const baseExplanation = strategy === 'recovery_first'
     ? 'The system is prioritizing recovery before expansion. Today starts with the correction domain before adding optional signal.'
     : strategy === 'stabilize_blocker'
       ? 'The system detected a low-domain blocker. Today begins with the smallest practice that stabilizes that frequency body.'
       : strategy === 'harmonize_lagging_body'
         ? 'The system is closing the gap between frequency bodies so advancement is not built on imbalance.'
         : 'The system is preserving balance while adding signal through higher-leverage practices.'
+
+  const behaviorExplanation = behaviorMode === 'lower_friction'
+    ? 'Recent resistance was detected, so the engine is favoring a lower-friction entry point.'
+    : behaviorMode === 'increase_depth'
+      ? 'Recent consistency was detected, so the engine is rotating beyond the repeated pattern.'
+      : behaviorMode === 'reinforce_momentum'
+        ? 'Recent completion was detected, so the engine is reinforcing the current momentum without repeating blindly.'
+        : 'The engine is establishing a baseline pattern before increasing complexity.'
+
+  const explanation = `${baseExplanation} ${behaviorExplanation}`
 
   return {
     version: 'alignment-decision-v1',
@@ -343,6 +363,13 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     strategy,
     explanation,
     instabilityFlags,
+    behaviorMode,
+    behaviorSummary: {
+      primaryDomain: primaryBlockerId,
+      assigned: primaryDomainStats.assigned,
+      completed: primaryDomainStats.completed,
+      skipped: primaryDomainStats.skipped,
+    },
     domainDiagnostics: diagnostics.map(d => ({
       id: d.id,
       name: d.name,
@@ -398,7 +425,118 @@ function getRecentPracticeHistory(checked = {}, date = new Date(), daysBack = 7)
   return history
 }
 
-function scoreCandidate(item, { weak = [], used = new Set(), history = [], date = new Date(), phase = '', slot = '', preferredDomainId = null, decision = null } = {}) {
+function getRecentAssignedPracticeHistory(date = new Date(), daysBack = 7) {
+  const plans = safeReadJSON('q_today_plan', {})
+  const assignments = []
+  for (let i = daysBack; i >= 1; i--) {
+    const key = getPreviousDateKey(date, i)
+    const plan = plans?.[key]
+    if (!plan?.phases) continue
+    Object.entries(plan.phases).forEach(([phaseId, phase]) => {
+      ;(phase?.items || []).forEach(item => {
+        if (item?.key) assignments.push({ key: item.key, date: key, phase: phaseId })
+      })
+    })
+  }
+  return assignments
+}
+
+function getPracticeBehaviorStats(checked = {}, date = new Date(), daysBack = 7) {
+  const completed = getRecentPracticeHistory(checked, date, daysBack)
+  const assigned = getRecentAssignedPracticeHistory(date, daysBack)
+  const completedSet = new Set(completed.map(h => `${h.date}::${h.key}`))
+  const byPractice = {}
+  const byDomain = {}
+
+  assigned.forEach(a => {
+    const practice = findPracticeByKey(a.key)
+    const domainId = practice?.phaseDomainId || practice?.domain?.id || a.key.split('_')[0]
+    const completedThisAssignment = completedSet.has(`${a.date}::${a.key}`)
+
+    if (!byPractice[a.key]) {
+      byPractice[a.key] = { key: a.key, domainId, assigned: 0, completed: 0, skipped: 0, lastAssigned: null, lastCompleted: null }
+    }
+    byPractice[a.key].assigned += 1
+    byPractice[a.key].lastAssigned = a.date
+    if (completedThisAssignment) {
+      byPractice[a.key].completed += 1
+      byPractice[a.key].lastCompleted = a.date
+    } else {
+      byPractice[a.key].skipped += 1
+    }
+
+    if (!byDomain[domainId]) byDomain[domainId] = { domainId, assigned: 0, completed: 0, skipped: 0 }
+    byDomain[domainId].assigned += 1
+    if (completedThisAssignment) byDomain[domainId].completed += 1
+    else byDomain[domainId].skipped += 1
+  })
+
+  // Completed practices may include older plans or manually checked library practices.
+  completed.forEach(c => {
+    if (!byPractice[c.key]) {
+      const practice = findPracticeByKey(c.key)
+      const domainId = practice?.phaseDomainId || practice?.domain?.id || c.key.split('_')[0]
+      byPractice[c.key] = { key: c.key, domainId, assigned: 0, completed: 0, skipped: 0, lastAssigned: null, lastCompleted: null }
+    }
+    byPractice[c.key].completed += 1
+    byPractice[c.key].lastCompleted = c.date
+  })
+
+  return { byPractice, byDomain, assigned, completed }
+}
+
+function getPracticeFriction(item) {
+  const name = item?.name || ''
+  if (/Theta|Shadow|Deep Work|Training|Mobility|Cold Exposure|Forgiveness|Deathlessness|Identity Decompression/.test(name)) return 3
+  if (/Stillness|Visualization|Somatic|Belief Audit|Trigger Mapping|Emotional Log|Observer/.test(name)) return 2
+  return 1
+}
+
+function getBehaviorAdjustment(item, behaviorStats, decision) {
+  if (!item || !behaviorStats) return { score: 0, label: null }
+  const keyStats = behaviorStats.byPractice?.[item.key] || { assigned: 0, completed: 0, skipped: 0 }
+  const domainId = item.phaseDomainId || item.domain?.id
+  const domainStats = behaviorStats.byDomain?.[domainId] || { assigned: 0, completed: 0, skipped: 0 }
+  const friction = getPracticeFriction(item)
+
+  let score = 0
+  let label = null
+
+  // Repeated skips mean the app should lower friction rather than stubbornly repeat.
+  if (keyStats.skipped >= 2) {
+    score -= 18
+    label = 'reduced_repeat_after_skips'
+  }
+
+  // If the domain itself is being skipped, favor lower-friction practices in that same domain.
+  if (domainStats.skipped >= 2 && friction === 1) {
+    score += 8
+    label = label || 'low_friction_reentry'
+  }
+
+  // If a user completes the same exact practice repeatedly, rotate rather than over-serving it.
+  if (keyStats.completed >= 3) {
+    score -= 8
+    label = label || 'mastered_rotate_deeper'
+  }
+
+  // Streak momentum can tolerate slightly higher leverage, as long as the exact practice is not overused.
+  const primary = decision?.primaryBlockerId
+  if (domainId === primary && domainStats.completed >= 2 && friction <= 2) {
+    score += 5
+    label = label || 'domain_momentum'
+  }
+
+  // Avoid high-friction critical assignments when a user has been skipping that domain.
+  if (domainId === primary && domainStats.skipped >= 2 && friction >= 3) {
+    score -= 10
+    label = label || 'avoid_high_friction_in_resistance'
+  }
+
+  return { score, label }
+}
+
+function scoreCandidate(item, { weak = [], used = new Set(), history = [], behaviorStats = null, date = new Date(), phase = '', slot = '', preferredDomainId = null, decision = null } = {}) {
   if (!item || used.has(item.key)) return -9999
   const primary = item.phaseDomainId || item.domain?.id
   const cross = item.cross || []
@@ -413,8 +551,11 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], date 
   const leverageBonus = crossCount >= 3 ? 7 : crossCount >= 2 ? 5 : crossCount
   const phaseFitBonus = getPhaseFitBonus(item, phase, slot)
   const repeatPenalty = immediateRepeat ? -22 : repeatedRecently ? -10 : 0
+  const behavior = getBehaviorAdjustment(item, behaviorStats, decision)
+  const criticalFrictionPenalty = slot === 'critical' && decision?.behaviorMode === 'lower_friction' && getPracticeFriction(item) >= 3 ? -8 : 0
+  const depthBonus = decision?.behaviorMode === 'increase_depth' && getPracticeFriction(item) >= 2 && !repeatedRecently ? 5 : 0
   const deterministicJitter = (stableHash(`${getSelectorSeed()}|${getDateKey(date)}|${phase}|${slot}|${item.key}`) % 1000) / 1000
-  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + leverageBonus + phaseFitBonus + repeatPenalty + deterministicJitter
+  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + leverageBonus + phaseFitBonus + repeatPenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter
 }
 
 function smartPick(candidates = [], used = new Set(), context = {}) {
@@ -540,6 +681,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   const weak = weakestDomains(domainScores, date)
   const pool = PHASE_POOLS[phase] || []
   const history = getRecentPracticeHistory(checked, date, 7)
+  const behaviorStats = getPracticeBehaviorStats(checked, date, 7)
   const items = []
   const used = new Set()
   const combinedUsed = () => new Set([...used, ...dayUsed])
@@ -556,7 +698,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   }
 
   const pushSmart = (candidates, priority, why, slot, preferredDomainId = null) => {
-    const item = smartPick(candidates, combinedUsed(), { weak, history, date, phase, slot, preferredDomainId, decision })
+    const item = smartPick(candidates, combinedUsed(), { weak, history, behaviorStats, date, phase, slot, preferredDomainId, decision })
     return push(pickToTuple(item), priority, whyFromDecision(decision, phase, slot, item, why))
   }
 
@@ -584,7 +726,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
       ...OPTIONAL_MORNING_POOL.slice(rotationIndex(date, OPTIONAL_MORNING_POOL.length)),
       ...OPTIONAL_MORNING_POOL.slice(0, rotationIndex(date, OPTIONAL_MORNING_POOL.length))
     ]
-    const optionalItem = smartPick(rotated, combinedUsed(), { weak, history, date, phase, slot: 'optional', preferredDomainId: weak[2] || targetDomain, decision })
+    const optionalItem = smartPick(rotated, combinedUsed(), { weak, history, behaviorStats, date, phase, slot: 'optional', preferredDomainId: weak[2] || targetDomain, decision })
     const optionalPick = pickToTuple(optionalItem)
     const optionalReason = optionalPick?.[1] === 'Visualization Practice'
       ? 'Rehearse the state before the day tests it'
