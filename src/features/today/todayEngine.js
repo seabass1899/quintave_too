@@ -298,7 +298,8 @@ function getRecentStatusFlags(dayStatus = {}, date = new Date()) {
 }
 
 function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), primedDomainId = null, onboardingProfile = null } = {}) {
-  const coherenceState = calculateCoherenceState({ onboardingProfile, domainScores, dayStatus, date })
+  const coherenceState = calculateCoherenceState({ onboardingProfile, domainScores, checked, dayStatus, date })
+  const interferenceState = coherenceState?.interference || null
   const status = getRecentStatusFlags(dayStatus, date)
   const history = getRecentPracticeHistory(checked, date, 7)
   const behaviorStats = getPracticeBehaviorStats(checked, date, 7)
@@ -308,9 +309,12 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   // as a normal weak domain.
   const primaryFromState = coherenceState?.system?.primaryAttunementBody || 'd2'
   const secondaryFromState = coherenceState?.system?.secondaryDrift || 'd3'
+  const pressureBody = interferenceState?.primaryPressureBody || null
   const inheritedDomain = primedDomainId || status.previousCorrectionDomain || null
   const inheritedIsMovable = inheritedDomain && inheritedDomain !== 'd1'
-  const primaryBlockerId = inheritedIsMovable ? inheritedDomain : primaryFromState
+  const pressureIsMovable = pressureBody && pressureBody !== 'd1'
+  const pressureDominates = (interferenceState?.driftPressure || 0) >= 55
+  const primaryBlockerId = inheritedIsMovable ? inheritedDomain : pressureDominates && pressureIsMovable ? pressureBody : primaryFromState
   const secondaryBlockerId = secondaryFromState === primaryBlockerId
     ? (['d2', 'd3', 'd4', 'd5'].find(id => id !== primaryBlockerId) || 'd3')
     : secondaryFromState
@@ -330,13 +334,13 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     .forEach(b => instabilityFlags.push(`low_${b.id}`))
 
   const primaryDomainStats = behaviorStats.byDomain?.[primaryBlockerId] || { assigned: 0, completed: 0, skipped: 0 }
-  const behaviorMode = primaryDomainStats.skipped >= 2
+  const behaviorMode = interferenceState?.adaptationBias || (primaryDomainStats.skipped >= 2
     ? 'lower_friction'
     : primaryDomainStats.completed >= 3
       ? 'increase_depth'
       : primaryDomainStats.completed >= 1
         ? 'reinforce_momentum'
-        : 'establish_baseline'
+        : 'establish_baseline')
 
   const primaryBody = coherenceState?.movableBodies?.[primaryBlockerId]
   const inheritedReason = inheritedIsMovable
@@ -344,25 +348,34 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     : null
   const reason = inheritedReason || `${primaryBody?.name || domainById(primaryBlockerId).name} has the greatest coherence drag from the Source reference today.`
 
-  const strategy = status.missedYesterday || status.isRecovery
+  const recoveryState = interferenceState?.recoveryState || 'stable'
+  const strategy = status.missedYesterday || status.isRecovery || ['missed_today', 'active_recovery', 'recovery_first', 'unstable_recovery'].includes(recoveryState)
     ? 'recovery_first'
     : coherenceState?.system?.redBodyCount > 0
       ? 'elevate_red_zone_body'
-      : (coherenceState?.system?.coherenceDistance || 0) >= 45
-        ? 'restore_source_attunement'
-        : (coherenceState?.source?.accessibility || 0) < 65
-          ? 'stabilize_source_access'
-          : 'advance_with_balance'
+      : (interferenceState?.overloadRisk?.label === 'high')
+        ? 'reduce_overload'
+        : (interferenceState?.driftPressure || 0) >= 60
+          ? 'stabilize_interference_pressure'
+          : (coherenceState?.system?.coherenceDistance || 0) >= 45
+            ? 'restore_source_attunement'
+            : (coherenceState?.source?.accessibility || 0) < 65
+              ? 'stabilize_source_access'
+              : 'advance_with_balance'
 
   const baseExplanation = strategy === 'recovery_first'
     ? 'The system is prioritizing recovery before expansion. Today starts with the movable body that needs to be re-attuned first.'
     : strategy === 'elevate_red_zone_body'
       ? 'At least one movable frequency body is below the Source-access threshold. Today prioritizes elevation toward Level 5 before expansion.'
-      : strategy === 'restore_source_attunement'
-        ? 'The system detected significant drift from the Source reference. Today closes the largest attunement gap first.'
-        : strategy === 'stabilize_source_access'
-          ? 'Source is fixed, but accessibility is not yet stable through the movable bodies. Today reinforces the bridge back to Source alignment.'
-          : 'The system is preserving balance while adding signal through higher-leverage practices.'
+      : strategy === 'reduce_overload'
+        ? 'The system detected overload risk. Today lowers friction so stabilization can happen without adding unnecessary strain.'
+        : strategy === 'stabilize_interference_pressure'
+          ? 'The system detected accumulated drift pressure. Today prioritizes the body creating the strongest interference load.'
+          : strategy === 'restore_source_attunement'
+            ? 'The system detected significant drift from the Source reference. Today closes the largest attunement gap first.'
+            : strategy === 'stabilize_source_access'
+              ? 'Source is fixed, but accessibility is not yet stable through the movable bodies. Today reinforces the bridge back to Source alignment.'
+              : 'The system is preserving balance while adding signal through higher-leverage practices.'
 
   const behaviorExplanation = behaviorMode === 'lower_friction'
     ? 'Recent resistance was detected, so the engine is favoring a lower-friction entry point.'
@@ -389,6 +402,14 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     explanation,
     instabilityFlags,
     behaviorMode,
+    interferenceState,
+    interferenceSummary: {
+      driftPressure: interferenceState?.driftPressure || 0,
+      recoveryState: interferenceState?.recoveryState || 'stable',
+      overloadRisk: interferenceState?.overloadRisk?.label || 'minimal',
+      stabilizationMomentum: interferenceState?.stabilizationMomentum || 'none',
+      adaptationBias: interferenceState?.adaptationBias || behaviorMode,
+    },
     behaviorSummary: {
       primaryDomain: primaryBlockerId,
       assigned: primaryDomainStats.assigned,

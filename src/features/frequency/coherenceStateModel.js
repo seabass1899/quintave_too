@@ -1,4 +1,5 @@
 import { DOMAINS } from '../../data'
+import { calculateInterferenceState } from './interferenceStateModel'
 
 export const SOURCE_REFERENCE = {
   id: 'd1',
@@ -133,7 +134,7 @@ function bodyStateFromPlane(plane) {
   return 'gray_zone_stabilized'
 }
 
-export function calculateCoherenceState({ onboardingProfile = null, domainScores = {}, dayStatus = {}, date = new Date() } = {}) {
+export function calculateCoherenceState({ onboardingProfile = null, domainScores = {}, checked = {}, dayStatus = {}, date = new Date() } = {}) {
   const onboardingScores = getOnboardingScores(onboardingProfile)
   const movableBodies = {}
   const movableValues = []
@@ -169,23 +170,30 @@ export function calculateCoherenceState({ onboardingProfile = null, domainScores
   const redZonePenalty = redBodies * 9
   const cleanStreak = getCleanStreak(dayStatus, date)
   const recentMisses = getRecentMisses(dayStatus, date, 7)
+  const interferenceState = calculateInterferenceState({ dayStatus, checked, date, movableBodies })
+  const overloadPenalty = clamp((interferenceState?.overloadRisk?.score || 0) * 0.16, 0, 14)
+  const driftPenalty = clamp((interferenceState?.driftPressure || 0) * 0.18, 0, 18)
   const streakBonus = clamp(cleanStreak * 1.25, 0, 12)
   const missPenalty = clamp(recentMisses * 6, 0, 24)
 
   const sourceAccessibility = Math.round(clamp(
-    averageMovableScore - spreadPenalty - redZonePenalty - missPenalty + streakBonus,
+    averageMovableScore - spreadPenalty - redZonePenalty - missPenalty - overloadPenalty - driftPenalty + streakBonus,
     0,
     100
   ))
 
   const sourceAccessState = classifySourceAccess(sourceAccessibility, redBodies)
   const coherenceDistance = Math.round(clamp(
-    values.reduce((sum, b) => sum + b.driftFromSource, 0) / values.length + spreadPenalty + redZonePenalty,
+    values.reduce((sum, b) => sum + b.driftFromSource, 0) / values.length + spreadPenalty + redZonePenalty + driftPenalty,
     0,
     100
   ))
 
-  const sortedByDrag = [...values].sort((a, b) => b.driftFromSource - a.driftFromSource)
+  const sortedByDrag = [...values].sort((a, b) => {
+    const aPressure = interferenceState?.bodyPressure?.[a.id]?.pressure || 0
+    const bPressure = interferenceState?.bodyPressure?.[b.id]?.pressure || 0
+    return (b.driftFromSource + bPressure * 0.35) - (a.driftFromSource + aPressure * 0.35)
+  })
   const primary = sortedByDrag[0]
   const secondary = sortedByDrag[1]
 
@@ -204,6 +212,7 @@ export function calculateCoherenceState({ onboardingProfile = null, domainScores
       accessState: sourceAccessState,
     },
     movableBodies,
+    interference: interferenceState,
     system: {
       lowestMovablePlane,
       highestMovablePlane,
@@ -218,6 +227,10 @@ export function calculateCoherenceState({ onboardingProfile = null, domainScores
       secondaryDrift: secondary?.id || 'd3',
       primaryDrag: primary?.driftFromSource || 0,
       secondaryDrag: secondary?.driftFromSource || 0,
+      driftPressure: interferenceState?.driftPressure || 0,
+      recoveryState: interferenceState?.recoveryState || 'stable',
+      overloadRisk: interferenceState?.overloadRisk?.label || 'minimal',
+      adaptationBias: interferenceState?.adaptationBias || 'establish_baseline',
     },
   }
 }
