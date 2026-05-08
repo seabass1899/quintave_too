@@ -1,4 +1,5 @@
 import { DOMAINS, PRACTICES } from '../../data'
+import { calculateCoherenceState } from '../frequency/coherenceStateModel'
 
 export const PHASES = [
   { id: 'morning', label: 'Morning', role: 'Initialize', required: 2, proceedMinimum: 1, unlockHour: 0 },
@@ -153,7 +154,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 8
+export const TODAY_PLAN_VERSION = 9
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -296,23 +297,37 @@ function getRecentStatusFlags(dayStatus = {}, date = new Date()) {
   }
 }
 
-function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), primedDomainId = null } = {}) {
-  const diagnostics = getDomainDiagnostics(domainScores, date)
+function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), primedDomainId = null, onboardingProfile = null } = {}) {
+  const coherenceState = calculateCoherenceState({ onboardingProfile, domainScores, dayStatus, date })
   const status = getRecentStatusFlags(dayStatus, date)
   const history = getRecentPracticeHistory(checked, date, 7)
   const behaviorStats = getPracticeBehaviorStats(checked, date, 7)
-  const weakest = diagnostics[0] || domainById('d1')
-  const secondary = diagnostics[1] || weakest
-  const strongest = diagnostics[diagnostics.length - 1] || weakest
 
+  // Source is the fixed core reference. The engine selects the movable body that
+  // has drifted furthest from Source accessibility rather than treating Source
+  // as a normal weak domain.
+  const primaryFromState = coherenceState?.system?.primaryAttunementBody || 'd2'
+  const secondaryFromState = coherenceState?.system?.secondaryDrift || 'd3'
   const inheritedDomain = primedDomainId || status.previousCorrectionDomain || null
-  const primaryBlockerId = inheritedDomain || weakest.id
-  const secondaryBlockerId = secondary.id === primaryBlockerId ? (diagnostics[2]?.id || secondary.id) : secondary.id
+  const inheritedIsMovable = inheritedDomain && inheritedDomain !== 'd1'
+  const primaryBlockerId = inheritedIsMovable ? inheritedDomain : primaryFromState
+  const secondaryBlockerId = secondaryFromState === primaryBlockerId
+    ? (['d2', 'd3', 'd4', 'd5'].find(id => id !== primaryBlockerId) || 'd3')
+    : secondaryFromState
+
+  const strongestDomainId = [...Object.values(coherenceState?.movableBodies || {})]
+    .sort((a, b) => b.score - a.score)[0]?.id || 'd2'
 
   const instabilityFlags = []
   if (status.missedYesterday) instabilityFlags.push('missed_previous_day')
   if (status.isRecovery) instabilityFlags.push('recovery_mode')
-  diagnostics.filter(d => d.effectiveScore < 35).slice(0, 2).forEach(d => instabilityFlags.push(`low_${d.id}`))
+  if (coherenceState?.system?.redBodyCount > 0) instabilityFlags.push('red_zone_body_present')
+  if ((coherenceState?.source?.accessibility || 0) < 45) instabilityFlags.push('faint_source_access')
+
+  Object.values(coherenceState?.movableBodies || {})
+    .filter(b => b.score < 35)
+    .slice(0, 2)
+    .forEach(b => instabilityFlags.push(`low_${b.id}`))
 
   const primaryDomainStats = behaviorStats.byDomain?.[primaryBlockerId] || { assigned: 0, completed: 0, skipped: 0 }
   const behaviorMode = primaryDomainStats.skipped >= 2
@@ -323,25 +338,31 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
         ? 'reinforce_momentum'
         : 'establish_baseline'
 
-  const reason = inheritedDomain
+  const primaryBody = coherenceState?.movableBodies?.[primaryBlockerId]
+  const inheritedReason = inheritedIsMovable
     ? `${domainById(inheritedDomain).name} carried forward as yesterday's correction point.`
-    : `${weakest.name} is the lowest active frequency body today.`
+    : null
+  const reason = inheritedReason || `${primaryBody?.name || domainById(primaryBlockerId).name} has the greatest coherence drag from the Source reference today.`
 
   const strategy = status.missedYesterday || status.isRecovery
     ? 'recovery_first'
-    : weakest.effectiveScore < 40
-      ? 'stabilize_blocker'
-      : diagnostics.some(d => d.effectiveScore < 55)
-        ? 'harmonize_lagging_body'
-        : 'advance_with_balance'
+    : coherenceState?.system?.redBodyCount > 0
+      ? 'elevate_red_zone_body'
+      : (coherenceState?.system?.coherenceDistance || 0) >= 45
+        ? 'restore_source_attunement'
+        : (coherenceState?.source?.accessibility || 0) < 65
+          ? 'stabilize_source_access'
+          : 'advance_with_balance'
 
   const baseExplanation = strategy === 'recovery_first'
-    ? 'The system is prioritizing recovery before expansion. Today starts with the correction domain before adding optional signal.'
-    : strategy === 'stabilize_blocker'
-      ? 'The system detected a low-domain blocker. Today begins with the smallest practice that stabilizes that frequency body.'
-      : strategy === 'harmonize_lagging_body'
-        ? 'The system is closing the gap between frequency bodies so advancement is not built on imbalance.'
-        : 'The system is preserving balance while adding signal through higher-leverage practices.'
+    ? 'The system is prioritizing recovery before expansion. Today starts with the movable body that needs to be re-attuned first.'
+    : strategy === 'elevate_red_zone_body'
+      ? 'At least one movable frequency body is below the Source-access threshold. Today prioritizes elevation toward Level 5 before expansion.'
+      : strategy === 'restore_source_attunement'
+        ? 'The system detected significant drift from the Source reference. Today closes the largest attunement gap first.'
+        : strategy === 'stabilize_source_access'
+          ? 'Source is fixed, but accessibility is not yet stable through the movable bodies. Today reinforces the bridge back to Source alignment.'
+          : 'The system is preserving balance while adding signal through higher-leverage practices.'
 
   const behaviorExplanation = behaviorMode === 'lower_friction'
     ? 'Recent resistance was detected, so the engine is favoring a lower-friction entry point.'
@@ -354,11 +375,15 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   const explanation = `${baseExplanation} ${behaviorExplanation}`
 
   return {
-    version: 'alignment-decision-v1',
+    version: 'coherence-state-decision-v1',
     dateKey: getDateKey(date),
+    sourceReference: coherenceState.source,
+    coherenceState,
     primaryBlockerId,
     secondaryBlockerId,
-    strongestDomainId: strongest.id,
+    primaryAttunementBodyId: primaryBlockerId,
+    secondaryDriftId: secondaryBlockerId,
+    strongestDomainId,
     reason,
     strategy,
     explanation,
@@ -370,12 +395,15 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
       completed: primaryDomainStats.completed,
       skipped: primaryDomainStats.skipped,
     },
-    domainDiagnostics: diagnostics.map(d => ({
-      id: d.id,
-      name: d.name,
-      effectiveScore: d.effectiveScore,
-      liveScore: d.liveScore,
-      onboardingScore: d.onboardingScore,
+    domainDiagnostics: Object.values(coherenceState.movableBodies || {}).map(b => ({
+      id: b.id,
+      name: b.name,
+      effectiveScore: b.score,
+      plane: b.plane,
+      subPlane: b.subPlane,
+      zone: b.zone,
+      driftFromSource: b.driftFromSource,
+      state: b.state,
     })),
     recentPracticeKeys: history.slice(-8).map(h => h.key),
   }
@@ -980,7 +1008,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const todayChecks = checked?.[dateKey] || {}
   const previousStatus = dayStatus?.[previousDateKey] || null
   const primedDomainId = previousStatus?.correctionDomain || null
-  const decision = buildAlignmentDecision({ domainScores, checked, dayStatus, date, primedDomainId })
+  const decision = buildAlignmentDecision({ domainScores, checked, dayStatus, date, primedDomainId, onboardingProfile })
   const currentPhase = getCurrentPhase(date)
   const phases = {}
 
