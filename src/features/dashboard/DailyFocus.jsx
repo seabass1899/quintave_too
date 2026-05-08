@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react'
+Fimport React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
 import { trackEvent } from '../../app/utils/analytics'
 
@@ -281,7 +281,7 @@ function SystemReadPanel({ decision }) {
         color: '#777',
         marginBottom: 6
       }}>
-        Today’s System Read
+        Today’s Alignment Read
       </div>
 
       <div style={{
@@ -289,7 +289,10 @@ function SystemReadPanel({ decision }) {
         fontWeight: 950,
         color: '#1a1a18'
       }}>
-        Primary blocker: {primary}
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+        Core reference: <strong>Source</strong>
+      </div>
+        Primary attunement body: {primary}
       </div>
 
       {secondary && secondary !== primary && (
@@ -298,7 +301,7 @@ function SystemReadPanel({ decision }) {
           color: '#666',
           marginTop: 4
         }}>
-          Secondary pressure: <strong>{secondary}</strong>
+          Secondary drift: <strong>{secondary}</strong>
         </div>
       )}
 
@@ -308,7 +311,7 @@ function SystemReadPanel({ decision }) {
         marginTop: 7,
         lineHeight: 1.55
       }}>
-        <strong>System response:</strong>{' '}
+        <strong>Alignment response:</strong>{' '}
         {STRATEGY_LABELS[decision.strategy] || decision.strategy?.replaceAll('_', ' ') || 'Stabilize the weakest frequency body'}
       </div>
 
