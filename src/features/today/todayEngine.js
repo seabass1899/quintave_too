@@ -2,6 +2,7 @@ import { DOMAINS, PRACTICES } from '../../data'
 import { calculateCoherenceState } from '../frequency/coherenceStateModel'
 import { calculateCoherenceTrajectory } from '../frequency/coherenceTrajectoryModel'
 import { calculateCoherenceMemory } from '../frequency/coherenceMemoryModel'
+import { calculateCoherencePhase } from '../frequency/coherencePhaseModel'
 
 export const PHASES = [
   { id: 'morning', label: 'Morning', role: 'Initialize', required: 2, proceedMinimum: 1, unlockHour: 0 },
@@ -167,7 +168,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 10
+export const TODAY_PLAN_VERSION = 11
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -315,6 +316,15 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   const interferenceState = coherenceState?.interference || null
   const trajectoryState = calculateCoherenceTrajectory({ checked, dayStatus, date, currentCoherenceState: coherenceState })
   const memoryState = calculateCoherenceMemory({ checked, dayStatus, date, currentCoherenceState: coherenceState, currentTrajectoryState: trajectoryState })
+  const phaseState = calculateCoherencePhase({
+    coherenceState,
+    interferenceState,
+    trajectoryState,
+    memoryState,
+    dayStatus,
+    checked,
+    date,
+  })
   const status = getRecentStatusFlags(dayStatus, date)
   const history = getRecentPracticeHistory(checked, date, 7)
   const behaviorStats = getPracticeBehaviorStats(checked, date, 7)
@@ -385,9 +395,17 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     increase_depth: 'increase_depth',
     establish_baseline: 'establish_baseline',
   }
+  const phaseBiasMap = {
+    recovery: 'lower_friction',
+    collapse_rebuild: 'lower_friction',
+    stabilization: 'establish_baseline',
+    expansion: 'increase_depth',
+    integration: 'reinforce_momentum',
+  }
+  const phaseBias = phaseBiasMap[phaseState?.phase] || null
   const memoryBias = memoryBiasMap[memoryState?.recommendationBias] || null
   const trajectoryBias = trajectoryBiasMap[trajectoryState?.recommendationBias] || null
-  const behaviorMode = interferenceState?.adaptationBias || memoryBias || trajectoryBias || (primaryDomainStats.skipped >= 2
+  const behaviorMode = phaseBias || interferenceState?.adaptationBias || memoryBias || trajectoryBias || (primaryDomainStats.skipped >= 2
     ? 'lower_friction'
     : primaryDomainStats.completed >= 3
       ? 'increase_depth'
@@ -405,7 +423,7 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   const reason = inheritedReason || memoryReason || `${primaryBody?.name || domainById(primaryBlockerId).name} has the greatest coherence drag from the Source reference today.`
 
   const recoveryState = interferenceState?.recoveryState || 'stable'
-  const strategy = status.missedYesterday || status.isRecovery || trajectoryState?.recommendationBias === 'recovery_first' || memoryState?.recommendationBias === 'recovery_first' || ['missed_today', 'active_recovery', 'recovery_first', 'unstable_recovery'].includes(recoveryState)
+  const strategy = ['recovery', 'collapse_rebuild'].includes(phaseState?.phase) || status.missedYesterday || status.isRecovery || trajectoryState?.recommendationBias === 'recovery_first' || memoryState?.recommendationBias === 'recovery_first' || ['missed_today', 'active_recovery', 'recovery_first', 'unstable_recovery'].includes(recoveryState)
     ? 'recovery_first'
     : coherenceState?.system?.redBodyCount > 0 || trajectoryState?.recommendationBias === 'stabilize_before_expansion' || memoryState?.recommendationBias === 'stabilize_recurring_drift'
       ? 'elevate_red_zone_body'
@@ -443,7 +461,8 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
 
   const trajectoryExplanation = trajectoryState?.explanation ? ` ${trajectoryState.explanation}` : ''
   const memoryExplanation = memoryState?.explanation ? ` ${memoryState.explanation}` : ''
-  const explanation = `${baseExplanation} ${behaviorExplanation}${trajectoryExplanation}${memoryExplanation}`
+  const phaseExplanation = phaseState?.explanation ? ` ${phaseState.explanation}` : ''
+  const explanation = `${baseExplanation} ${behaviorExplanation}${trajectoryExplanation}${memoryExplanation}${phaseExplanation}`
 
   return {
     version: 'coherence-state-decision-v1',
@@ -463,6 +482,16 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     interferenceState,
     trajectoryState,
     memoryState,
+    phaseState,
+    phaseSummary: {
+      phase: phaseState?.phase || 'stabilization',
+      label: phaseState?.label || 'Stabilization Phase',
+      confidence: phaseState?.confidence || 0,
+      engineBias: phaseState?.engineBias || 'stabilize_before_expansion',
+      complexity: phaseState?.complexity || 'standard',
+      sourceDirective: phaseState?.sourceDirective || 'anchor_source_first',
+      reasons: phaseState?.reasons || [],
+    },
     trajectorySummary: {
       trend: trajectoryState?.trend || 'baseline_building',
       dominantDriftBody: trajectoryState?.dominantDriftBody || null,
@@ -691,6 +720,10 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], behav
   const behavior = getBehaviorAdjustment(item, behaviorStats, decision)
   const criticalFrictionPenalty = slot === 'critical' && decision?.behaviorMode === 'lower_friction' && getPracticeFriction(item) >= 3 ? -8 : 0
   const depthBonus = decision?.behaviorMode === 'increase_depth' && getPracticeFriction(item) >= 2 && !repeatedRecently ? 5 : 0
+  const phase = decision?.phaseSummary?.phase
+  const phaseComplexity = decision?.phaseSummary?.complexity
+  const phaseFrictionBonus = phaseComplexity === 'low' && getPracticeFriction(item) === 1 ? 5 : phaseComplexity === 'deepening' && getPracticeFriction(item) >= 2 ? 4 : 0
+  const phaseRecoveryPenalty = ['recovery', 'collapse_rebuild'].includes(phase) && getPracticeFriction(item) >= 3 ? -10 : 0
   const deterministicJitter = (stableHash(`${getSelectorSeed()}|${getDateKey(date)}|${phase}|${slot}|${item.key}`) % 1000) / 1000
   return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + memoryDriftBonus + leverageBonus + phaseFitBonus + repeatPenalty + memoryResistancePenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter
 }
