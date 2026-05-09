@@ -480,59 +480,17 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
 function getPhaseFitBonus(item, phase = '', slot = '') {
   const name = item?.name || ''
   if (phase === 'morning') {
-    const rawTargetDomain = decision?.primaryBlockerId || primedDomainId || weak.find(id => id !== 'd1') || 'd2'
-    const targetDomain = rawTargetDomain === 'd1' ? (weak.find(id => id !== 'd1') || 'd2') : rawTargetDomain
-    const adaptivePool = MORNING_ADAPTIVE_POOLS[targetDomain] || MORNING_ADAPTIVE_POOLS.d2
-
-    // 1) Source anchor: non-negotiable reference field. This is not because
-    // Source is weak; it is because the movable bodies require a stable
-    // reference before correction begins.
-    pushSmart(
-      SOURCE_ANCHOR_POOL,
-      'Required',
-      'Establish Source as the reference field before correcting the movable bodies',
-      'source_anchor',
-      'd1'
-    )
-
-    // 2) Primary attunement: selected from the current movable-body correction
-    // domain, with anti-repeat, behavior adaptation, and leverage weighting.
-    pushSmart(
-      adaptivePool,
-      'Critical',
-      primedDomainId ? "Yesterday's correction anchor" : 'Primary movable-body attunement anchor',
-      'critical',
-      targetDomain
-    )
-
-    // 3) Optional support: regulate the vessel, add leverage, or support the
-    // next weakest signal without repeating the Source anchor or the correction.
-    const rotated = [
-      ...OPTIONAL_MORNING_POOL.slice(rotationIndex(date, OPTIONAL_MORNING_POOL.length)),
-      ...OPTIONAL_MORNING_POOL.slice(0, rotationIndex(date, OPTIONAL_MORNING_POOL.length))
-    ]
-    const optionalItem = smartPick(rotated, combinedUsed(), { weak, history, behaviorStats, date, phase, slot: 'optional', preferredDomainId: weak[2] || targetDomain, decision })
-    const optionalPick = pickToTuple(optionalItem)
-    const optionalReason = optionalPick?.[1] === 'Visualization Practice'
-      ? 'Rehearse the state before the day tests it'
-      : optionalPick?.[1] === 'Breathwork'
-        ? 'Regulate the vessel before external input'
-        : optionalPick?.[1] === 'Observer Drill'
-          ? 'Strengthen witness awareness early'
-          : optionalPick?.[1] === 'Affirmation Installation'
-            ? 'Install the chosen identity signal'
-            : optionalPick?.[1] === 'Hydration Protocol'
-              ? 'Restore physical signal flow early'
-              : 'Stabilize Form early'
-    push(optionalPick, 'Optional', optionalReason)
+    if (slot === 'source_anchor' && item?.phaseDomainId === 'd1') return 8
+    if (slot === 'critical' && /Stillness|Directive|Sun|Observer|Affirmation|Breathwork|Pattern Interrupt|Emotion|Hydration|Visualization|Somatic|90-Second/.test(name)) return 5
+    if (slot === 'required' && /Directive|Visualization|Observer|Affirmation|Breathwork|Stillness|Recall|Non-Local/.test(name)) return 4
+    return 1
   }
-
   if (phase === 'midday') {
     if (/Pattern Interrupt|Recall|Emotion|Breathwork|Thought Audit|Hydration|90-Second|Training/.test(name)) return 5
     return 0
   }
   if (phase === 'evening') {
-    if (/Pre-Sleep|Emotional Log|Gratitude|Forgiveness|Dream|Belief|Body Scan|Sleep/.test(name)) return 5
+    if (/Pre-Sleep|Emotional Log|Gratitude|Forgiveness|Dream|Belief|Body Scan|Sleep|Non-Local/.test(name)) return 5
     return 0
   }
   return 0
@@ -845,25 +803,33 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   }
 
   if (phase === 'morning') {
-    const targetDomain = decision?.primaryBlockerId || primedDomainId || weak[0] || 'd1'
-    const adaptivePool = MORNING_ADAPTIVE_POOLS[targetDomain] || MORNING_ADAPTIVE_POOLS.d1
+    const rawTargetDomain = decision?.primaryBlockerId || primedDomainId || weak.find(id => id !== 'd1') || 'd2'
+    const targetDomain = rawTargetDomain === 'd1' ? (weak.find(id => id !== 'd1') || 'd2') : rawTargetDomain
+    const adaptivePool = MORNING_ADAPTIVE_POOLS[targetDomain] || MORNING_ADAPTIVE_POOLS.d2
 
-    // Critical: selected from the current correction domain, with anti-repeat and leverage weighting.
+    // 1) Source anchor: non-negotiable reference field. This is not because
+    // Source is weak; it is because the movable bodies require a stable
+    // reference before correction begins.
+    pushSmart(
+      SOURCE_ANCHOR_POOL,
+      'Required',
+      'Establish Source as the reference field before correcting the movable bodies',
+      'source_anchor',
+      'd1'
+    )
+
+    // 2) Primary attunement: selected from the current movable-body correction
+    // domain, with anti-repeat, behavior adaptation, and leverage weighting.
     pushSmart(
       adaptivePool,
       'Critical',
-      primedDomainId ? 'Yesterday\'s correction anchor' : 'Adaptive weakest-domain anchor',
+      primedDomainId ? "Yesterday's correction anchor" : 'Primary movable-body attunement anchor',
       'critical',
       targetDomain
     )
 
-    // Required: still initializes conscious control, but can rotate when Morning Directive was just used.
-    const requiredWhy = used.has(findPractice('d4', 'Morning Directive')?.key)
-      ? 'Install directed mental imagery'
-      : 'Initialize the conscious director'
-    pushSmart(REQUIRED_MORNING_POOL, 'Required', requiredWhy, 'required', weak[1] || 'd4')
-
-    // Optional: support the weakest domain or the physical vessel without repeating yesterday's exact pattern.
+    // 3) Optional support: regulate the vessel, add leverage, or support the
+    // next weakest signal without repeating the Source anchor or the correction.
     const rotated = [
       ...OPTIONAL_MORNING_POOL.slice(rotationIndex(date, OPTIONAL_MORNING_POOL.length)),
       ...OPTIONAL_MORNING_POOL.slice(0, rotationIndex(date, OPTIONAL_MORNING_POOL.length))
