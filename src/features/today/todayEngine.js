@@ -1,6 +1,7 @@
 import { DOMAINS, PRACTICES } from '../../data'
 import { calculateCoherenceState } from '../frequency/coherenceStateModel'
 import { calculateCoherenceTrajectory } from '../frequency/coherenceTrajectoryModel'
+import { calculateCoherenceMemory } from '../frequency/coherenceMemoryModel'
 
 export const PHASES = [
   { id: 'morning', label: 'Morning', role: 'Initialize', required: 2, proceedMinimum: 1, unlockHour: 0 },
@@ -166,7 +167,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 9
+export const TODAY_PLAN_VERSION = 10
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -313,6 +314,7 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   const coherenceState = calculateCoherenceState({ onboardingProfile, domainScores, checked, dayStatus, date })
   const interferenceState = coherenceState?.interference || null
   const trajectoryState = calculateCoherenceTrajectory({ checked, dayStatus, date, currentCoherenceState: coherenceState })
+  const memoryState = calculateCoherenceMemory({ checked, dayStatus, date, currentCoherenceState: coherenceState, currentTrajectoryState: trajectoryState })
   const status = getRecentStatusFlags(dayStatus, date)
   const history = getRecentPracticeHistory(checked, date, 7)
   const behaviorStats = getPracticeBehaviorStats(checked, date, 7)
@@ -324,23 +326,31 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   const secondaryFromState = coherenceState?.system?.secondaryDrift || 'd3'
   const pressureBody = interferenceState?.primaryPressureBody || null
   const trajectoryBody = trajectoryState?.dominantDriftBody || null
+  const memoryBody = memoryState?.recurrentDriftBody || null
   const inheritedDomain = primedDomainId || status.previousCorrectionDomain || null
   const inheritedIsMovable = inheritedDomain && inheritedDomain !== 'd1'
   const pressureIsMovable = pressureBody && pressureBody !== 'd1'
   const pressureDominates = (interferenceState?.driftPressure || 0) >= 55
   const trajectoryDominates = (trajectoryState?.dominantDriftScore || 0) >= 52 || ['drifting', 'recovering'].includes(trajectoryState?.trend)
   const trajectoryIsMovable = trajectoryBody && trajectoryBody !== 'd1'
+  const memoryIsMovable = memoryBody && memoryBody !== 'd1'
+  const memoryDominates = memoryIsMovable && (memoryState?.confidence || 0) >= 0.45 && ['stabilize_recurring_drift', 'recovery_first'].includes(memoryState?.recommendationBias)
   const primaryBlockerId = inheritedIsMovable
     ? inheritedDomain
     : pressureDominates && pressureIsMovable
       ? pressureBody
-      : trajectoryDominates && trajectoryIsMovable
-        ? trajectoryBody
-        : primaryFromState
+      : memoryDominates
+        ? memoryBody
+        : trajectoryDominates && trajectoryIsMovable
+          ? trajectoryBody
+          : primaryFromState
   const trajectorySecondary = trajectoryState?.secondaryDriftBody || null
-  const secondaryBlockerId = trajectorySecondary && trajectorySecondary !== primaryBlockerId
-    ? trajectorySecondary
-    : secondaryFromState === primaryBlockerId
+  const memorySecondary = memoryState?.secondaryRecurringBody || null
+  const secondaryBlockerId = memorySecondary && memorySecondary !== primaryBlockerId
+    ? memorySecondary
+    : trajectorySecondary && trajectorySecondary !== primaryBlockerId
+      ? trajectorySecondary
+      : secondaryFromState === primaryBlockerId
       ? (['d2', 'd3', 'd4', 'd5'].find(id => id !== primaryBlockerId) || 'd3')
       : secondaryFromState
 
@@ -367,8 +377,17 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     reinforce_momentum: 'reinforce_momentum',
     establish_baseline: 'establish_baseline',
   }
+  const memoryBiasMap = {
+    recovery_first: 'lower_friction',
+    lower_friction: 'lower_friction',
+    stabilize_recurring_drift: 'establish_baseline',
+    reinforce_memory_momentum: 'reinforce_momentum',
+    increase_depth: 'increase_depth',
+    establish_baseline: 'establish_baseline',
+  }
+  const memoryBias = memoryBiasMap[memoryState?.recommendationBias] || null
   const trajectoryBias = trajectoryBiasMap[trajectoryState?.recommendationBias] || null
-  const behaviorMode = interferenceState?.adaptationBias || trajectoryBias || (primaryDomainStats.skipped >= 2
+  const behaviorMode = interferenceState?.adaptationBias || memoryBias || trajectoryBias || (primaryDomainStats.skipped >= 2
     ? 'lower_friction'
     : primaryDomainStats.completed >= 3
       ? 'increase_depth'
@@ -380,12 +399,15 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
   const inheritedReason = inheritedIsMovable
     ? `${domainById(inheritedDomain).name} carried forward as yesterday's correction point.`
     : null
-  const reason = inheritedReason || `${primaryBody?.name || domainById(primaryBlockerId).name} has the greatest coherence drag from the Source reference today.`
+  const memoryReason = memoryDominates
+    ? `${domainById(memoryBody).name} is recurring as the dominant drift pattern in the user's recent coherence memory.`
+    : null
+  const reason = inheritedReason || memoryReason || `${primaryBody?.name || domainById(primaryBlockerId).name} has the greatest coherence drag from the Source reference today.`
 
   const recoveryState = interferenceState?.recoveryState || 'stable'
-  const strategy = status.missedYesterday || status.isRecovery || trajectoryState?.recommendationBias === 'recovery_first' || ['missed_today', 'active_recovery', 'recovery_first', 'unstable_recovery'].includes(recoveryState)
+  const strategy = status.missedYesterday || status.isRecovery || trajectoryState?.recommendationBias === 'recovery_first' || memoryState?.recommendationBias === 'recovery_first' || ['missed_today', 'active_recovery', 'recovery_first', 'unstable_recovery'].includes(recoveryState)
     ? 'recovery_first'
-    : coherenceState?.system?.redBodyCount > 0 || trajectoryState?.recommendationBias === 'stabilize_before_expansion'
+    : coherenceState?.system?.redBodyCount > 0 || trajectoryState?.recommendationBias === 'stabilize_before_expansion' || memoryState?.recommendationBias === 'stabilize_recurring_drift'
       ? 'elevate_red_zone_body'
       : (interferenceState?.overloadRisk?.label === 'high')
         ? 'reduce_overload'
@@ -420,7 +442,8 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
         : 'The engine is establishing a baseline pattern before increasing complexity.'
 
   const trajectoryExplanation = trajectoryState?.explanation ? ` ${trajectoryState.explanation}` : ''
-  const explanation = `${baseExplanation} ${behaviorExplanation}${trajectoryExplanation}`
+  const memoryExplanation = memoryState?.explanation ? ` ${memoryState.explanation}` : ''
+  const explanation = `${baseExplanation} ${behaviorExplanation}${trajectoryExplanation}${memoryExplanation}`
 
   return {
     version: 'coherence-state-decision-v1',
@@ -439,6 +462,7 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     behaviorMode,
     interferenceState,
     trajectoryState,
+    memoryState,
     trajectorySummary: {
       trend: trajectoryState?.trend || 'baseline_building',
       dominantDriftBody: trajectoryState?.dominantDriftBody || null,
@@ -449,6 +473,17 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
       recommendationBias: trajectoryState?.recommendationBias || 'establish_baseline',
       recentLocked: trajectoryState?.recentLocked || 0,
       recentMisses: trajectoryState?.recentMisses || 0,
+    },
+    memorySummary: {
+      confidence: memoryState?.confidence || 0,
+      observationDays: memoryState?.observationDays || 0,
+      recurrentDriftBody: memoryState?.recurrentDriftBody || null,
+      secondaryRecurringBody: memoryState?.secondaryRecurringBody || null,
+      resistancePracticeKeys: memoryState?.resistancePracticeKeys || [],
+      recoveryVelocity: memoryState?.recoveryVelocity || {},
+      stabilityWindow: memoryState?.stabilityWindow || 'unknown',
+      expansionTolerance: memoryState?.expansionTolerance || 'unknown',
+      recommendationBias: memoryState?.recommendationBias || 'establish_baseline',
     },
     interferenceSummary: {
       driftPressure: interferenceState?.driftPressure || 0,
@@ -648,6 +683,8 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], behav
   const recoveryBonus = decision?.strategy === 'recovery_first' && decision?.primaryBlockerId === primary ? 6 : 0
   const trajectoryBonus = decision?.trajectorySummary?.dominantDriftBody === primary ? 6 : decision?.trajectorySummary?.secondaryDriftBody === primary ? 3 : 0
   const stabilityDepthBonus = decision?.trajectorySummary?.mostStableBody === primary && decision?.behaviorMode === 'increase_depth' ? 3 : 0
+  const memoryDriftBonus = decision?.memorySummary?.recurrentDriftBody === primary ? 5 : decision?.memorySummary?.secondaryRecurringBody === primary ? 2 : 0
+  const memoryResistancePenalty = decision?.memorySummary?.resistancePracticeKeys?.includes(item.key) ? -8 : 0
   const leverageBonus = crossCount >= 3 ? 7 : crossCount >= 2 ? 5 : crossCount
   const phaseFitBonus = getPhaseFitBonus(item, phase, slot)
   const repeatPenalty = immediateRepeat ? -22 : repeatedRecently ? -10 : 0
@@ -655,7 +692,7 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], behav
   const criticalFrictionPenalty = slot === 'critical' && decision?.behaviorMode === 'lower_friction' && getPracticeFriction(item) >= 3 ? -8 : 0
   const depthBonus = decision?.behaviorMode === 'increase_depth' && getPracticeFriction(item) >= 2 && !repeatedRecently ? 5 : 0
   const deterministicJitter = (stableHash(`${getSelectorSeed()}|${getDateKey(date)}|${phase}|${slot}|${item.key}`) % 1000) / 1000
-  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + leverageBonus + phaseFitBonus + repeatPenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter
+  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + memoryDriftBonus + leverageBonus + phaseFitBonus + repeatPenalty + memoryResistancePenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter
 }
 
 function smartPick(candidates = [], used = new Set(), context = {}) {
