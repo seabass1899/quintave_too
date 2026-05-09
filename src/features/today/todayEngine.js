@@ -107,6 +107,17 @@ const OPTIONAL_MORNING_POOL = [
   ['d5', 'Affirmation Installation'],
 ]
 
+// Source is not a variable body competing for correction. It is the core
+// reference field. Morning therefore always includes exactly one Source anchor
+// so the movable bodies have a reference before correction begins.
+const SOURCE_ANCHOR_POOL = [
+  ['d1', 'Observer Drill'],
+  ['d1', 'Stillness Exposure'],
+  ['d1', '5 Recall Triggers'],
+  ['d1', 'Non-Local Body Scan'],
+  ['d1', 'Identity Decompression'],
+]
+
 const DOMAIN_FEEDBACK = {
   d1: { short: 'Source Stability', identity: 'You returned to the observer behind the noise.' },
   d2: { short: 'Form Vitality', identity: 'You strengthened the physical vessel that carries the signal.' },
@@ -469,10 +480,53 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
 function getPhaseFitBonus(item, phase = '', slot = '') {
   const name = item?.name || ''
   if (phase === 'morning') {
-    if (slot === 'critical' && /Stillness|Directive|Sun|Observer|Affirmation|Breathwork|Pattern Interrupt|Emotion|Hydration|Visualization/.test(name)) return 5
-    if (slot === 'required' && /Directive|Visualization|Observer|Affirmation|Breathwork/.test(name)) return 4
-    return 1
+    const rawTargetDomain = decision?.primaryBlockerId || primedDomainId || weak.find(id => id !== 'd1') || 'd2'
+    const targetDomain = rawTargetDomain === 'd1' ? (weak.find(id => id !== 'd1') || 'd2') : rawTargetDomain
+    const adaptivePool = MORNING_ADAPTIVE_POOLS[targetDomain] || MORNING_ADAPTIVE_POOLS.d2
+
+    // 1) Source anchor: non-negotiable reference field. This is not because
+    // Source is weak; it is because the movable bodies require a stable
+    // reference before correction begins.
+    pushSmart(
+      SOURCE_ANCHOR_POOL,
+      'Required',
+      'Establish Source as the reference field before correcting the movable bodies',
+      'source_anchor',
+      'd1'
+    )
+
+    // 2) Primary attunement: selected from the current movable-body correction
+    // domain, with anti-repeat, behavior adaptation, and leverage weighting.
+    pushSmart(
+      adaptivePool,
+      'Critical',
+      primedDomainId ? 'Yesterday's correction anchor' : 'Primary movable-body attunement anchor',
+      'critical',
+      targetDomain
+    )
+
+    // 3) Optional support: regulate the vessel, add leverage, or support the
+    // next weakest signal without repeating the Source anchor or the correction.
+    const rotated = [
+      ...OPTIONAL_MORNING_POOL.slice(rotationIndex(date, OPTIONAL_MORNING_POOL.length)),
+      ...OPTIONAL_MORNING_POOL.slice(0, rotationIndex(date, OPTIONAL_MORNING_POOL.length))
+    ]
+    const optionalItem = smartPick(rotated, combinedUsed(), { weak, history, behaviorStats, date, phase, slot: 'optional', preferredDomainId: weak[2] || targetDomain, decision })
+    const optionalPick = pickToTuple(optionalItem)
+    const optionalReason = optionalPick?.[1] === 'Visualization Practice'
+      ? 'Rehearse the state before the day tests it'
+      : optionalPick?.[1] === 'Breathwork'
+        ? 'Regulate the vessel before external input'
+        : optionalPick?.[1] === 'Observer Drill'
+          ? 'Strengthen witness awareness early'
+          : optionalPick?.[1] === 'Affirmation Installation'
+            ? 'Install the chosen identity signal'
+            : optionalPick?.[1] === 'Hydration Protocol'
+              ? 'Restore physical signal flow early'
+              : 'Stabilize Form early'
+    push(optionalPick, 'Optional', optionalReason)
   }
+
   if (phase === 'midday') {
     if (/Pattern Interrupt|Recall|Emotion|Breathwork|Thought Audit|Hydration|90-Second|Training/.test(name)) return 5
     return 0
@@ -487,8 +541,9 @@ function getPhaseFitBonus(item, phase = '', slot = '') {
 function whyFromDecision(decision, phase, slot, item, fallback) {
   const domainName = domainById(decision?.primaryBlockerId || item?.phaseDomainId || item?.domain?.id || 'd1').name
   if (!decision) return fallback
+  if (slot === 'source_anchor') return 'Source anchor selected to establish the reference field before correcting the movable bodies.'
   if (slot === 'critical') {
-    if (phase === 'morning') return `${domainName} is today's primary correction point. ${decision.strategy === 'recovery_first' ? 'Recovery comes before expansion.' : 'Begin here before adding anything else.'}`
+    if (phase === 'morning') return `${domainName} is today's primary attunement body. ${decision.strategy === 'recovery_first' ? 'Recovery comes before expansion.' : 'Begin here after the Source reference is established.'}`
     if (phase === 'midday') return `${domainName} is the drift point being corrected before the day runs on autopilot.`
     if (phase === 'evening') return `${domainName} is the open alignment point being closed before sleep.`
   }
