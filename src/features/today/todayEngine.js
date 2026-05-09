@@ -500,7 +500,7 @@ function getPhaseFitBonus(item, phase = '', slot = '') {
     pushSmart(
       adaptivePool,
       'Critical',
-      primedDomainId ? 'Yesterday's correction anchor' : 'Primary movable-body attunement anchor',
+      primedDomainId ? "Yesterday's correction anchor" : 'Primary movable-body attunement anchor',
       'critical',
       targetDomain
     )
