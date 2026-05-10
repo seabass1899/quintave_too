@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
+import PhaseReadCards from '../../app/components/PhaseReadCards'
 import { trackEvent } from '../../app/utils/analytics'
 
 const STRATEGY_LABELS = {
@@ -285,15 +286,42 @@ function SystemReadPanel({ decision }) {
       </div>
 
       <div style={{
-        fontSize: 15,
-        fontWeight: 950,
-        color: '#1a1a18'
-      }}>
-      <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
-        Core reference: <strong>Source</strong>
-      </div>
-        Primary attunement body: {primary}
-      </div>
+  fontSize: 12,
+  color: '#666',
+  marginBottom: 4
+}}>
+  Core reference: <strong>Source</strong>
+</div>
+
+<PhaseReadCards
+  phase={
+    decision?.phaseSummary?.displayPhase ||
+    decision?.phaseSummary?.phase ||
+    'Baseline'
+  }
+  primaryFocus={primary}
+  trajectory={
+    decision?.trajectorySummary?.trend
+      ?.replaceAll('_', ' ')
+      ?.replace(/\b\w/g, c => c.toUpperCase()) ||
+    'Baseline Building'
+  }
+  systemBias={
+    decision?.behaviorMode
+      ?.replaceAll('_', ' ')
+      ?.replace(/\b\w/g, c => c.toUpperCase()) ||
+    'Stabilize First'
+  }
+/>
+
+<div style={{
+  fontSize: 15,
+  fontWeight: 950,
+  color: '#1a1a18',
+  marginTop: 8
+}}>
+  Primary attunement body: {primary}
+</div>
 
       {secondary && secondary !== primary && (
         <div style={{
