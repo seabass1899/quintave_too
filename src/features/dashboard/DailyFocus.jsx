@@ -252,6 +252,121 @@ function DayLockedIn({ plan }) {
   )
 }
 
+function CoherenceProgressLayer({ decision }) {
+  if (!decision) return null
+
+  const labels = {
+    d1: 'Source',
+    d2: 'Form',
+    d3: 'Field',
+    d4: 'Mind',
+    d5: 'Code',
+  }
+
+  const primary = decision.primaryBlockerId
+  const secondary = decision.secondaryBlockerId
+  const stable = decision.trajectorySummary?.mostStableBody
+
+  const rows = [
+    {
+      id: 'd1',
+      label: 'Source',
+      state: 'Anchored',
+      symbol: '◎',
+      tone: '#7F77DD',
+    },
+    {
+      id: primary,
+      label: labels[primary] || 'Primary',
+      state: 'Recovering',
+      symbol: '↑',
+      tone: '#D85A30',
+    },
+    {
+      id: secondary,
+      label: labels[secondary] || 'Secondary',
+      state: 'Drifting',
+      symbol: '↓',
+      tone: '#BA7517',
+    },
+    {
+      id: stable,
+      label: labels[stable] || 'Stable body',
+      state: 'Stabilizing',
+      symbol: '→',
+      tone: '#1D9E75',
+    },
+  ].filter((row, index, arr) =>
+    row.id && arr.findIndex(r => r.id === row.id) === index
+  )
+
+  return (
+    <div style={{
+      marginTop: 14,
+      marginBottom: 14,
+      border: '1px solid #DFE3F0',
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, #FCFBF8, #F4F6FB)',
+      padding: '12px 14px'
+    }}>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 950,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: '#777',
+        marginBottom: 10
+      }}>
+        Coherence Progress
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: 8
+      }}>
+        {rows.map(row => (
+          <div key={row.id} style={{
+            border: `1px solid ${row.tone}30`,
+            background: '#fff',
+            borderRadius: 12,
+            padding: '9px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10
+          }}>
+            <div>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 900,
+                color: '#1a1a18'
+              }}>
+                {row.label}
+              </div>
+              <div style={{
+                fontSize: 11,
+                color: '#777',
+                marginTop: 2
+              }}>
+                {row.state}
+              </div>
+            </div>
+
+            <div style={{
+              color: row.tone,
+              fontSize: 18,
+              fontWeight: 950
+            }}>
+              {row.symbol}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function SystemReadPanel({ decision }) {
   if (!decision) return null
 
@@ -309,10 +424,12 @@ function SystemReadPanel({ decision }) {
           'Stabilize First'
         }
       />
+      <CoherenceProgressLayer decision={decision} />
 
       <div style={{ fontSize: 15, fontWeight: 950, color: '#1a1a18', marginTop: 8 }}>
         Primary attunement body: {primary}
       </div>
+
 
       {secondary && secondary !== primary && (
         <div style={{
