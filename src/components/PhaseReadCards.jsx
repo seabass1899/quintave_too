@@ -1,83 +1,142 @@
-// ─── PhaseReadCards.jsx ───────────────────────────────────────────────────────
+function formatLabel(value, fallback = 'Baseline') {
+  if (!value) return fallback
 
-import React from 'react'
+  const map = {
+    collapse_rebuild: 'Collapse / Rebuild',
+    recovery: 'Recovery',
+    stabilization: 'Stabilization',
+    expansion: 'Expansion',
+    integration: 'Integration',
+    baseline_building: 'Baseline Building',
+    lower_friction: 'Lower Friction',
+    establish_baseline: 'Establish Baseline',
+    increase_depth: 'Increase Depth',
+    reinforce_momentum: 'Reinforce Momentum',
+  }
 
-export default function PhaseReadCards({ phase, primaryFocus, trajectory, systemBias }) {
+  return map[value] || String(value)
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
 
+export default function PhaseReadCards({
+  phase,
+  primaryFocus,
+  trajectory,
+  systemBias
+}) {
   const cards = [
     {
+      icon: '◈',
       label: 'Current Phase',
-      value: phase || '—',
-      color: '#7F77DD',
-      bg: '#EEEDFE',
-      text: '#3C3489',
-      icon: '✦',
+      value: formatLabel(phase),
+      bg: 'linear-gradient(135deg, #F3F1FF, #FCFBF8)',
+      border: '#7F77DD33',
+      accent: '#7F77DD',
     },
     {
-      label: 'Primary Focus',
-      value: primaryFocus || '—',
-      color: '#E24B4A',
-      bg: '#FCEBEB',
-      text: '#791F1F',
-      icon: '⚡',
-    },
-    {
-      label: 'Trajectory',
-      value: trajectory || '—',
-      color: '#BA7517',
-      bg: '#FAEEDA',
-      text: '#633806',
-      icon: '↗',
-    },
-    {
-      label: 'System Response',
-      value: systemBias || '—',
-      color: '#1D9E75',
-      bg: '#E1F5EE',
-      text: '#085041',
       icon: '◎',
+      label: 'Primary Focus',
+      value: formatLabel(primaryFocus, 'System'),
+      bg: 'linear-gradient(135deg, #F4F6FB, #FFFFFF)',
+      border: '#378ADD30',
+      accent: '#378ADD',
+    },
+    {
+      icon: '↗',
+      label: 'Trajectory',
+      value: formatLabel(trajectory, 'Baseline Building'),
+      bg: 'linear-gradient(135deg, #FCFBF8, #F7F6F3)',
+      border: '#D4AF3730',
+      accent: '#BA7517',
+    },
+    {
+      icon: '⚡',
+      label: 'System Bias',
+      value: formatLabel(systemBias, 'Stabilize First'),
+      bg: 'linear-gradient(135deg, #EEEDFE, #FFF9F1)',
+      border: '#7F77DD35',
+      accent: '#3C3489',
     },
   ]
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)',
-      gap: 8,
-      margin: '10px 0',
-    }}>
-      {cards.map((card, i) => (
-        <div key={i} style={{
-          background: card.bg,
-          border: `1px solid ${card.color}30`,
-          borderRadius: 10,
-          padding: '10px 12px',
-          borderTop: `3px solid ${card.color}`,
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            marginBottom: 5,
-          }}>
-            <span style={{ fontSize: 11, color: card.color }}>{card.icon}</span>
-            <span style={{
-              fontSize: 9,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: card.color,
-            }}>
-              {card.label}
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: 12,
+        marginTop: 14,
+        marginBottom: 16,
+      }}
+    >
+      {cards.map(card => (
+        <div
+          key={card.label}
+          style={{
+            background: card.bg,
+            border: `1px solid ${card.border}`,
+            borderRadius: 16,
+            padding: '14px 15px',
+            boxShadow: '0 8px 22px rgba(60,52,137,0.055)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 4,
+              height: '100%',
+              background: card.accent,
+              opacity: 0.75,
+            }}
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              marginBottom: 8,
+              paddingLeft: 2,
+            }}
+          >
+            <span
+              style={{
+                color: card.accent,
+                fontSize: 13,
+                fontWeight: 900,
+              }}
+            >
+              {card.icon}
             </span>
+
+            <div
+              style={{
+                fontSize: 10,
+                color: '#6F6A7A',
+                textTransform: 'uppercase',
+                letterSpacing: '0.095em',
+                fontWeight: 900,
+              }}
+            >
+              {card.label}
+            </div>
           </div>
-          <div style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: card.text,
-            lineHeight: 1.3,
-            letterSpacing: '-0.01em',
-          }}>
+
+          <div
+            style={{
+              fontSize: 18,
+              fontWeight: 950,
+              letterSpacing: '-0.035em',
+              color: '#1a1a18',
+              lineHeight: 1.15,
+              paddingLeft: 2,
+            }}
+          >
             {card.value}
           </div>
         </div>
