@@ -351,6 +351,83 @@ function CoherenceProgressLayer({ decision }) {
 }
 
 
+
+function TesterDiagnostics({ decision }) {
+  const [visible, setVisible] = useState(() => {
+    try {
+      return localStorage.getItem('q_tester_diagnostics') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+        const next = !visible
+        setVisible(next)
+        try {
+          localStorage.setItem('q_tester_diagnostics', String(next))
+        } catch {}
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [visible])
+
+  if (!visible || !decision) return null
+
+  const coherence = decision.coherenceState
+  const interference = decision.interferenceSummary
+  const trajectory = decision.trajectorySummary
+  const memory = decision.memorySummary
+  const phase = decision.phaseSummary
+
+  return (
+    <div style={{
+      marginTop: 14,
+      border: '1px dashed rgba(0,0,0,0.22)',
+      borderRadius: 14,
+      background: '#FCFBF8',
+      padding: '12px 14px'
+    }}>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 950,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: '#777',
+        marginBottom: 10
+      }}>
+        Tester Diagnostics
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 8,
+        fontSize: 12,
+        color: '#444',
+        lineHeight: 1.5
+      }}>
+        <div><strong>Phase:</strong> {phase?.displayPhase || phase?.phase || 'unknown'}</div>
+        <div><strong>Primary:</strong> {decision.primaryBlockerId}</div>
+        <div><strong>Secondary:</strong> {decision.secondaryBlockerId}</div>
+        <div><strong>Strategy:</strong> {decision.strategy}</div>
+        <div><strong>Behavior:</strong> {decision.behaviorMode}</div>
+        <div><strong>Trajectory:</strong> {trajectory?.trend || 'unknown'}</div>
+        <div><strong>Source access:</strong> {coherence?.source?.accessibility ?? 'n/a'}</div>
+        <div><strong>Coherence distance:</strong> {coherence?.system?.coherenceDistance ?? 'n/a'}</div>
+        <div><strong>Recovery state:</strong> {interference?.recoveryState || 'n/a'}</div>
+        <div><strong>Overload risk:</strong> {interference?.overloadRisk || 'n/a'}</div>
+        <div><strong>Memory bias:</strong> {memory?.recommendationBias || 'n/a'}</div>
+        <div><strong>Recurring drift:</strong> {memory?.recurringDriftBody || 'n/a'}</div>
+      </div>
+    </div>
+  )
+}
+
 function SystemReadPanel({ decision }) {
   if (!decision) return null
 
@@ -454,6 +531,8 @@ function SystemReadPanel({ decision }) {
           {decision.explanation}
         </div>
       )}
+
+      <TesterDiagnostics decision={decision} />
     </div>
   )
 }
