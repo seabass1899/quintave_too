@@ -895,6 +895,9 @@ export default function App() {
   const [showMidday,     setShowMidday]     = useState(false)
   const [showEvening,    setShowEvening]    = useState(false)
   const [showTodayDetails, setShowTodayDetails] = useState(false)
+  const [showFTUE, setShowFTUE] = useState(() => {
+    return localStorage.getItem('q_ftue_complete') !== 'true'
+  })
   const rippleTimer  = useRef(null)
   const milestoneTimer = useRef(null)
 
@@ -1567,6 +1570,10 @@ export default function App() {
         {tab === 'schedule' && <ScheduleTab checked={checked}/>}
 
       </div>
+
+      {showFTUE && (
+        <OnboardingModal onComplete={() => setShowFTUE(false)} />
+      )}
 
       <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} />
     </div>
