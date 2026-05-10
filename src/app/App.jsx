@@ -1289,8 +1289,8 @@ export default function App() {
       {/* Tab bar */}
       <div className="tabbar" style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
         {(testerMode
-          ? [['today','Today'],['library','Practice Library'],['progress','Progress'],['analytics','Analytics'],['frequency','Frequency'],['launch','Launch'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']]
-          : [['today','Today'],['library','Practice Library'],['progress','Progress']]
+          ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights'],['analytics','Analytics'],['frequency','Frequency'],['launch','Launch'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']]
+          : [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights']]
         ).map(([id,lbl]) => (
           <button key={id} onClick={() => handleTabChange(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
@@ -1531,7 +1531,7 @@ export default function App() {
           exportBackup={exportBackup}/>}
 
 
-        {tab === 'frequency' && <FrequencyLayer
+        {(tab === 'insights' || tab === 'frequency') && <FrequencyLayer
           checked={checked || {}}
           onboardingProfile={onboardingProfile}
           domainScores={domainScores || {}}
