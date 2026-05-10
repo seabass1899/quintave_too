@@ -350,8 +350,6 @@ function CoherenceProgressLayer({ decision }) {
   )
 }
 
-
-
 function TesterDiagnostics({ decision }) {
   const [visible, setVisible] = useState(() => {
     try {
@@ -363,9 +361,13 @@ function TesterDiagnostics({ decision }) {
 
   useEffect(() => {
     const handler = (e) => {
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+      if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        e.stopPropagation()
+
         const next = !visible
         setVisible(next)
+        
         try {
           localStorage.setItem('q_tester_diagnostics', String(next))
         } catch {}
@@ -520,7 +522,7 @@ function SystemReadPanel({ decision }) {
       }}>
         {decision.reason}
       </div>
-
+      <TesterDiagnostics decision={decision} />
       {decision.explanation && (
         <div style={{
           fontSize: 12,
@@ -531,8 +533,6 @@ function SystemReadPanel({ decision }) {
           {decision.explanation}
         </div>
       )}
-
-      <TesterDiagnostics decision={decision} />
     </div>
   )
 }
