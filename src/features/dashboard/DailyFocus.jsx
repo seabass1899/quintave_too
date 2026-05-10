@@ -285,43 +285,34 @@ function SystemReadPanel({ decision }) {
         Today’s Alignment Read
       </div>
 
-      <div style={{
-  fontSize: 12,
-  color: '#666',
-  marginBottom: 4
-}}>
-  Core reference: <strong>Source</strong>
-</div>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+        Core reference: <strong>Source</strong>
+      </div>
 
-<PhaseReadCards
-  phase={
-    decision?.phaseSummary?.displayPhase ||
-    decision?.phaseSummary?.phase ||
-    'Baseline'
-  }
-  primaryFocus={primary}
-  trajectory={
-    decision?.trajectorySummary?.trend
-      ?.replaceAll('_', ' ')
-      ?.replace(/\b\w/g, c => c.toUpperCase()) ||
-    'Baseline Building'
-  }
-  systemBias={
-    decision?.behaviorMode
-      ?.replaceAll('_', ' ')
-      ?.replace(/\b\w/g, c => c.toUpperCase()) ||
-    'Stabilize First'
-  }
-/>
+      <PhaseReadCards
+        phase={
+          decision?.phaseSummary?.displayPhase ||
+          decision?.phaseSummary?.phase ||
+          'Baseline'
+        }
+        primaryFocus={primary}
+        trajectory={
+          decision?.trajectorySummary?.trend
+            ?.replaceAll('_', ' ')
+            ?.replace(/\b\w/g, c => c.toUpperCase()) ||
+          'Baseline Building'
+        }
+        systemBias={
+          decision?.behaviorMode
+            ?.replaceAll('_', ' ')
+            ?.replace(/\b\w/g, c => c.toUpperCase()) ||
+          'Stabilize First'
+        }
+      />
 
-<div style={{
-  fontSize: 15,
-  fontWeight: 950,
-  color: '#1a1a18',
-  marginTop: 8
-}}>
-  Primary attunement body: {primary}
-</div>
+      <div style={{ fontSize: 15, fontWeight: 950, color: '#1a1a18', marginTop: 8 }}>
+        Primary attunement body: {primary}
+      </div>
 
       {secondary && secondary !== primary && (
         <div style={{
