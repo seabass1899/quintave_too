@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
-import PhaseReadCards from '../../app/components/PhaseReadCards'
 import { trackEvent } from '../../app/utils/analytics'
+import PhaseReadCards from '../../components/PhaseReadCards'
 
 const STRATEGY_LABELS = {
   recovery_first: 'Recovery and stabilization',
