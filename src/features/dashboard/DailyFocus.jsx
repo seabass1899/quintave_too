@@ -255,12 +255,16 @@ function DayLockedIn({ plan }) {
 function CoherenceProgressLayer({ decision }) {
   if (!decision) return null
 
+  const DOMAIN_STYLES = {
+    d1: { bg: '#EEEDFE', text: '#3C3489', border: '#7F77DD' },
+    d2: { bg: '#E1F5EE', text: '#085041', border: '#1D9E75' },
+    d3: { bg: '#FAEEDA', text: '#633806', border: '#BA7517' },
+    d4: { bg: '#E6F1FB', text: '#0C447C', border: '#378ADD' },
+    d5: { bg: '#FAECE7', text: '#712B13', border: '#D85A30' },
+  }
+
   const labels = {
-    d1: 'Source',
-    d2: 'Form',
-    d3: 'Field',
-    d4: 'Mind',
-    d5: 'Code',
+    d1: 'Source', d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code',
   }
 
   const primary = decision.primaryBlockerId
@@ -268,34 +272,10 @@ function CoherenceProgressLayer({ decision }) {
   const stable = decision.trajectorySummary?.mostStableBody
 
   const rows = [
-    {
-      id: 'd1',
-      label: 'Source',
-      state: 'Anchored',
-      symbol: '◎',
-      tone: '#7F77DD',
-    },
-    {
-      id: primary,
-      label: labels[primary] || 'Primary',
-      state: 'Recovering',
-      symbol: '↑',
-      tone: '#D85A30',
-    },
-    {
-      id: secondary,
-      label: labels[secondary] || 'Secondary',
-      state: 'Drifting',
-      symbol: '↓',
-      tone: '#BA7517',
-    },
-    {
-      id: stable,
-      label: labels[stable] || 'Stable body',
-      state: 'Stabilizing',
-      symbol: '→',
-      tone: '#1D9E75',
-    },
+    { id: 'd1',      label: 'Source',                    state: 'Anchored',    symbol: '◎' },
+    { id: primary,   label: labels[primary] || 'Primary', state: 'Recovering',  symbol: '↑' },
+    { id: secondary, label: labels[secondary] || 'Secondary', state: 'Drifting', symbol: '↓' },
+    { id: stable,    label: labels[stable] || 'Stable',   state: 'Stabilizing', symbol: '→' },
   ].filter((row, index, arr) =>
     row.id && arr.findIndex(r => r.id === row.id) === index
   )
@@ -304,68 +284,72 @@ function CoherenceProgressLayer({ decision }) {
     <div style={{
       marginTop: 14,
       marginBottom: 14,
-      border: '1px solid #DFE3F0',
+      border: '0.5px solid rgba(0,0,0,0.08)',
       borderRadius: 14,
-      background: 'linear-gradient(135deg, #FCFBF8, #F4F6FB)',
-      padding: '12px 14px'
+      background: '#fff',
+      padding: '12px 14px',
     }}>
       <div style={{
         fontSize: 11,
-        fontWeight: 950,
+        fontWeight: 700,
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        color: '#777',
-        marginBottom: 10
+        color: '#888',
+        marginBottom: 10,
       }}>
         Coherence Progress
       </div>
-
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 8
+        gap: 8,
       }}>
-        {rows.map(row => (
-          <div key={row.id} style={{
-            border: `1px solid ${row.tone}30`,
-            background: '#fff',
-            borderRadius: 12,
-            padding: '9px 10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10
-          }}>
-            <div>
-              <div style={{
-                fontSize: 12,
-                fontWeight: 900,
-                color: '#1a1a18'
-              }}>
-                {row.label}
-              </div>
-              <div style={{
-                fontSize: 11,
-                color: '#777',
-                marginTop: 2
-              }}>
-                {row.state}
-              </div>
-            </div>
-
-            <div style={{
-              color: row.tone,
-              fontSize: 18,
-              fontWeight: 950
+        {rows.map(row => {
+          const style = DOMAIN_STYLES[row.id] || DOMAIN_STYLES.d1
+          return (
+            <div key={row.id} style={{
+              background: style.bg,
+              border: `1px solid ${style.border}30`,
+              borderTop: `3px solid ${style.border}`,
+              borderRadius: 10,
+              padding: '10px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
             }}>
-              {row.symbol}
+              <div>
+                <div style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: style.text,
+                }}>
+                  {row.label}
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: style.border,
+                  marginTop: 2,
+                  fontWeight: 500,
+                }}>
+                  {row.state}
+                </div>
+              </div>
+              <div style={{
+                color: style.border,
+                fontSize: 20,
+                fontWeight: 700,
+              }}>
+                {row.symbol}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
+
 
 function SystemReadPanel({ decision }) {
   if (!decision) return null
