@@ -30,33 +30,33 @@ export default function PhaseReadCards({
       icon: '◈',
       label: 'Current Phase',
       value: formatLabel(phase),
-      bg: 'linear-gradient(135deg, #F3F1FF, #FCFBF8)',
-      border: '#7F77DD33',
+      bg: '#EEEDFE',
+      border: '#7F77DD30',
       accent: '#7F77DD',
     },
     {
       icon: '◎',
       label: 'Primary Focus',
       value: formatLabel(primaryFocus, 'System'),
-      bg: 'linear-gradient(135deg, #F4F6FB, #FFFFFF)',
-      border: '#378ADD30',
-      accent: '#378ADD',
+      bg: '#F4F3F0',
+      border: 'rgba(0,0,0,0.08)',
+      accent: '#1a1a18',
     },
     {
       icon: '↗',
       label: 'Trajectory',
       value: formatLabel(trajectory, 'Baseline Building'),
-      bg: 'linear-gradient(135deg, #FCFBF8, #F7F6F3)',
-      border: '#D4AF3730',
+      bg: '#FAEEDA',
+      border: '#BA751730',
       accent: '#BA7517',
     },
     {
       icon: '⚡',
       label: 'System Bias',
       value: formatLabel(systemBias, 'Stabilize First'),
-      bg: 'linear-gradient(135deg, #EEEDFE, #FFF9F1)',
-      border: '#7F77DD35',
-      accent: '#3C3489',
+      bg: '#E1F5EE',
+      border: '#1D9E7530',
+      accent: '#1D9E75',
     },
   ]
 
@@ -76,32 +76,18 @@ export default function PhaseReadCards({
           style={{
             background: card.bg,
             border: `1px solid ${card.border}`,
-            borderRadius: 16,
-            padding: '14px 15px',
-            boxShadow: '0 8px 22px rgba(60,52,137,0.055)',
+            borderTop: `3px solid ${card.accent}`,
+            borderRadius: 12,
+            padding: '12px 14px',
             position: 'relative',
-            overflow: 'hidden',
           }}
         >
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: 4,
-              height: '100%',
-              background: card.accent,
-              opacity: 0.75,
-            }}
-          />
-
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 7,
               marginBottom: 8,
-              paddingLeft: 2,
             }}
           >
             <span
@@ -134,7 +120,6 @@ export default function PhaseReadCards({
               letterSpacing: '-0.035em',
               color: '#1a1a18',
               lineHeight: 1.15,
-              paddingLeft: 2,
             }}
           >
             {card.value}
