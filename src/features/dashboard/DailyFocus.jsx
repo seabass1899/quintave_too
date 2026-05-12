@@ -301,7 +301,7 @@ function CoherenceProgressLayer({ decision }) {
       </div>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(140px, 1fr))',
         gap: 8,
       }}>
         {rows.map(row => {
