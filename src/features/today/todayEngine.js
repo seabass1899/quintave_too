@@ -418,7 +418,7 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
     ? `${domainById(inheritedDomain).name} carried forward as yesterday's correction point.`
     : null
   const memoryReason = memoryDominates
-    ? `${domainById(memoryBody).name} is recurring as the dominant drift pattern in the user's recent coherence memory.`
+    ? `${domainById(memoryBody).name} has been the strongest recurring correction point in your recent practice history.`
     : null
   const reason = inheritedReason || memoryReason || `${primaryBody?.name || domainById(primaryBlockerId).name} has the greatest coherence drag from the Source reference today.`
 
