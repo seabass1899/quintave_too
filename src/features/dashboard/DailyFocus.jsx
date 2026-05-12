@@ -252,6 +252,123 @@ function DayLockedIn({ plan }) {
   )
 }
 
+function BetaFeedbackLayer({ plan }) {
+  const today = getDateKey(new Date())
+  const [submitted, setSubmitted] = useState(() => {
+    try {
+      const data = JSON.parse(localStorage.getItem('q_beta_feedback') || '{}')
+      return !!data[today]
+    } catch {
+      return false
+    }
+  })
+  const [accuracy, setAccuracy] = useState('')
+  const [note, setNote] = useState('')
+
+  if (!plan?.completionState?.dailyMinimumMet || submitted) return null
+
+  const submit = () => {
+    if (!accuracy) {
+      alert("Please select how accurate today's alignment felt.")
+      return
+    }
+    const entry = {
+      date: today,
+      accuracy,
+      note: note.trim(),
+      primaryAttunementBody: plan.decision?.primaryBlockerId || null,
+      secondaryDrift: plan.decision?.secondaryBlockerId || null,
+      phase: plan.decision?.phaseSummary?.phase || null,
+      behaviorMode: plan.decision?.behaviorMode || null,
+      strategy: plan.decision?.strategy || null,
+      createdAt: new Date().toISOString(),
+    }
+    try {
+      const existing = JSON.parse(localStorage.getItem('q_beta_feedback') || '{}')
+      localStorage.setItem('q_beta_feedback', JSON.stringify({ ...existing, [today]: entry }))
+    } catch {}
+    setSubmitted(true)
+    alert('Feedback saved. Thank you.')
+  }
+
+  return (
+    <div style={{
+      marginTop: 14,
+      borderRadius: 16,
+      border: '1px solid #7F77DD30',
+      background: 'linear-gradient(135deg, #F3F1FF, #FCFBF8)',
+      padding: '15px 16px'
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6F6A7A', marginBottom: 6 }}>
+        Beta Feedback
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 950, color: '#1a1a18', marginBottom: 8 }}>
+        Did today's alignment feel accurate?
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        {[
+          ['very_accurate', 'Very accurate'],
+          ['somewhat_accurate', 'Somewhat accurate'],
+          ['not_accurate', 'Not accurate'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setAccuracy(value)}
+            style={{
+              border: accuracy === value ? '1.5px solid #7F77DD' : bdr,
+              background: accuracy === value ? '#EEEDFE' : '#fff',
+              color: accuracy === value ? '#3C3489' : '#555',
+              borderRadius: 999,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 850,
+              cursor: 'pointer'
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        placeholder="Anything feel off, confusing, too easy, or too hard?"
+        rows={3}
+        style={{
+          width: '100%',
+          border: bdr,
+          borderRadius: 12,
+          padding: '10px 12px',
+          fontSize: 13,
+          fontFamily: 'inherit',
+          resize: 'vertical',
+          outline: 'none',
+          background: '#fff',
+          color: '#1a1a18',
+          lineHeight: 1.5,
+          boxSizing: 'border-box'
+        }}
+      />
+      <button
+        onClick={submit}
+        style={{
+          marginTop: 10,
+          border: 'none',
+          background: '#1a1a18',
+          color: '#fff',
+          borderRadius: 999,
+          padding: '9px 14px',
+          fontSize: 12,
+          fontWeight: 900,
+          cursor: 'pointer'
+        }}
+      >
+        Save feedback
+      </button>
+    </div>
+  )
+}
+
 function CoherenceProgressLayer({ decision }) {
   if (!decision) return null
 
@@ -863,10 +980,17 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       ))}
 
-      {plan.completionState.dailyMinimumMet ? <DayLockedIn plan={plan} /> : <>
-        <FailureState plan={plan} onReopen={reopenMissedDay} />
-        <TomorrowPrime plan={plan} />
-      </>}
+      {plan.completionState.dailyMinimumMet ? (
+        <>
+          <DayLockedIn plan={plan} />
+          <BetaFeedbackLayer plan={plan} />
+        </>
+      ) : (
+        <>
+          <FailureState plan={plan} onReopen={reopenMissedDay} />
+          <TomorrowPrime plan={plan} />
+        </>
+      )}
     </div>
   )
 }
