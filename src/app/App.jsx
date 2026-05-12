@@ -1072,6 +1072,37 @@ export default function App() {
     return acc
   }, {})
 
+  const exportBetaData = () => {
+    const read = (key, fallback) => {
+      try {
+        return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback))
+      } catch {
+        return fallback
+      }
+    }
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      app: 'Quintave',
+      version: 'beta-feedback-export-v1',
+      betaFeedback: read('q_beta_feedback', {}),
+      generalFeedback: read('q_feedback', []),
+      dayStatus: read('q_day_status', {}),
+      todayPlans: read('q_today_plan', {}),
+      checked: read('q_checked', {}),
+      onboarding: read('q_onboarding', null),
+      notes: read('q_notes', {}),
+      ratings: read('q_ratings', {}),
+      metrics: read('q_metrics', {}),
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `quintave_beta_export_${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const exportBackup = () => {
     let dayStatus = {}
     try { dayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch {}
@@ -1282,6 +1313,7 @@ export default function App() {
           <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
           <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
           <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
+          <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
           <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
             Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
           </label>
