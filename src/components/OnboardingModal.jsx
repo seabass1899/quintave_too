@@ -178,7 +178,7 @@ export default function OnboardingModal({ onComplete }) {
       <div style={{
         width: '100%', maxWidth: 560,
         background: '#fff', borderRadius: 20,
-        padding: '28px 28px', maxHeight: '90vh',
+        padding: window.innerWidth < 768 ? '20px 18px' : '28px 28px', maxHeight: '90vh',
         overflowY: 'auto',
         boxShadow: '0 30px 80px rgba(0,0,0,0.18)',
       }}>
@@ -194,7 +194,7 @@ export default function OnboardingModal({ onComplete }) {
         </div>
 
         {/* Title */}
-        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4, color: '#1a1a18' }}>
+        <div style={{ fontSize: window.innerWidth < 768 ? 20 : 24, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4, color: '#1a1a18' }}>
           {slide.title}
         </div>
         <div style={{ fontSize: 13, color: '#888', marginBottom: 20 }}>
