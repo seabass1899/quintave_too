@@ -224,7 +224,7 @@ export function calculateCoherenceMemory({
       : recommendationBias === 'lower_friction'
         ? 'Repeated resistance to assigned practices was detected. Today favors lower-friction entry points.'
         : recommendationBias === 'stabilize_recurring_drift'
-          ? `${recurringName} is recurring as a drift signature. Today prioritizes stabilization before broad expansion.`
+          ? `${recurringName} has been the strongest recurring correction point recently. Today prioritizes stabilization before broad expansion.`
           : recommendationBias === 'reinforce_memory_momentum'
             ? 'A stable recent window was detected. Today reinforces momentum without adding strain.'
             : recommendationBias === 'increase_depth'
