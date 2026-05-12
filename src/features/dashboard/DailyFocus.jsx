@@ -265,8 +265,8 @@ function BetaFeedbackLayer({ plan }) {
   const [accuracy, setAccuracy] = useState('')
   const [note, setNote] = useState('')
 
-  const completed = plan?.completionState?.completedCount || 0
-  const minimum = plan?.completionState?.dailyMinimum || 1
+  const completed = plan?.completionState?.completeRequired || 0
+  const minimum = plan?.dailyMinimum || 4
   const enoughProgress = completed >= Math.ceil(minimum / 2)
 
   if (!enoughProgress || submitted) return null
@@ -985,16 +985,15 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       ))}
 
       {plan.completionState.dailyMinimumMet ? (
-        <>
-          <DayLockedIn plan={plan} />
-          <BetaFeedbackLayer plan={plan} />
-        </>
+        <DayLockedIn plan={plan} />
       ) : (
         <>
           <FailureState plan={plan} onReopen={reopenMissedDay} />
           <TomorrowPrime plan={plan} />
         </>
       )}
+
+      <BetaFeedbackLayer plan={plan} />
     </div>
   )
 }
