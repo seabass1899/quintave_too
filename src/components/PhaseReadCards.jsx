@@ -19,6 +19,19 @@ function formatLabel(value, fallback = 'Baseline') {
     .replace(/\b\w/g, c => c.toUpperCase())
 }
 
+const phaseDescriptions = {
+  recovery:         'stabilization before expansion',
+  collapse_rebuild: 'restore before rebuilding',
+  stabilization:    'building stable coherence',
+  expansion:        'increasing depth carefully',
+  integration:      'consolidating recent gains',
+  baseline_building:'building consistency',
+  lower_friction:   'reduce resistance today',
+  establish_baseline:'finding the starting signal',
+  increase_depth:   'advancing with momentum',
+  reinforce_momentum:'holding what is working',
+}
+
 export default function PhaseReadCards({
   phase,
   primaryFocus,
@@ -30,6 +43,7 @@ export default function PhaseReadCards({
       icon: '◈',
       label: 'Current Phase',
       value: formatLabel(phase),
+      sub: phaseDescriptions[phase] || null,
       bg: '#EEEDFE',
       border: '#7F77DD30',
       accent: '#7F77DD',
@@ -38,6 +52,7 @@ export default function PhaseReadCards({
       icon: '◎',
       label: 'Primary Focus',
       value: formatLabel(primaryFocus, 'System'),
+      sub: null,
       bg: '#F4F3F0',
       border: 'rgba(0,0,0,0.08)',
       accent: '#1a1a18',
@@ -46,6 +61,7 @@ export default function PhaseReadCards({
       icon: '↗',
       label: 'Trajectory',
       value: formatLabel(trajectory, 'Baseline Building'),
+      sub: phaseDescriptions[trajectory] || null,
       bg: '#FAEEDA',
       border: '#BA751730',
       accent: '#BA7517',
@@ -54,6 +70,7 @@ export default function PhaseReadCards({
       icon: '⚡',
       label: 'System Bias',
       value: formatLabel(systemBias, 'Stabilize First'),
+      sub: phaseDescriptions[systemBias] || null,
       bg: '#E1F5EE',
       border: '#1D9E7530',
       accent: '#1D9E75',
@@ -124,6 +141,17 @@ export default function PhaseReadCards({
           >
             {card.value}
           </div>
+          {card.sub && (
+            <div style={{
+              marginTop: 5,
+              fontSize: 11,
+              color: '#6B6780',
+              lineHeight: 1.4,
+              fontWeight: 500,
+            }}>
+              {card.sub}
+            </div>
+          )}
         </div>
       ))}
     </div>
