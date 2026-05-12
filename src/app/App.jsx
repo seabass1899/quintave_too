@@ -1128,7 +1128,7 @@ export default function App() {
       <style>{`
         @keyframes rippleFadeIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
         .app-shell { min-height: 100vh; background: #F4F3F0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color: #1a1a18; }
-        .app-container { max-width: 1060px; margin: 0 auto; padding: 24px 18px; }
+        .app-container { max-width: 1060px; margin: 0 auto; padding: window.innerWidth < 768 ? '14px 10px' : '24px 18px'; }
         .topbar, .tabbar, .phase-tabs { -webkit-overflow-scrolling: touch; }
         .tap-target { min-height: 44px; }
         .mobile-details-toggle { display:none; }
@@ -1262,7 +1262,7 @@ export default function App() {
       )}
 
       {/* Topbar — single scrollable row */}
-      <div className="topbar" style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:48, overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
+      <div className="topbar" style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:'auto', minHeight:48, overflowX:'auto', flexWrap:'wrap', rowGap:8, paddingBottom:4, msOverflowStyle:'none', scrollbarWidth:'none' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginRight:2 }}>
           <div style={{ fontSize:16, fontWeight:700, letterSpacing:'-0.03em' }}>Quintave</div>
           {testerMode && (
