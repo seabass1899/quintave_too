@@ -64,7 +64,7 @@ export default function PhaseReadCards({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(170px, 1fr))',
         gap: 12,
         marginTop: 14,
         marginBottom: 16,
