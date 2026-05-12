@@ -222,13 +222,13 @@ export function calculateCoherenceMemory({
     : recommendationBias === 'recovery_first'
       ? 'Memory detected repeated disruption in the recent window, so recovery is prioritized before expansion.'
       : recommendationBias === 'lower_friction'
-        ? 'Memory detected repeated resistance to assigned practices, so the engine is favoring lower-friction entry points.'
+        ? 'Repeated resistance to assigned practices was detected. Today favors lower-friction entry points.'
         : recommendationBias === 'stabilize_recurring_drift'
-          ? `${recurringName} is recurring as a drift signature, so the engine is prioritizing stabilization there before broad expansion.`
+          ? `${recurringName} is recurring as a drift signature. Today prioritizes stabilization before broad expansion.`
           : recommendationBias === 'reinforce_memory_momentum'
-            ? 'Memory detected a stable recent window, so the engine can reinforce momentum without overloading the system.'
+            ? 'A stable recent window was detected. Today reinforces momentum without adding strain.'
             : recommendationBias === 'increase_depth'
-              ? 'Memory detected repeated completion patterns, so the engine can rotate toward slightly deeper practices.'
+              ? 'Repeated completion patterns detected. Today can rotate toward slightly deeper practices.'
               : 'Memory is establishing a baseline pattern before making stronger long-range adjustments.'
 
   return {

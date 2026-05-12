@@ -318,14 +318,14 @@ export function calculateCoherenceTrajectory({
             : 'establish_baseline'
 
   const explanation = trend === 'recovering'
-    ? 'Recent instability is shaping today’s trajectory. The system should recover coherence before adding complexity.'
+    ? 'Recovery is active. Today stabilizes before adding complexity.'
     : trend === 'drifting'
       ? `${dominant?.name || 'A movable body'} is showing the strongest downward or recurring drift pattern.`
       : trend === 'advancing'
-        ? 'The recent trajectory is rising. The system can add depth carefully without abandoning stabilization.'
+        ? 'The trajectory is rising. Today can add depth carefully while preserving Source anchoring.'
         : trend === 'stabilizing'
-          ? 'Recent continuity is forming. The system should reinforce the pattern before increasing complexity.'
-          : 'The system is still establishing enough history to detect a stable trajectory.'
+          ? 'Recent continuity is forming. Today reinforces the pattern before increasing complexity.'
+          : 'More consistency will help personalize your trajectory over time.'
 
   return {
     version: 'coherence-trajectory-v1',
