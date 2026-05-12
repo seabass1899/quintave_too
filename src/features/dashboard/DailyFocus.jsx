@@ -10,6 +10,14 @@ const STRATEGY_LABELS = {
   advance_with_balance: 'Advance signal without imbalance',
 }
 
+const BODY_EXPLANATIONS = {
+  Source: 'stability & reference',
+  Form: 'body, energy & recovery',
+  Field: 'emotion & nervous system',
+  Mind: 'focus & cognition',
+  Code: 'patterns & habits',
+}
+
 
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
@@ -611,17 +619,25 @@ function SystemReadPanel({ decision }) {
       <CoherenceProgressLayer decision={decision} />
 
       <div style={{ fontSize: 15, fontWeight: 950, color: '#1a1a18', marginTop: 8 }}>
-        Primary attunement body: {primary}
+        <strong>Primary attunement body:</strong>{' '}
+        {primary}
+        {BODY_EXPLANATIONS[primary] && (
+          <span style={{ color: '#6B6780', fontSize: 13, fontWeight: 400, marginLeft: 6 }}>
+            ({BODY_EXPLANATIONS[primary]})
+          </span>
+        )}
       </div>
 
 
       {secondary && secondary !== primary && (
-        <div style={{
-          fontSize: 12,
-          color: '#666',
-          marginTop: 4
-        }}>
-          Secondary drift: <strong>{secondary}</strong>
+        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          <strong>Secondary drift:</strong>{' '}
+          {secondary}
+          {BODY_EXPLANATIONS[secondary] && (
+            <span style={{ color: '#6B6780', fontSize: 12, marginLeft: 6 }}>
+              ({BODY_EXPLANATIONS[secondary]})
+            </span>
+          )}
         </div>
       )}
 
