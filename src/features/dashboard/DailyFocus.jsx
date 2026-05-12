@@ -265,7 +265,11 @@ function BetaFeedbackLayer({ plan }) {
   const [accuracy, setAccuracy] = useState('')
   const [note, setNote] = useState('')
 
-  if (!plan?.completionState?.dailyMinimumMet || submitted) return null
+  const completed = plan?.completionState?.completedCount || 0
+  const minimum = plan?.completionState?.dailyMinimum || 1
+  const enoughProgress = completed >= Math.ceil(minimum / 2)
+
+  if (!enoughProgress || submitted) return null
 
   const submit = () => {
     if (!accuracy) {
