@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { calculateFrequencyState, FREQUENCY_PLANES, SOURCE_CONNECTION_LEVEL, GRAY_ZONE_CORE_THRESHOLD } from './frequencyModel'
+import { calculateFrequencyState, FREQUENCY_PLANES, SOURCE_CONNECTION_LEVEL, GRAY_ZONE_CORE_THRESHOLD, SOURCE_ACCESS_LABELS } from './frequencyModel'
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
@@ -68,7 +68,71 @@ function MetricTile({ label, value }) {
   )
 }
 
-function DomainFrequencyRow({ domain }) {
+// Source Anchor Card — Source is the immovable reference field.
+// It does not drift, recover, or progress. This card shows access clarity only.
+function SourceAnchorCard({ state }) {
+  const accessColor = state.sourceAccessColor || '#7F77DD'
+  const accessBg    = state.sourceAccessBg    || '#EEEDFE'
+  const accessLabel = state.sourceAccessLabel || 'Accessible'
+  const accessDesc  = state.sourceAccessDesc  || 'Source access is available with deliberate practice.'
+
+  // Derive a signal clarity bar (0–100) from source access state
+  const signalMap = { clear: 95, stable: 78, accessible: 60, unstable: 38, faint: 18 }
+  const signalValue = signalMap[state.sourceAccessState] || 50
+
+  // Trend derived from recent practice and streak
+  const trendDays = [
+    state.recentMissedDays >= 2 ? 'fragmented' : state.currentStreak >= 7 ? 'clear' : 'stable',
+  ]
+
+  return (
+    <div style={{ background: accessBg, border: `1.5px solid ${accessColor}35`, borderRadius: 14, padding: '14px 14px' }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 9 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#7F77DD', fontSize: 16 }}>✦</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 950 }}>Source</div>
+            <div style={{ fontSize: 10, color: '#7F77DD', fontWeight: 800, marginTop: 1 }}>ANCHOR · Immovable</div>
+          </div>
+        </div>
+        <div style={{
+          background: accessColor,
+          color: '#fff',
+          borderRadius: 999,
+          padding: '4px 10px',
+          fontSize: 10,
+          fontWeight: 950,
+          letterSpacing: '0.04em',
+          whiteSpace: 'nowrap',
+        }}>
+          {accessLabel}
+        </div>
+      </div>
+
+      {/* Signal clarity bar */}
+      <div style={{ fontSize: 11, color: accessColor, fontWeight: 850, marginBottom: 4 }}>
+        Signal clarity
+      </div>
+      <div style={{ height: 7, borderRadius: 999, background: 'rgba(0,0,0,0.08)', overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ width: `${signalValue}%`, height: 7, background: accessColor, borderRadius: 999 }} />
+      </div>
+
+      {/* Description */}
+      <div style={{ fontSize: 11, color: accessColor, lineHeight: 1.5, marginBottom: 8, opacity: 0.9 }}>
+        {accessDesc}
+      </div>
+
+      {/* Note about what changes */}
+      <div style={{ fontSize: 10, color: '#777', borderTop: `1px solid ${accessColor}20`, paddingTop: 8, lineHeight: 1.5 }}>
+        Source is always present and complete. Only <em>access</em> varies — shaped by interference in the movable bodies (Form, Field, Mind, Code).
+      </div>
+    </div>
+  )
+}
+
+// Movable body row — shows resonance, level, base vs today, and anchor practice
+function MovableBodyRow({ domain }) {
   const color = meterColor(domain.resonance)
   return (
     <div style={{ background: '#fff', border: bdr, borderRadius: 14, padding: '14px 14px' }}>
@@ -77,7 +141,10 @@ function DomainFrequencyRow({ domain }) {
           <span style={{ color: domain.color, fontSize: 16 }}>{domain.icon}</span>
           <div style={{ fontSize: 13, fontWeight: 950 }}>{domain.name}</div>
         </div>
-        <div style={{ textAlign:'right' }}><div style={{ fontSize: 13, fontWeight: 950, color }}>{domain.resonance}</div><div style={{ fontSize: 10, color:'#777', fontWeight:800 }}>L{domain.level}</div></div>
+        <div style={{ textAlign:'right' }}>
+          <div style={{ fontSize: 13, fontWeight: 950, color }}>{domain.resonance}</div>
+          <div style={{ fontSize: 10, color:'#777', fontWeight:800 }}>L{domain.level}</div>
+        </div>
       </div>
       <div style={{ height: 7, borderRadius: 999, background: '#F0EFEC', overflow: 'hidden' }}>
         <div style={{ width: `${domain.resonance}%`, height: 7, background: color, borderRadius: 999 }} />
@@ -102,7 +169,7 @@ function SourceGate({ state }) {
       <div style={{ fontSize: 12, color, lineHeight: 1.55 }}>
         {state.sourceGateMet
           ? 'The minimum Source-connection threshold is active. The system can now stabilize above the Red Zone.'
-          : `To cross Level 5: Source ≥ 50, coherence ≥ 45, 3 clean locked days, and core energy ≥ 50. Remaining gaps — Source ${state.thresholdGap.source}, coherence ${state.thresholdGap.coherence}, clean days ${state.thresholdGap.cleanLockedDays}, core ${state.thresholdGap.coreEnergy}.`}
+          : `To cross Level 5: Source access ≥ 50, coherence ≥ 45, 3 clean locked days, and core energy ≥ 50. Remaining gaps — Source ${state.thresholdGap.source}, coherence ${state.thresholdGap.coherence}, clean days ${state.thresholdGap.cleanLockedDays}, core ${state.thresholdGap.coreEnergy}.`}
       </div>
     </div>
   )
@@ -119,7 +186,7 @@ function GrayGate({ state }) {
       <div style={{ fontSize: 12, color, lineHeight: 1.55 }}>
         {open
           ? 'Gray Zone conditions are met: high core-cell integrity, domain harmony, clean streak continuity, and no recent missed days.'
-          : `Requires core energy ≥ ${GRAY_ZONE_CORE_THRESHOLD}, Source ≥ 90, all domains ≥ 80, 30-day clean streak, and no recent missed days. Current gaps — core ${state.grayGateGap.coreEnergy}, Source ${state.grayGateGap.source}, domains ${state.grayGateGap.allDomains}, streak ${state.grayGateGap.streak}, recent misses ${state.grayGateGap.recentMissedDays}.`}
+          : `Requires core energy ≥ ${GRAY_ZONE_CORE_THRESHOLD}, Source access ≥ 90, all movable bodies ≥ 80, 30-day clean streak, and no recent missed days. Current gaps — core ${state.grayGateGap.coreEnergy}, Source ${state.grayGateGap.source}, domains ${state.grayGateGap.allDomains}, streak ${state.grayGateGap.streak}, recent misses ${state.grayGateGap.recentMissedDays}.`}
       </div>
     </div>
   )
@@ -130,13 +197,17 @@ export default function FrequencyLayer({ onboardingProfile, domainScores = {}, c
   const plane = state.plane
   const zoneColor = plane.color
 
+  // Split Source from movable bodies for separate rendering
+  const sourceResonance = state.domainResonance.find(d => d.id === 'd1')
+  const movableResonance = state.domainResonance.filter(d => d.id !== 'd1')
+
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 900, color: '#777', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Frequency Layer</div>
         <h2 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.04em' }}>Red, Blue, and Gray Zone progression</h2>
         <div style={{ fontSize: 13, color: '#666', marginTop: 6, lineHeight: 1.55 }}>
-          Frequency climbs gradually. Daily signal can move quickly; plane level moves through core energy, Source access, harmony, and clean continuity.
+          Source is the immovable anchor. The four movable bodies — Form, Field, Mind, Code — attune toward it. Frequency climbs as interference reduces and coherence builds.
         </div>
       </div>
 
@@ -170,9 +241,9 @@ export default function FrequencyLayer({ onboardingProfile, domainScores = {}, c
           <MetricBar label="Core energy" value={state.coreEnergy} color={zoneColor} help="Long-term reserve. Clean locked days refill it slowly; missed days drain it." />
           <MetricBar label="Daily supply" value={state.dailySupply} color="#378ADD" help="Daily supply is proportional to core-cell reserve. More core = more energy available for the day." />
           <MetricBar label="Energy remaining" value={state.dailyEnergyRemaining} color={meterColor(state.dailyEnergyRemaining)} help="Estimated current-day reserve after execution, missed/reopened state, and practice activity." />
-          <MetricBar label="Source-weighted coherence" value={state.coherence} color="#7F77DD" help="Source-weighted average of all five game pieces." />
-          <MetricBar label="System coherence" value={state.systemCoherence} color="#7F77DD" help="Balance-adjusted coherence. Energy becomes usable only when the whole system is synchronized." />
-          <MetricBar label="Domain harmony" value={state.harmony} color="#1D9E75" help="How balanced the five bodies are. A weak domain caps advancement." />
+          <MetricBar label="Source-weighted coherence" value={state.coherence} color="#7F77DD" help="Coherence score weighted toward Source access. Movable body alignment drives this." />
+          <MetricBar label="System coherence" value={state.systemCoherence} color="#7F77DD" help="Balance-adjusted coherence across the four movable bodies. Imbalance between them reduces this." />
+          <MetricBar label="Movable body harmony" value={state.harmony} color="#1D9E75" help="How balanced Form, Field, Mind, and Code are. A severely drifted body caps advancement." />
         </div>
       </div>
 
@@ -187,7 +258,6 @@ export default function FrequencyLayer({ onboardingProfile, domainScores = {}, c
         </div>
         <GrayGate state={state} />
       </div>
-
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
         <div style={{ background: state.operatingMode.bg, border: `1px solid ${state.operatingMode.color}25`, borderRadius: 18, padding: '16px 18px' }}>
@@ -214,7 +284,7 @@ export default function FrequencyLayer({ onboardingProfile, domainScores = {}, c
         <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom: 10 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 950 }}>Harmonization gate</div>
-            <div style={{ fontSize: 12, color:'#666', marginTop:3, lineHeight:1.55 }}>To advance from Level L to Level L+1, all non-Source domains must be harmonized at Level L. Source is already present from Level 5 upward and does not block higher-level harmonization.</div>
+            <div style={{ fontSize: 12, color:'#666', marginTop:3, lineHeight:1.55 }}>To advance from Level L to Level L+1, all four movable bodies must harmonize at Level L. Source is already present from Level 5 upward and does not block harmonization.</div>
           </div>
           <div style={{ fontSize:11, fontWeight:900, borderRadius:999, padding:'7px 10px', background: state.blockingDomains.length ? '#FAEEDA' : '#E1F5EE', color: state.blockingDomains.length ? '#633806' : '#085041', alignSelf:'flex-start' }}>
             Harmonized at L{state.harmonization.harmonizedAt}
@@ -231,7 +301,7 @@ export default function FrequencyLayer({ onboardingProfile, domainScores = {}, c
             ))}
           </div>
         ) : (
-          <div style={{ fontSize:13, color:'#085041', background:'#E1F5EE', borderRadius:12, padding:'10px 12px', fontWeight:800 }}>No domain is currently blocking the next harmonization gate.</div>
+          <div style={{ fontSize:13, color:'#085041', background:'#E1F5EE', borderRadius:12, padding:'10px 12px', fontWeight:800 }}>No movable body is currently blocking the next harmonization gate.</div>
         )}
       </div>
 
@@ -242,8 +312,23 @@ export default function FrequencyLayer({ onboardingProfile, domainScores = {}, c
         <MetricTile label="Outcome quality" value={`${state.performanceLayer.outcomeQuality}%`} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 9, marginBottom: 14 }}>
-        {state.domainResonance.map(domain => <DomainFrequencyRow key={domain.id} domain={domain} />)}
+      {/* Frequency body grid — Source card + 4 movable body cards */}
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: '#777', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+          Frequency bodies
+        </div>
+      </div>
+
+      {/* Source anchor — full width, distinct from movable rows */}
+      {sourceResonance && (
+        <div style={{ marginBottom: 9 }}>
+          <SourceAnchorCard state={state} />
+        </div>
+      )}
+
+      {/* Movable bodies — 2×2 grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, marginBottom: 14 }}>
+        {movableResonance.map(domain => <MovableBodyRow key={domain.id} domain={domain} />)}
       </div>
 
       <div style={{ background: '#fff', border: bdr, borderRadius: 18, padding: '18px 18px', marginBottom: 14 }}>
@@ -264,7 +349,7 @@ export default function FrequencyLayer({ onboardingProfile, domainScores = {}, c
       <div style={{ background: '#FCFBF8', border: bdr, borderRadius: 16, padding: '15px 16px' }}>
         <div style={{ fontSize: 13, fontWeight: 950, marginBottom: 7 }}>Interpretation</div>
         <div style={{ fontSize: 13, color: '#555', lineHeight: 1.65 }}>
-          The app treats frequency as a gradual climb. Completion creates signal, signal feeds energy, and energy only becomes usable when the system is coherent. Advancement requires core reserve, clean continuity, Source access, and the harmonization gate: all non-Source domains must stabilize at the current level before the next level opens.
+          Source is the immovable core reference — always present, never drifting. The four movable bodies (Form, Field, Mind, Code) attune toward it. Frequency advancement requires core reserve, clean continuity, movable body harmony, and the harmonization gate: all four movable bodies must stabilize at the current level before the next level opens. Practices do not build Source — they reduce interference so Source can be accessed more clearly.
         </div>
       </div>
     </div>

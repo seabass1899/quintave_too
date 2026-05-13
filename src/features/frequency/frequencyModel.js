@@ -4,6 +4,11 @@ export const SOURCE_CONNECTION_LEVEL = 5
 export const CORE_ENERGY_START = 50
 export const GRAY_ZONE_CORE_THRESHOLD = 93
 
+// Source is the immovable anchor — the core reference field the four movable
+// bodies attune to. It does not drift, recover, or progress. Only access changes.
+export const SOURCE_ID = 'd1'
+export const MOVABLE_BODY_IDS = ['d2', 'd3', 'd4', 'd5']
+
 export const LEVEL_THRESHOLDS = {
   3: 30,
   4: 40,
@@ -27,6 +32,16 @@ export const FREQUENCY_PLANES = [
   { level: 10, name: 'Gray Zone · Neutrality Field', zone: 'Gray Zone', range: '10.0–10.9', color: '#5F6470', bg: '#EEF0F3', desc: 'Neutrality becomes the operating field. Source signal becomes increasingly direct and external pressure loses leverage.' },
   { level: 11, name: 'Gray Zone · Source Embodiment', zone: 'Gray Zone', range: '11.0', color: '#2F333A', bg: '#E3E5E8', desc: 'Full Source embodiment. The system is operating with very low contradiction, high neutrality, and strong core-cell integrity.' },
 ]
+
+// Source access classification labels — these describe access to Source,
+// not the state of Source itself. Source is always complete.
+export const SOURCE_ACCESS_LABELS = {
+  clear:     { label: 'Clear',      desc: 'Source signal is coming through with minimal interference.',      color: '#085041', bg: '#E1F5EE' },
+  stable:    { label: 'Stable',     desc: 'Source access is consistent and available as a reference.',       color: '#378ADD', bg: '#E6F1FB' },
+  accessible:{ label: 'Accessible', desc: 'Source can be reached with deliberate practice.',                 color: '#7F77DD', bg: '#EEEDFE' },
+  unstable:  { label: 'Unstable',   desc: 'Interference is disrupting access. Stabilize movable bodies.',    color: '#BA7517', bg: '#FAEEDA' },
+  faint:     { label: 'Faint',      desc: 'Signal from Source is very weak. Red Zone correction is needed.', color: '#E24B4A', bg: '#FCEBEB' },
+}
 
 const DOMAIN_WEIGHTS = { d1: 1.4, d2: 1.0, d3: 1.0, d4: 1.0, d5: 1.0 }
 
@@ -59,12 +74,12 @@ export function getFrequencyPlane(level) {
   const numeric = Number(level) || 3
   if (numeric >= 11) return FREQUENCY_PLANES.find(p => p.level === 11)
   if (numeric >= 10) return FREQUENCY_PLANES.find(p => p.level === 10)
-  if (numeric >= 9) return FREQUENCY_PLANES.find(p => p.level === 9)
-  if (numeric >= 8) return FREQUENCY_PLANES.find(p => p.level === 8)
-  if (numeric >= 7) return FREQUENCY_PLANES.find(p => p.level === 7)
-  if (numeric >= 6) return FREQUENCY_PLANES.find(p => p.level === 6)
-  if (numeric >= 5) return FREQUENCY_PLANES.find(p => p.level === 5)
-  if (numeric >= 4) return FREQUENCY_PLANES.find(p => p.level === 4)
+  if (numeric >= 9)  return FREQUENCY_PLANES.find(p => p.level === 9)
+  if (numeric >= 8)  return FREQUENCY_PLANES.find(p => p.level === 8)
+  if (numeric >= 7)  return FREQUENCY_PLANES.find(p => p.level === 7)
+  if (numeric >= 6)  return FREQUENCY_PLANES.find(p => p.level === 6)
+  if (numeric >= 5)  return FREQUENCY_PLANES.find(p => p.level === 5)
+  if (numeric >= 4)  return FREQUENCY_PLANES.find(p => p.level === 4)
   return FREQUENCY_PLANES.find(p => p.level === 3)
 }
 
@@ -120,15 +135,15 @@ export function getDomainLevel(score, domainId) {
   Object.entries(LEVEL_THRESHOLDS).forEach(([lvl, threshold]) => {
     if (s >= threshold) level = Number(lvl)
   })
-
-  // Source is the invariant reference body. It is considered present from Level 5 upward.
-  // Its measured score still matters for the Level 5 Source Gate, but it does not block harmonization above Level 5.
-  if (domainId === 'd1') return Math.max(level, SOURCE_CONNECTION_LEVEL)
+  // Source is the invariant reference body. It is always at Level 5 or above.
+  if (domainId === SOURCE_ID) return Math.max(level, SOURCE_CONNECTION_LEVEL)
   return level
 }
 
 function calculateDomainHarmonization(domainResonance = []) {
-  const nonSource = domainResonance.filter(d => d.id !== 'd1')
+  // Only movable bodies participate in harmonization gates.
+  // Source is already present from Level 5 upward and does not block advancement.
+  const nonSource = domainResonance.filter(d => d.id !== SOURCE_ID)
   const minNonSourceLevel = Math.min(...nonSource.map(d => d.level))
   const maxAllowedLevel = Math.min(11, minNonSourceLevel + 1)
   const nextRequiredLevel = Math.min(10, Math.floor(maxAllowedLevel))
@@ -149,7 +164,7 @@ function buildInstabilityFlags({ coherence, harmony, coreEnergy, recentMissedDay
   if (reopenedToday) flags.push({ id: 'reopened_today', label: 'Recovery mode active', severity: 1 })
   if (recentMissedDays >= 2) flags.push({ id: 'recent_misses', label: 'Recent misses detected', severity: 2 })
   if (coherence < 55) flags.push({ id: 'low_coherence', label: 'Low system coherence', severity: 2 })
-  if (harmony < 65) flags.push({ id: 'domain_imbalance', label: 'Domain imbalance', severity: 2 })
+  if (harmony < 65) flags.push({ id: 'domain_imbalance', label: 'Movable body imbalance', severity: 2 })
   if (coreEnergy < 45) flags.push({ id: 'low_core', label: 'Low core reserve', severity: 2 })
   if (dailyEnergyRemaining < 35) flags.push({ id: 'low_daily_energy', label: 'Low daily supply remaining', severity: 1 })
   return flags
@@ -221,25 +236,37 @@ export function calculateCoreEnergy(dayStatus = {}) {
 }
 
 export function calculateDailySupply(coreEnergy = CORE_ENERGY_START) {
-  // Daily supply is tied to the existing core-cell reserve.
-  // Low core = less daily allotment; high core = more usable capacity.
   return Math.round(clamp(35 + coreEnergy * 0.65, 35, 100))
 }
 
 export function calculateCoherenceScore(domainScores = {}) {
   const source = clamp(domainScores?.d1 || 0, 0, 100)
-  const form = clamp(domainScores?.d2 || 0, 0, 100)
-  const field = clamp(domainScores?.d3 || 0, 0, 100)
-  const mind = clamp(domainScores?.d4 || 0, 0, 100)
-  const code = clamp(domainScores?.d5 || 0, 0, 100)
+  const form   = clamp(domainScores?.d2 || 0, 0, 100)
+  const field  = clamp(domainScores?.d3 || 0, 0, 100)
+  const mind   = clamp(domainScores?.d4 || 0, 0, 100)
+  const code   = clamp(domainScores?.d5 || 0, 0, 100)
   return (source * DOMAIN_WEIGHTS.d1 + form + field + mind + code) / 5.4
 }
 
-function calculateSystemCoherence(domainValues = [], sourceWeightedCoherence = 0) {
-  const avg = average(domainValues)
-  const variancePenalty = Math.sqrt(variance(domainValues)) * 0.72
+function calculateSystemCoherence(movableValues = [], sourceWeightedCoherence = 0) {
+  // System coherence is measured against movable bodies only.
+  // Source access is already factored into sourceWeightedCoherence.
+  const avg = average(movableValues)
+  const variancePenalty = Math.sqrt(variance(movableValues)) * 0.72
   const balanceAdjusted = clamp(avg - variancePenalty, 0, 100)
   return clamp((balanceAdjusted * 0.70) + (sourceWeightedCoherence * 0.30), 0, 100)
+}
+
+// Classify Source access clarity based on how well movable bodies
+// are aligned. Source itself is unchanged; only access varies.
+function classifySourceAccess(sourceScore, movableValues = []) {
+  const movableAvg = average(movableValues)
+  const redCount = movableValues.filter(v => v < 50).length
+  if (redCount >= 2 || movableAvg < 35) return 'faint'
+  if (redCount >= 1 || movableAvg < 50) return 'unstable'
+  if (movableAvg < 65 || sourceScore < 55) return 'accessible'
+  if (movableAvg < 78 || sourceScore < 70) return 'stable'
+  return 'clear'
 }
 
 export function calculateFrequencyState({ onboardingProfile = null, domainScores = {}, checked = {}, date = new Date(), dayStatus: externalDayStatus = null } = {}) {
@@ -270,17 +297,25 @@ export function calculateFrequencyState({ onboardingProfile = null, domainScores
   }, {})
 
   const source = blendedDomainScores.d1 || 0
-  const form = blendedDomainScores.d2 || 0
-  const field = blendedDomainScores.d3 || 0
-  const mind = blendedDomainScores.d4 || 0
-  const code = blendedDomainScores.d5 || 0
-  const values = [source, form, field, mind, code]
-  const weakest = Math.min(...values)
-  const strongest = Math.max(...values)
-  const imbalance = strongest - weakest
+  const form   = blendedDomainScores.d2 || 0
+  const field  = blendedDomainScores.d3 || 0
+  const mind   = blendedDomainScores.d4 || 0
+  const code   = blendedDomainScores.d5 || 0
+
+  // Harmony and imbalance are computed from MOVABLE bodies only.
+  // Source is the reference — it does not drift or contribute to imbalance.
+  const movableValues = [form, field, mind, code]
+  const movableWeakest  = Math.min(...movableValues)
+  const movableStrongest = Math.max(...movableValues)
+  const imbalance = movableStrongest - movableWeakest
+
   const sourceWeightedCoherence = calculateCoherenceScore(blendedDomainScores)
-  const systemCoherence = calculateSystemCoherence(values, sourceWeightedCoherence)
+  const systemCoherence = calculateSystemCoherence(movableValues, sourceWeightedCoherence)
   const harmony = Math.round(clamp(100 - imbalance, 0, 100))
+
+  // Source access: derived from movable body alignment, not from Source itself.
+  const sourceAccessState = classifySourceAccess(source, movableValues)
+  const sourceAccessMeta = SOURCE_ACCESS_LABELS[sourceAccessState] || SOURCE_ACCESS_LABELS.accessible
 
   const missedToday = todayStatus?.status === 'missed'
   const reopenedToday = !!todayStatus?.reopenedAt
@@ -300,6 +335,7 @@ export function calculateFrequencyState({ onboardingProfile = null, domainScores
       resonance,
       level,
       anchorPractice: getDomainAnchor(d.id),
+      isSource: d.id === SOURCE_ID,
     }
   })
 
@@ -317,13 +353,12 @@ export function calculateFrequencyState({ onboardingProfile = null, domainScores
   const streakBonus = currentStreak >= 30 ? 0.8 : currentStreak >= 14 ? 0.5 : currentStreak >= 7 ? 0.3 : currentStreak >= 3 ? 0.15 : 0
   const instabilityPenalty = clamp(instabilityFlags.reduce((sum, f) => sum + f.severity, 0) * 0.10, 0, 1.2)
 
-  // Potential level: gradual climb driven by reserve, coherence, stability, and continuity.
+  // Potential level is driven by movable body coherence, core reserve, and continuity.
   let potentialLevel = 3 + (systemCoherence / 100) * 3.1 + (coreEnergy / 100) * 2.7 + (harmony / 100) * 1.0 + streakBonus - instabilityPenalty
 
   const sourceGateMet = systemCoherence >= 45 && source >= 50 && completedLockedDays >= 3 && coreEnergy >= 50
   if (!sourceGateMet) potentialLevel = Math.min(potentialLevel, 4.9)
 
-  // Harmonization gate: to advance from L to L+1, all non-Source domains must be harmonized at L.
   potentialLevel = Math.min(potentialLevel, harmonization.maxAllowedLevel + 0.9)
 
   const grayGateMet = coreEnergy >= GRAY_ZONE_CORE_THRESHOLD && source >= 90 && form >= 80 && field >= 80 && mind >= 80 && code >= 80 && currentStreak >= 30 && recentMissedDays === 0
@@ -334,8 +369,12 @@ export function calculateFrequencyState({ onboardingProfile = null, domainScores
   const nextPlane = getFrequencyPlane(Math.min(11, Math.floor(level) + 1))
   const progressWithinLevel = level >= 11 ? 100 : Math.round((level - Math.floor(level)) * 100)
 
-  const minDomain = domainResonance.reduce((a, b) => a.resonance <= b.resonance ? a : b)
-  const maxDomain = domainResonance.reduce((a, b) => a.resonance >= b.resonance ? a : b)
+  // minDomain and maxDomain are computed from MOVABLE bodies only.
+  // Source is never the "weakest" or "strongest" body — it is the reference.
+  const movableResonance = domainResonance.filter(d => d.id !== SOURCE_ID)
+  const minDomain = movableResonance.reduce((a, b) => a.resonance <= b.resonance ? a : b)
+  const maxDomain = movableResonance.reduce((a, b) => a.resonance >= b.resonance ? a : b)
+
   const operatingMode = getOperatingMode({ systemCoherence, coreEnergy, instabilityFlags })
   const performanceLayer = calculatePerformanceLayer({ coreEnergy, systemCoherence, instabilityFlags, harmony })
 
@@ -353,14 +392,18 @@ export function calculateFrequencyState({ onboardingProfile = null, domainScores
     icon: d.icon,
   }))
 
+  // nextAction targets only movable bodies. Source is never the correction target.
   const nextAction = (() => {
-    if (!sourceGateMet) return { domain: domainById('d1'), practice: 'Stillness Exposure', reason: 'Level 5 requires stable Source access, enough core reserve, and repeated clean alignment.' }
+    if (!sourceGateMet) {
+      // When the Source gate is closed, the lowest movable body is the target.
+      const lowestMovable = movableResonance.reduce((a, b) => a.resonance <= b.resonance ? a : b)
+      return { domain: domainById(lowestMovable.id), practice: lowestMovable.anchorPractice, reason: `Level 5 requires stable Source access. Raise ${lowestMovable.name} to reduce interference and open the Source Gate.` }
+    }
     if (blockingDomains.length) {
       const target = blockingDomains.reduce((a, b) => a.gap >= b.gap ? a : b)
       return { domain: domainById(target.id), practice: target.anchorPractice, reason: `${target.name} is blocking advancement. Stabilize it to harmonize the current level.` }
     }
-    const target = minDomain || domainById('d1')
-    return { domain: target, practice: target.anchorPractice, reason: `${target.name} is the lowest current game piece. Raise this body to lift the whole system.` }
+    return { domain: minDomain, practice: minDomain.anchorPractice, reason: `${minDomain.name} is the lowest movable frequency body. Raise this body to lift the whole system toward Source.` }
   })()
 
   return {
@@ -379,6 +422,12 @@ export function calculateFrequencyState({ onboardingProfile = null, domainScores
     dailyEnergyRemaining,
     coherence: Math.round(sourceWeightedCoherence),
     systemCoherence: Math.round(systemCoherence),
+    // Source access metrics — these describe access to Source, not Source itself
+    sourceAccessState,
+    sourceAccessLabel: sourceAccessMeta.label,
+    sourceAccessDesc: sourceAccessMeta.desc,
+    sourceAccessColor: sourceAccessMeta.color,
+    sourceAccessBg: sourceAccessMeta.bg,
     source,
     form,
     field,
@@ -412,7 +461,7 @@ export function calculateFrequencyState({ onboardingProfile = null, domainScores
     grayGateGap: {
       coreEnergy: Math.max(0, GRAY_ZONE_CORE_THRESHOLD - coreEnergy),
       source: Math.max(0, 90 - source),
-      allDomains: Math.max(0, 80 - weakest),
+      allDomains: Math.max(0, 80 - movableWeakest),
       streak: Math.max(0, 30 - currentStreak),
       recentMissedDays,
     },
