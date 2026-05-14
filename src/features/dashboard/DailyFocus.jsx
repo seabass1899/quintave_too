@@ -1064,52 +1064,52 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       )}
 
-      {/* Mobile inline phase switcher — replaces topbar Morning/Midday/Evening buttons */}
-      {isMobile && (
+      {/* Phase selector — single control for both mobile and desktop.
+          Mobile: full-width buttons with status count. Desktop: compact pills. */}
+      {isMobile ? (
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-          {[
-            { id: 'morning', label: '☀ Morning', bg: '#1a1a18', color: '#fff' },
-            { id: 'midday',  label: '◈ Midday',  bg: '#1D9E75', color: '#fff' },
-            { id: 'evening', label: '☽ Evening', bg: '#7F77DD', color: '#fff' },
-          ].map(({ id, label, bg, color }) => {
-            const isActive = activePhaseId === id
-            const isLocked = !!plan.phases[id]?.locked
+          {PHASES.map(p => {
+            const ph = plan.phases[p.id]
+            const isActive = activePhaseId === p.id
+            const isLocked = !!ph?.locked
+            const done = ph?.completion?.completeRequired ?? 0
+            const req  = ph?.completion?.required ?? 0
             return (
-              <button key={id}
+              <button key={p.id}
                 onClick={() => {
                   if (isLocked) return
-                  setSelectedPhase(id)
-                  if (onPhaseSelect) onPhaseSelect(id)
+                  setSelectedPhase(p.id)
+                  if (onPhaseSelect) onPhaseSelect(p.id)
                 }}
                 disabled={isLocked}
                 style={{
                   flex: 1,
-                  minHeight: 38,
-                  borderRadius: 9,
-                  border: 'none',
-                  background: isLocked ? '#F0EFEC' : isActive ? bg : '#F4F3F0',
-                  color: isLocked ? '#AAA' : isActive ? color : '#555',
+                  minHeight: 44,
+                  borderRadius: 10,
+                  border: isActive ? '2px solid #1a1a18' : '1px solid rgba(0,0,0,0.1)',
+                  background: isLocked ? '#F0EFEC' : isActive ? '#1a1a18' : '#fff',
+                  color: isLocked ? '#AAA' : isActive ? '#fff' : '#555',
                   fontSize: 12,
                   fontWeight: isActive ? 800 : 600,
                   cursor: isLocked ? 'not-allowed' : 'pointer',
-                  opacity: isLocked ? 0.6 : 1,
+                  opacity: isLocked ? 0.55 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  lineHeight: 1.2,
                 }}
               >
-                {label}
-                {!isLocked && (
-                  <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.75 }}>
-                    {plan.phases[id]?.completion?.completeRequired}/{plan.phases[id]?.completion?.required}
-                  </span>
-                )}
-                {isLocked && <span style={{ fontSize: 10, marginLeft: 4 }}>locked</span>}
+                <span>{ph?.label || p.id}</span>
+                <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 700 }}>
+                  {isLocked ? 'locked' : `${done}/${req}`}
+                </span>
               </button>
             )
           })}
         </div>
-      )}
-
-      {/* PhasePill row — desktop only. Mobile uses the inline segmented control above. */}
-      {!isMobile && (
+      ) : (
         <div className="phase-tabs" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
           {PHASES.map(p => (
             <PhasePill
@@ -1129,23 +1129,47 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         padding: '12px 14px',
         marginBottom: 12
       }}>
-        <div className="day-locked-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+        {isMobile ? (
+          /* Mobile: stronger hierarchy — count first, directive second */
           <div>
-            <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', color: activePhase.locked ? '#D85A30' : '#555' }}>
+            <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: activePhase.locked ? '#D85A30' : '#7F77DD', marginBottom: 6 }}>
               {activePhase.label} · {activePhase.role}
             </div>
-            <div style={{ fontSize: 13, color: '#555', marginTop: 4, lineHeight: 1.45 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5 }}>
+              <span style={{ fontSize: 22, fontWeight: 950, color: '#1a1a18', lineHeight: 1 }}>
+                {activePhase.completion.required - activePhase.completion.completeRequired}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#555' }}>
+                {activePhase.completion.required - activePhase.completion.completeRequired === 1 ? 'action remaining' : 'actions remaining'}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: '#666', lineHeight: 1.4 }}>
               {activePhase.id === 'morning'
-                ? `Complete ${activePhase.completion.required} Morning actions to set the day's signal.`
+                ? "Set the day's signal before it sets itself."
                 : activePhase.id === 'midday'
-                  ? 'Correct drift and interrupt automatic loops before the day runs you.'
-                  : 'Complete the alignment, integrate the signal, and prime tomorrow.'}
+                  ? 'Correct drift before the day runs you.'
+                  : 'Integrate and prime tomorrow.'}
             </div>
           </div>
-          <div style={{ fontSize: 13, fontWeight: 850, color: '#1a1a18', whiteSpace: 'nowrap' }}>
-            {activePhase.completion.completeRequired}/{activePhase.completion.required}
+        ) : (
+          <div className="day-locked-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', color: activePhase.locked ? '#D85A30' : '#555' }}>
+                {activePhase.label} · {activePhase.role}
+              </div>
+              <div style={{ fontSize: 13, color: '#555', marginTop: 4, lineHeight: 1.45 }}>
+                {activePhase.id === 'morning'
+                  ? `Complete ${activePhase.completion.required} Morning actions to set the day's signal.`
+                  : activePhase.id === 'midday'
+                    ? 'Correct drift and interrupt automatic loops before the day runs you.'
+                    : 'Complete the alignment, integrate the signal, and prime tomorrow.'}
+              </div>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 850, color: '#1a1a18', whiteSpace: 'nowrap' }}>
+              {activePhase.completion.completeRequired}/{activePhase.completion.required}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {lastFeedback && (
@@ -1183,8 +1207,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         <div className="practice-row" key={`${activePhase.id}-${item.key}`} style={{
           display: 'flex',
           alignItems: 'center',
-          gap: isMobile ? 7 : 11,
-          padding: isMobile ? (item.priority === 'Critical' ? '7px 0' : '5px 0') : (item.priority === 'Critical' ? '13px 0' : '11px 0'),
+          gap: isMobile ? 6 : 11,
+          padding: isMobile ? (item.priority === 'Critical' ? '6px 0' : '4px 0') : (item.priority === 'Critical' ? '13px 0' : '11px 0'),
           borderBottom: bdr,
           background: item.priority === 'Critical' && !item.isDone ? 'linear-gradient(90deg, rgba(216,90,48,0.055), transparent 60%)' : 'transparent',
           borderRadius: item.priority === 'Critical' ? 10 : 0
@@ -1192,8 +1216,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           <button className="practice-check tap-target" onClick={() => handleCheck(item)} disabled={isMissedToday}
             title={isMissedToday ? 'This day is closed as missed. Resume alignment tomorrow.' : item.isDone ? 'Mark incomplete' : 'Mark complete'}
             style={{
-              width: isMobile ? 20 : 24,
-              height: isMobile ? 20 : 24,
+              width: isMobile ? 17 : 24,
+              height: isMobile ? 17 : 24,
               borderRadius: '50%',
               border: `1.5px solid ${item.priority === 'Critical' ? '#D85A30' : item.domain.color}`,
               background: item.isDone ? item.domain.color : 'transparent',
@@ -1213,7 +1237,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
             {/* Practice header row — always visible */}
             <div
               onClick={() => isMobile && setExpandedPractice(isExpanded ? null : item.key)}
-              style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6, flexWrap: 'wrap', cursor: isMobile ? 'pointer' : 'default' }}
+              style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 3 : 6, flexWrap: 'wrap', cursor: isMobile ? 'pointer' : 'default' }}
             >
               <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 800, color: '#1a1a18' }}>{item.name}</span>
               <PriorityBadge priority={item.priority} />
