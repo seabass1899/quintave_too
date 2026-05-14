@@ -738,43 +738,36 @@ function Ring({ pct, size = 86 }) {
     </svg>
   )
 }
-function FeedbackButton({ dailyPct, streakCount, weakest }) {
+function FeedbackButton({ dailyPct, streakCount, weakest, isMobile, betaVisible }) {
+  // On mobile: hide when the BetaFeedbackLayer is already showing
+  if (isMobile && betaVisible) return null
+
+  const saveFeedback = () => {
+    try {
+      trackEvent('feedback_opened', { source: 'floating_button' })
+      const feedback = prompt("What's working? What's confusing?")
+      if (!feedback || !feedback.trim()) return
+      const existing = JSON.parse(localStorage.getItem('q_feedback') || '[]')
+      localStorage.setItem('q_feedback', JSON.stringify([...existing, {
+        text: feedback.trim(),
+        date: new Date().toISOString(),
+        state: { dailyPct, streak: streakCount, weakest: weakest?.name || weakest?.id || null },
+      }]))
+      alert('Feedback saved. Thank you.')
+    } catch (e) {
+      console.error('Feedback capture failed:', e)
+    }
+  }
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: 16,
-        right: 16,
-        zIndex: 9999,
-      }}
-    >
+    <div style={{
+      position: 'fixed',
+      bottom: isMobile ? 80 : 16,
+      right: 16,
+      zIndex: 9999,
+    }}>
       <button
-        onClick={() => {
-          try {
-            trackEvent('feedback_opened', { source: 'floating_button' })
-
-            const feedback = prompt("What’s working? What’s confusing?")
-            if (!feedback || !feedback.trim()) return
-
-            const existing = JSON.parse(localStorage.getItem('q_feedback') || '[]')
-
-            const entry = {
-              text: feedback.trim(),
-              date: new Date().toISOString(),
-              state: {
-                dailyPct,
-                streak: streakCount,
-                weakest: weakest?.name || weakest?.id || null,
-              },
-            }
-
-            localStorage.setItem('q_feedback', JSON.stringify([...existing, entry]))
-            alert('Feedback saved. Thank you.')
-          } catch (e) {
-            console.error('Feedback capture failed:', e)
-            alert('Feedback could not be saved in this browser session.')
-          }
-        }}
+        onClick={saveFeedback}
         style={{
           padding: '10px 14px',
           borderRadius: 10,
@@ -1753,7 +1746,7 @@ export default function App() {
         <OnboardingModal onComplete={() => setShowFTUE(false)} />
       )}
 
-      <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} isMobile={isMobile} doneToday={doneToday} totalCount={totalCount} />
+      <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} isMobile={isMobile} doneToday={doneToday} totalCount={totalCount} betaVisible={doneToday >= 2} />
     </div>
   )
 }
