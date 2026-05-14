@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
-import { getWeeklyIntelligence, loadPatternProfile } from '../intelligence/patternLearningModel'
+import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile } from '../intelligence/patternLearningModel'
 import { trackEvent } from '../../app/utils/analytics'
 import PhaseReadCards from '../../components/PhaseReadCards'
 
@@ -482,7 +482,7 @@ function CoherenceProgressLayer({ decision }) {
       </div>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(140px, 1fr))',
+        gridTemplateColumns: (typeof window !== 'undefined' && window.innerWidth < 768) ? '1fr' : 'repeat(auto-fit, minmax(140px, 1fr))',
         gap: 8,
       }}>
         {rows.map(row => {
@@ -986,6 +986,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
 
   const handleCheck = (item) => {
     if (isMissedToday) return
+    // Invalidate the pattern profile so tomorrow's recommendations reflect today's behavior
+    try { invalidatePatternProfile() } catch {}
     const wasChecked = !!effectiveChecked?.[today]?.[item.key]
     setChecked(prev => ({
       ...prev,
