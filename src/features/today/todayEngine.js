@@ -699,6 +699,9 @@ function getBehaviorAdjustment(item, behaviorStats, decision) {
   return { score, label }
 }
 
+// Module-level cache — computed once per generateTodayPlan call, read by scoreCandidate
+let _cachedAdaptiveProfile = null
+
 function scoreCandidate(item, { weak = [], used = new Set(), history = [], behaviorStats = null, date = new Date(), phase = '', slot = '', preferredDomainId = null, decision = null, todayChecked = {}, dayStatus = {} } = {}) {
   if (!item || used.has(item.key)) return -9999
   const primary = item.phaseDomainId || item.domain?.id
@@ -726,9 +729,10 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], behav
   const phaseFrictionBonus = phaseComplexity === 'low' && getPracticeFriction(item) === 1 ? 5 : phaseComplexity === 'deepening' && getPracticeFriction(item) >= 2 ? 4 : 0
   const phaseRecoveryPenalty = ['recovery', 'collapse_rebuild'].includes(phase) && getPracticeFriction(item) >= 3 ? -10 : 0
   const deterministicJitter = (stableHash(`${getSelectorSeed()}|${getDateKey(date)}|${phase}|${slot}|${item.key}`) % 1000) / 1000
-  // Adaptive pattern learning adjustment — longitudinal signals from user history
-  const adaptiveProfile = typeof window !== 'undefined' ? getOrComputeProfile(safeReadJSON('q_checked', {}), dayStatus) : null
-  const adaptiveScore = adaptiveProfile ? getAdaptiveScoreAdjustment(item, todayChecked, adaptiveProfile) : 0
+  // Adaptive pattern learning adjustment — uses session-cached profile (computed once per plan generation)
+  const adaptiveScore = _cachedAdaptiveProfile
+    ? getAdaptiveScoreAdjustment(item, todayChecked, _cachedAdaptiveProfile)
+    : 0
 
   return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + memoryDriftBonus + leverageBonus + phaseFitBonus + repeatPenalty + memoryResistancePenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter + adaptiveScore
 }
@@ -1158,6 +1162,15 @@ export function generateTomorrowPrime(domainId) {
 }
 
 export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true, planSnapshot = null, onboardingProfile = null } = {}) {
+  // Compute adaptive profile once and cache it for all scoreCandidate calls this plan generation
+  try {
+    _cachedAdaptiveProfile = typeof window !== 'undefined'
+      ? getOrComputeProfile(checked, dayStatus, date)
+      : null
+  } catch {
+    _cachedAdaptiveProfile = null
+  }
+
   const dateKey = getDateKey(date)
   const previousDateKey = getPreviousDateKey(date, 1)
   const todayChecks = checked?.[dateKey] || {}
