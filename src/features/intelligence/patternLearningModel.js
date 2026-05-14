@@ -18,7 +18,7 @@
  */
 
 import { DOMAINS, PRACTICES } from '../../data'
-import { getDateKey, getPreviousDateKey } from '../today/todayEngine'
+import { getDateKey, getPreviousDateKey } from '../../shared/dateUtils'
 
 // ─── Storage helpers ─────────────────────────────────────────────────────────
 
@@ -651,6 +651,22 @@ export function getWeeklyIntelligence(checked = {}, dayStatus = {}, domainScores
 
 export function savePatternProfile(profile) {
   safeWrite('q_pattern_profile', profile)
+}
+
+/**
+ * Invalidate the cached profile so the next getOrComputeProfile call
+ * forces a full recompute. Call this whenever checked state changes
+ * (i.e. on every practice check/uncheck).
+ */
+export function invalidatePatternProfile() {
+  try {
+    const cached = localStorage.getItem('q_pattern_profile')
+    if (!cached) return
+    const profile = JSON.parse(cached)
+    // Mark as stale by clearing generatedAt — getOrComputeProfile will recompute
+    profile.generatedAt = null
+    localStorage.setItem('q_pattern_profile', JSON.stringify(profile))
+  } catch {}
 }
 
 export function loadPatternProfile() {
