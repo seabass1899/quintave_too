@@ -1436,7 +1436,7 @@ export default function App() {
           {(() => {
             if (!onboardingProfile?.completedAt) return null
             const daysSince = Math.floor((Date.now() - new Date(onboardingProfile.completedAt)) / (1000*60*60*24))
-            if (daysSince > 7) return null
+            if (daysSince >= 7) return null
             const dayNum = daysSince + 1
             const WEEK1 = [
               { day:1, domain:'d1', practice:'Stillness Exposure', why:'Start with Source — the anchor of everything else. Even 5 minutes of stillness sets the frequency for your entire day.' },
