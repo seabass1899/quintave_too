@@ -212,61 +212,64 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
 
           // ── Source Anchor row ── distinct treatment: no progress label, no "Next:" line
           if (isSource) {
-            // Signal clarity is an emergent consequence of movable body coherence,
-            // not Source's own score. Source is fixed — only interference changes access.
+            // Signal clarity is buffered and lagging — Source access degrades slower
+            // than movable bodies because the anchor itself never weakens.
+            // Formula: movable average (55%) + coherence memory (25%) + source baseline floor (20%)
             const movableAvg = domainProgress
               .filter(x => x.id !== 'd1')
               .reduce((a, x) => a + x.avg7, 0) / 4
-            const redBodyCount = domainProgress.filter(x => x.id !== 'd1' && x.avg7 < 40).length
-            const signalValue = Math.max(12, Math.min(96,
-              Math.round(movableAvg * 0.72 + (redBodyCount * -8))
-            ))
-            const accessLabel = signalValue >= 78 ? 'Clear' : signalValue >= 62 ? 'Stable' : signalValue >= 46 ? 'Accessible' : signalValue >= 30 ? 'Unstable' : 'Faint'
-            const accessColor = signalValue >= 78 ? '#085041' : signalValue >= 62 ? '#378ADD' : signalValue >= 46 ? '#7F77DD' : signalValue >= 30 ? '#BA7517' : '#E24B4A'
-            const accessBg    = signalValue >= 78 ? '#E1F5EE' : signalValue >= 62 ? '#E6F1FB' : signalValue >= 46 ? '#EEEDFE' : signalValue >= 30 ? '#FAEEDA' : '#FCEBEB'
+            // sourceBaseline: floor from onboarding score, minimum 55 so Source never collapses existentially
+            const sourceBaseline = Math.max(55, (onboardingProfile?.scores?.d1 || 7) * 6.5)
+            const signalValue = Math.max(28, Math.min(96, Math.round(
+              movableAvg     * 0.55 +
+              avgCoherence   * 0.25 +
+              sourceBaseline * 0.20
+            )))
 
+            // Access states describe perception of Source, never Source quality.
+            // All colors stay in the purple/indigo/violet family — Source never feels like failure.
+            const accessLabel = signalValue >= 80 ? 'Clear'     : signalValue >= 65 ? 'Connected' : signalValue >= 50 ? 'Obscured'  : signalValue >= 36 ? 'Distorted' : 'Blocked'
+            const accessColor = signalValue >= 80 ? '#3C3489'   : signalValue >= 65 ? '#5B52C8'   : signalValue >= 50 ? '#7F77DD'   : signalValue >= 36 ? '#9B91E0'   : '#C4BCEE'
+            const accessBg    = signalValue >= 80 ? '#DDDAFC'   : signalValue >= 65 ? '#E8E6FC'   : signalValue >= 50 ? '#EEEDFE'   : signalValue >= 36 ? '#EEEDFE'   : '#F3F1FF'
+            const barColor    = signalValue >= 80 ? '#3C3489'   : signalValue >= 65 ? '#5B52C8'   : signalValue >= 50 ? '#7F77DD'   : signalValue >= 36 ? '#B0A8E8'   : '#D4CEEF'
+
+            // Source row is always fully expanded — no collapse toggle.
+            // The anchor is the foundation; it should always be visible and teaching the model.
             return (
-              <div key={d.id} style={{ marginBottom: 12, borderBottom: bdr, paddingBottom: 12 }}>
-                {/* Source header — clickable for practice history */}
-                <div onClick={() => setExpandedDomain(isExpanded ? null : d.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: isExpanded ? 12 : 6 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>✦</div>
+              <div key={d.id} style={{ marginBottom: 16, borderBottom: bdr, paddingBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0, marginTop: 2 }}>✦</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>Source</span>
-                        <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 99, background: '#1a1a18', color: '#fff', fontWeight: 700, letterSpacing: '0.04em' }}>ANCHOR</span>
-                        <span style={{
-                          fontSize: 10, padding: '2px 8px', borderRadius: 99,
-                          background: accessBg, color: accessColor, fontWeight: 700,
-                        }}>{accessLabel}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>Source</span>
+                        <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 99, background: '#1a1a18', color: '#fff', fontWeight: 700, letterSpacing: '0.05em' }}>ANCHOR</span>
+                        <span style={{ fontSize: 10, padding: '2px 9px', borderRadius: 99, background: accessBg, color: accessColor, fontWeight: 700 }}>{accessLabel}</span>
                       </div>
-                      <span style={{ fontSize: 11, color: '#888' }}>{isExpanded ? '▲' : '▼'}</span>
                     </div>
-                    {/* Signal clarity bar — not a resonance progress bar */}
-                    <div style={{ fontSize: 10, color: accessColor, fontWeight: 700, marginBottom: 3 }}>Signal clarity</div>
-                    <div style={{ height: 6, borderRadius: 999, background: '#EEEDE9', overflow: 'hidden', marginBottom: 4 }}>
-                      <div style={{ height: 6, borderRadius: 999, background: accessColor, width: `${signalValue}%`, transition: 'width 0.5s' }} />
-                    </div>
-                    <div style={{ fontSize: 10, color: '#888', lineHeight: 1.4 }}>
-                      Source is always present and complete. Only access varies — shaped by interference in the movable bodies.
-                    </div>
-                  </div>
-                </div>
 
-                {/* Expanded practice detail for Source */}
-                {isExpanded && (
-                  <div style={{ paddingLeft: 38 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#888', marginBottom: 8 }}>Source anchor practices</div>
+                    {/* Signal clarity bar — purple family only, never red */}
+                    <div style={{ fontSize: 10, color: accessColor, fontWeight: 800, marginBottom: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Signal clarity</div>
+                    <div style={{ height: 7, borderRadius: 999, background: '#E8E6FC', overflow: 'hidden', marginBottom: 8 }}>
+                      <div style={{ height: 7, borderRadius: 999, background: barColor, width: `${signalValue}%`, transition: 'width 0.6s ease' }} />
+                    </div>
+
+                    {/* Explanatory note — always visible, teaches the model */}
+                    <div style={{ fontSize: 11, color: '#5a5870', lineHeight: 1.55, marginBottom: 10, background: '#F3F1FF', borderRadius: 8, padding: '8px 10px' }}>
+                      Source never weakens. Only access changes — shaped by interference in the movable bodies (Form, Field, Mind, Code). When those bodies stabilize, access returns.
+                    </div>
+
+                    {/* Anchor practices — always visible, no tap required */}
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#888', marginBottom: 8 }}>Anchor practices</div>
                     {d.practiceData.map((p, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: i < d.practiceData.length - 1 ? bdr : 'none' }}>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: i < d.practiceData.length - 1 ? bdr : 'none' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, fontWeight: 500, color: '#1a1a18' }}>{p.name}</div>
                           <div style={{ fontSize: 11, color: '#888' }}>{p.totalDone} times total</div>
                         </div>
                         {p.streak > 0 && (
-                          <div style={{ fontSize: 11, fontWeight: 600, color: p.streak >= 21 ? '#7F77DD' : p.streak >= 7 ? '#D85A30' : '#1D9E75' }}>
-                            {p.streak >= 21 ? '⚡' : p.streak >= 7 ? '🔥' : '✦'} {p.streak}d
+                          <div style={{ fontSize: 11, fontWeight: 600, color: p.streak >= 21 ? '#7F77DD' : p.streak >= 7 ? '#5B52C8' : '#9B91E0' }}>
+                            {p.streak >= 21 ? '⚡' : p.streak >= 7 ? '✦' : '·'} {p.streak}d
                           </div>
                         )}
                         <div style={{ fontSize: 11, color: '#888', minWidth: 60, textAlign: 'right' }}>
@@ -275,7 +278,7 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             )
           }
