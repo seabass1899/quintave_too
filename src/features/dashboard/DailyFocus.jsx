@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
+import { getWeeklyIntelligence, loadPatternProfile } from '../intelligence/patternLearningModel'
 import { trackEvent } from '../../app/utils/analytics'
 import PhaseReadCards from '../../components/PhaseReadCards'
 
@@ -812,6 +813,64 @@ function MobileAlignmentRead({ decision }) {
   )
 }
 
+// ─── Adaptive Intelligence Badge ─────────────────────────────────────────────
+// Shows when the engine has learned from the user's patterns and adapted today's plan.
+function AdaptiveIntelligenceBadge({ plan, isMobile }) {
+  const ai = plan?.adaptiveIntelligence
+  if (!ai?.isAdapted) return null
+
+  const parts = []
+  if (ai.topAvoidedPractice) parts.push(`Reduced ${ai.topAvoidedPractice}`)
+  if (ai.topMomentumPractice) parts.push(`Reinforcing ${ai.topMomentumPractice}`)
+  if (parts.length === 0) return null
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      background: '#F3F1FF',
+      border: '1px solid #7F77DD30',
+      borderRadius: 8,
+      padding: isMobile ? '6px 10px' : '7px 12px',
+      marginBottom: 10,
+      flexWrap: 'wrap',
+    }}>
+      <span style={{ fontSize: 11, color: '#7F77DD', fontWeight: 900 }}>◈ Adapted</span>
+      <span style={{ fontSize: 11, color: '#5a5870' }}>
+        {parts.join(' · ')}
+      </span>
+    </div>
+  )
+}
+
+// ─── Pattern Break Celebration ────────────────────────────────────────────────
+// Surfaces when the user has broken a recurring negative pattern.
+function PatternBreakNotice({ plan }) {
+  const breaks = plan?.patternBreaks || []
+  if (breaks.length === 0) return null
+
+  // Show only the most significant break
+  const top = breaks.sort((a, b) => (b.strength === 'strong' ? 1 : -1))[0]
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #E1F5EE, #F3F1FF)',
+      border: '1px solid #1D9E7530',
+      borderRadius: 12,
+      padding: '12px 14px',
+      marginBottom: 12,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1D9E75', marginBottom: 4 }}>
+        ✦ {top.label}
+      </div>
+      <div style={{ fontSize: 13, color: '#1a1a18', lineHeight: 1.5 }}>
+        {top.message}
+      </div>
+    </div>
+  )
+}
+
 export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false }) {
   const today = getDateKey(new Date())
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
@@ -1005,6 +1064,9 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     ) : (
       <SystemReadPanel decision={plan.decision} />
     )}
+
+    <AdaptiveIntelligenceBadge plan={plan} isMobile={isMobile} />
+    <PatternBreakNotice plan={plan} />
       {showOnboarding && (
         <div style={{
           background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
