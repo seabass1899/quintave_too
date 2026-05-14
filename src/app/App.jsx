@@ -866,6 +866,32 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Desktop tuning focus — headline + 2 bullets + today's move
+function DesktopTuningFocus({ tip, domainId }) {
+  const DESKTOP_TIPS = {
+    d1: { headline: 'Source is the tuning point today.', bullets: ['Begin with Stillness Exposure before anything else', 'Rest as the awareness beneath thought — not above it'], move: 'Start with 10 minutes of Stillness Exposure.' },
+    d2: { headline: 'Form is the platform today.',       bullets: ['Prioritize movement and sleep above all else today', 'Fuel the body with intention — protein, hydration, rest'],   move: 'Lock in one Form practice before midday.' },
+    d3: { headline: 'Field is holding charge today.',    bullets: ['Name one emotion you are carrying right now', 'Let it move through the body — do not suppress it'],           move: 'Complete Name + Locate Emotion before evening.' },
+    d4: { headline: 'Mind is the tuning point today.',   bullets: ['Set your Morning Directive before reacting to anything', 'One deliberate intention changes the whole day'],       move: 'Write your directive in the field above.' },
+    d5: { headline: 'Code is shaping behavior today.',   bullets: ['Notice one automatic reaction today and name it', 'Create a gap between stimulus and response'],                move: 'Complete one Pattern Interrupt before day ends.' },
+  }
+  const dt = DESKTOP_TIPS[domainId] || { headline: tip?.split('.')[0] + '.', bullets: [], move: '' }
+  return (
+    <div style={{ background: '#EEEDFE', borderRadius: 10, padding: '13px 16px', borderLeft: '3px solid #7F77DD' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7F77DD', marginBottom: 6 }}>Today's tuning focus</div>
+      <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1a18', marginBottom: 8, lineHeight: 1.3 }}>{dt.headline}</div>
+      {dt.bullets.map((b, i) => (
+        <div key={i} style={{ fontSize: 13, color: '#3C3489', lineHeight: 1.55, marginBottom: 3 }}>• {b}</div>
+      ))}
+      {dt.move && (
+        <div style={{ marginTop: 10, fontSize: 12, fontWeight: 800, color: '#3C3489', borderTop: '1px solid #7F77DD25', paddingTop: 8 }}>
+          Today's move: <span style={{ fontWeight: 500 }}>{dt.move}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Mobile tuning focus — scannable bullets + expandable detail
 function MobileTuningFocus({ tip, domainId }) {
   const [expanded, setExpanded] = React.useState(false)
@@ -1038,11 +1064,11 @@ export default function App() {
     ? ['d1','d2','d3','d4','d5'].reduce((w, id) => (onboardingProfile.scores[id] || 5) < (onboardingProfile.scores[w] || 5) ? id : w, 'd1')
     : weakest.id || 'd1'
   const COACHING_TIPS = {
-    d1: 'Source is your tuning fork — and it is the frequency body asking for attention today. Begin with Stillness Exposure. Even 5 minutes of resting as the awareness beneath thought recalibrates every other dimension.',
-    d2: 'Your Form frequency body is the platform everything else runs on. A depleted vessel cannot sustain coherence. Today: prioritize sleep quality, move your body, and fuel it with intention.',
-    d3: 'Your Field is holding charge today. Unprocessed emotion is the most common source of incoherence — it distorts thought, suppresses Source access, and embeds into Code. Name one feeling you are carrying. Locate it in your body. Breathe into it.',
-    d4: 'Your Mind frequency body is your primary tuning point today. Before reacting to anything external, set your Morning Directive. One deliberate intention is the difference between a day that happens to you and one you create.',
-    d5: 'Your Code is the operating system running most of what happens today. One Pattern Interrupt — catching an automatic reaction and choosing differently — begins to rewrite the program. That gap between stimulus and response is where your freedom lives.',
+    d1: 'Source is the tuning point today. Begin with Stillness Exposure before doing anything else.',
+    d2: 'Form is the platform today. Prioritize movement, protein, hydration, and sleep.',
+    d3: 'Field is holding charge today. Name one emotion and let it move instead of suppressing it.',
+    d4: 'Mind is the tuning point today. Set one directive before reacting to the world.',
+    d5: 'Code is shaping behavior today. Interrupt one automatic pattern deliberately.',
   }
 
   // Weekly review prompt — show on Sundays or if not done this week
@@ -1417,6 +1443,8 @@ export default function App() {
         ) : (
           <>
             <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
+            {/* SyncControls always visible on desktop — not gated behind tester mode */}
+            <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
             {testerMode && (<>
               <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
               <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
@@ -1424,7 +1452,6 @@ export default function App() {
               <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
               <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
               <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
-              <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
               <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
               <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
               <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
@@ -1476,10 +1503,7 @@ export default function App() {
             {isMobile ? (
               <MobileTuningFocus tip={COACHING_TIPS[coachingDomain]} domainId={coachingDomain} />
             ) : (
-              <div style={{ background: '#EEEDFE', borderRadius:10, padding:'12px 16px', borderLeft:'3px solid #7F77DD' }}>
-                <div style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'#3C3489', marginBottom:4 }}>Today's tuning focus</div>
-                <div style={{ fontSize:13, color:'#3C3489', lineHeight:1.6 }}>{COACHING_TIPS[coachingDomain]}</div>
-              </div>
+              <DesktopTuningFocus tip={COACHING_TIPS[coachingDomain]} domainId={coachingDomain} />
             )}
           </div>
 
