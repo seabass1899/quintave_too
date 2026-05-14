@@ -1,4 +1,5 @@
 import { DOMAINS, PRACTICES } from '../../data'
+import { getAdaptiveScoreAdjustment, getOrComputeProfile, detectPatternBreak } from '../intelligence/patternLearningModel'
 import { calculateCoherenceState } from '../frequency/coherenceStateModel'
 import { calculateCoherenceTrajectory } from '../frequency/coherenceTrajectoryModel'
 import { calculateCoherenceMemory } from '../frequency/coherenceMemoryModel'
@@ -698,7 +699,7 @@ function getBehaviorAdjustment(item, behaviorStats, decision) {
   return { score, label }
 }
 
-function scoreCandidate(item, { weak = [], used = new Set(), history = [], behaviorStats = null, date = new Date(), phase = '', slot = '', preferredDomainId = null, decision = null } = {}) {
+function scoreCandidate(item, { weak = [], used = new Set(), history = [], behaviorStats = null, date = new Date(), phase = '', slot = '', preferredDomainId = null, decision = null, todayChecked = {}, dayStatus = {} } = {}) {
   if (!item || used.has(item.key)) return -9999
   const primary = item.phaseDomainId || item.domain?.id
   const cross = item.cross || []
@@ -725,14 +726,18 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], behav
   const phaseFrictionBonus = phaseComplexity === 'low' && getPracticeFriction(item) === 1 ? 5 : phaseComplexity === 'deepening' && getPracticeFriction(item) >= 2 ? 4 : 0
   const phaseRecoveryPenalty = ['recovery', 'collapse_rebuild'].includes(phase) && getPracticeFriction(item) >= 3 ? -10 : 0
   const deterministicJitter = (stableHash(`${getSelectorSeed()}|${getDateKey(date)}|${phase}|${slot}|${item.key}`) % 1000) / 1000
-  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + memoryDriftBonus + leverageBonus + phaseFitBonus + repeatPenalty + memoryResistancePenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter
+  // Adaptive pattern learning adjustment — longitudinal signals from user history
+  const adaptiveProfile = typeof window !== 'undefined' ? getOrComputeProfile(safeReadJSON('q_checked', {}), dayStatus) : null
+  const adaptiveScore = adaptiveProfile ? getAdaptiveScoreAdjustment(item, todayChecked, adaptiveProfile) : 0
+
+  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + memoryDriftBonus + leverageBonus + phaseFitBonus + repeatPenalty + memoryResistancePenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter + adaptiveScore
 }
 
 function smartPick(candidates = [], used = new Set(), context = {}) {
   const ranked = candidates
     .map(([domainId, name]) => findPractice(domainId, name))
     .filter(Boolean)
-    .map(item => ({ item, score: scoreCandidate(item, { ...context, used }) }))
+    .map(item => ({ item, score: scoreCandidate(item, { ...context, used, todayChecked: context.todayChecked || {}, dayStatus: context.dayStatus || {} }) }))
     .filter(entry => entry.score > -9999)
     .sort((a, b) => b.score - a.score)
   return ranked[0]?.item || null
@@ -868,7 +873,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   }
 
   const pushSmart = (candidates, priority, why, slot, preferredDomainId = null) => {
-    const item = smartPick(candidates, combinedUsed(), { weak, history, behaviorStats, date, phase, slot, preferredDomainId, decision })
+    const item = smartPick(candidates, combinedUsed(), { weak, history, behaviorStats, date, phase, slot, preferredDomainId, decision, todayChecked, dayStatus })
     return push(pickToTuple(item), priority, whyFromDecision(decision, phase, slot, item, why))
   }
 
@@ -1199,10 +1204,13 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const correctionDomain = impactSummary.neglectedDomain || domainById(weak)
   const tomorrowPrime = generateTomorrowPrime(correctionDomain?.id || weak)
 
+  const patternBreaks = detectPatternBreak(checked, dayStatus, date)
+
   return {
     dailyMinimum: DAILY_MINIMUM,
     currentPhase,
     decision,
+    patternBreaks,
     weakestDomain: domainById(weak),
     previousStatus,
     primedDomain: primedDomainId ? domainById(primedDomainId) : null,
@@ -1222,6 +1230,20 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
       longest: longestStreak,
       record: dayStatus?.[dateKey] || null,
     },
+    adaptiveIntelligence: (() => {
+      try {
+        const profile = getOrComputeProfile(checked, dayStatus, date)
+        return {
+          isAdapted: profile?.hasEnoughData || false,
+          topAvoidedPractice: profile?.summary?.topAvoidedPractice || null,
+          topMomentumPractice: profile?.summary?.topMomentumPractice || null,
+          bestPhase: profile?.summary?.bestPhase || null,
+          feedbackSignal: profile?.summary?.feedbackSignal || 'insufficient',
+          avoidanceCount: profile?.avoidance?.length || 0,
+          momentumCount: profile?.momentum?.length || 0,
+        }
+      } catch { return { isAdapted: false } }
+    })(),
     failureState: {
       active: failureActive,
       status: existingMissed ? 'missed' : failureActive ? 'at_risk' : 'open',
