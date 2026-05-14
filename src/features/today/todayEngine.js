@@ -1,4 +1,5 @@
 import { DOMAINS, PRACTICES } from '../../data'
+import { getDateKey, getPreviousDateKey } from '../../shared/dateUtils'
 import { getAdaptiveScoreAdjustment, getOrComputeProfile, detectPatternBreak } from '../intelligence/patternLearningModel'
 import { calculateCoherenceState } from '../frequency/coherenceStateModel'
 import { calculateCoherenceTrajectory } from '../frequency/coherenceTrajectoryModel'
@@ -1038,15 +1039,8 @@ function buildImpactSummary(allItems, todayChecks = {}) {
   }
 }
 
-export function getDateKey(date = new Date()) {
-  return date.toDateString()
-}
-
-export function getPreviousDateKey(date = new Date(), daysBack = 1) {
-  const d = new Date(date)
-  d.setDate(d.getDate() - daysBack)
-  return d.toDateString()
-}
+// Re-exported from shared/dateUtils for backward compatibility with existing imports
+export { getDateKey, getPreviousDateKey } from '../../shared/dateUtils'
 
 function isLockedDay(record) {
   // Today-page streak = visible consistency. A recovered day that is completed counts as a completed alignment.
