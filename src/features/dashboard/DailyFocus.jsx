@@ -452,14 +452,24 @@ function CoherenceProgressLayer({ decision }) {
   const secondary = decision.secondaryBlockerId
   const stable = decision.trajectorySummary?.mostStableBody
 
+  // Always show Source + all 4 movable bodies (d2-d5).
+  // Derive state from decision signals; fall back to 'Stable' if not featured.
+  const MOVABLE_IDS = ['d2', 'd3', 'd4', 'd5']
+  const getBodyState = (id) => {
+    if (id === primary)   return { state: 'Recovering',  symbol: '↑', tone: 'primary' }
+    if (id === secondary) return { state: 'Drifting',    symbol: '↓', tone: 'secondary' }
+    if (id === stable)    return { state: 'Stabilizing', symbol: '→', tone: 'stable' }
+    return { state: 'Stable', symbol: '→', tone: 'neutral' }
+  }
+
   const rows = [
-    { id: 'd1',      label: 'Source',                    state: 'Anchored',    symbol: '◎' },
-    { id: primary,   label: labels[primary] || 'Primary', state: 'Recovering',  symbol: '↑' },
-    { id: secondary, label: labels[secondary] || 'Secondary', state: 'Drifting', symbol: '↓' },
-    { id: stable,    label: labels[stable] || 'Stable',   state: 'Stabilizing', symbol: '→' },
-  ].filter((row, index, arr) =>
-    row.id && arr.findIndex(r => r.id === row.id) === index
-  )
+    { id: 'd1', label: 'Source', state: 'Anchored', symbol: '◎', tone: 'anchor' },
+    ...MOVABLE_IDS.map(id => ({
+      id,
+      label: labels[id] || id,
+      ...getBodyState(id),
+    })),
+  ]
 
   return (
     <div style={{
