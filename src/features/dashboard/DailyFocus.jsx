@@ -10,6 +10,24 @@ const STRATEGY_LABELS = {
   advance_with_balance: 'Advance signal without imbalance',
 }
 
+// Formats a raw phase key (e.g. "collapse_rebuild") into a human-readable label
+function formatPhaseLabel(value, fallback = 'Baseline') {
+  if (!value) return fallback
+  const map = {
+    collapse_rebuild:    'Collapse / Rebuild',
+    recovery:            'Recovery',
+    stabilization:       'Stabilization',
+    expansion:           'Expansion',
+    integration:         'Integration',
+    baseline_building:   'Baseline Building',
+    lower_friction:      'Lower Friction',
+    establish_baseline:  'Establish Baseline',
+    increase_depth:      'Increase Depth',
+    reinforce_momentum:  'Reinforce Momentum',
+  }
+  return map[value] || String(value).replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
 const BODY_EXPLANATIONS = {
   Source: 'stability & reference',
   Form: 'body, energy & recovery',
@@ -694,7 +712,7 @@ function MobileAlignmentRead({ decision }) {
 
   const labels = { d1:'Source', d2:'Form', d3:'Field', d4:'Mind', d5:'Code' }
   const primary = labels[decision.primaryBlockerId] || 'System'
-  const phaseDisplay = decision?.phaseSummary?.displayPhase || decision?.phaseSummary?.phase || 'Baseline'
+  const phaseDisplay = formatPhaseLabel(decision?.phaseSummary?.displayPhase || decision?.phaseSummary?.phase)
   const strategyDisplay = STRATEGY_LABELS[decision.strategy] || 'Stabilize'
 
   return (
@@ -716,7 +734,7 @@ function MobileAlignmentRead({ decision }) {
       >
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: 11, fontWeight: 800, background: '#EEEDFE', color: '#3C3489', padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>
-            {phaseDisplay.replace(/_/g,' ')}
+            {phaseDisplay}
           </span>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#555', whiteSpace: 'nowrap' }}>
             Focus: {primary}
@@ -941,7 +959,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18' }}>
-            {plan.decision ? `${(plan.decision.phaseSummary?.displayPhase || plan.decision.phaseSummary?.phase || 'Recovery').replace(/_/g,' ')}` : 'Alignment'}
+            {plan.decision ? formatPhaseLabel(plan.decision.phaseSummary?.displayPhase || plan.decision.phaseSummary?.phase) : 'Alignment'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#3C3489' }}>
