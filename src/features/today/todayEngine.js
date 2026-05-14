@@ -461,10 +461,11 @@ function buildAlignmentDecision({ domainScores = {}, checked = {}, dayStatus = {
         ? 'Recent completion was detected. Today reinforces the current momentum without repeating blindly.'
         : 'Today establishes a baseline pattern before increasing complexity.'
 
-  const trajectoryExplanation = trajectoryState?.explanation ? ` ${trajectoryState.explanation}` : ''
-  const memoryExplanation = memoryState?.explanation ? ` ${memoryState.explanation}` : ''
-  const phaseExplanation = phaseState?.explanation ? ` ${phaseState.explanation}` : ''
-  const explanation = `${baseExplanation} ${behaviorExplanation}${trajectoryExplanation}${memoryExplanation}${phaseExplanation}`
+  // Explanation is capped at 2 sentences: base strategy + behavior mode.
+  // trajectoryExplanation, memoryExplanation, phaseExplanation are omitted from
+  // the user-facing string — they are available on decision.trajectoryState etc.
+  // for diagnostic purposes but cause paragraph bloat when concatenated.
+  const explanation = `${baseExplanation} ${behaviorExplanation}`.trim()
 
   return {
     version: 'coherence-state-decision-v1',
