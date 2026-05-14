@@ -39,6 +39,19 @@ const getCoherenceScore = (scores) => {
 
 // PRACTICES imported from data.js
 
+// ─── Responsive hook ─────────────────────────────────────────────────────────
+function useWindowWidth() {
+  const [width, setWidth] = React.useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  )
+  React.useEffect(() => {
+    const handler = () => setWidth(window.innerWidth)
+    window.addEventListener('resize', handler, { passive: true })
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return width
+}
+
 // Pre-compute cross-impact leverage counts for each practice
 const LEVERAGE_MAP = (() => {
   const map = {}
@@ -866,6 +879,8 @@ export default function App() {
   const [testerMode, setTesterMode] = useState(() => {
     try { return localStorage.getItem('q_tester_mode') === 'true' } catch { return false }
   })
+  const isMobile = useWindowWidth() < 768
+  const [showDrawer, setShowDrawer] = useState(false)
   const [authReady, setAuthReady] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [todayPhaseOverride, setTodayPhaseOverride] = useState(null)
@@ -1165,6 +1180,7 @@ export default function App() {
         .mobile-details-toggle { display:none; }
         @media (max-width: 760px) {
           .app-container { padding: 14px 10px 24px; }
+          .today-grid-mobile { grid-template-columns: 1fr !important; }
           .app-greeting { font-size: 18px !important; line-height: 1.15; }
           .topbar { height: 46px !important; padding: 0 8px !important; gap: 5px !important; }
           .topbar button, .topbar label { min-height: 34px !important; padding: 6px 10px !important; }
@@ -1292,34 +1308,97 @@ export default function App() {
         </div>
       )}
 
-      {/* Topbar — single scrollable row */}
-      <div className="topbar" style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:'auto', minHeight:48, overflowX:'auto', flexWrap:'wrap', rowGap:8, paddingBottom:4, msOverflowStyle:'none', scrollbarWidth:'none' }}>
+      {/* ── Mobile drawer ── */}
+      {isMobile && showDrawer && (
+        <div style={{ position:'fixed', inset:0, zIndex:200 }} onClick={() => setShowDrawer(false)}>
+          <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'#fff', borderRadius:'20px 20px 0 0', padding:'20px 16px', paddingBottom:'calc(20px + env(safe-area-inset-bottom))', boxShadow:'0 -8px 32px rgba(0,0,0,0.15)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ width:36, height:4, background:'#E0DFDC', borderRadius:99, margin:'0 auto 16px' }}/>
+            <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:12 }}>Today</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
+              {[
+                { label:'☀ Morning', bg:'#1a1a18', color:'#fff', phase:'morning' },
+                { label:'◈ Midday',  bg:'#1D9E75', color:'#fff', phase:'midday'  },
+                { label:'☽ Evening', bg:'#7F77DD', color:'#fff', phase:'evening' },
+                { label:'Breathwork',bg:'#F4F3F0', color:'#1a1a18', fn:() => setShowBreathwork(true) },
+              ].map(({ label, bg, color, phase, fn }) => (
+                <button key={label} onClick={() => { if (phase) { setTodayPhaseOverride(phase); handleTabChange('today') } else { fn() } setShowDrawer(false) }}
+                  style={{ minHeight:44, borderRadius:10, border:'none', background:bg, color, fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {testerMode && (
+              <>
+                <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Tester tools</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  {[
+                    { label:'✦ Signature', fn:() => setShowSignature(true) },
+                    { label:'∿ Noise Audit', fn:() => setShowNoise(true) },
+                    { label:'◈ Coach View', fn:() => setShowPractitioner(true) },
+                    { label:'Review', fn:() => setShowWeekly(true) },
+                    { label:'Reminders', fn:() => setShowNotifs(true) },
+                    { label:'Save data', fn:exportBackup },
+                    { label:'Export Beta', fn:exportBetaData },
+                    { label:'Clear today', fn:() => { if(window.confirm("Clear today's practice?")) setChecked({...checked,[today]:{}}) } },
+                  ].map(({ label, fn }) => (
+                    <button key={label} onClick={() => { fn(); setShowDrawer(false) }}
+                      style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
+                      {label}
+                    </button>
+                  ))}
+                  <SyncControls session={session} authReady={authReady} onShowAuth={() => { setShowAuth(true); setShowDrawer(false) }} />
+                  <label style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', padding:'0 14px' }}>
+                    Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
+                  </label>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Topbar — desktop: full scrollable row / mobile: logo + 3 mode buttons + ☰ */}
+      <div className="topbar" style={{ background:'#fff', borderBottom:bdr, position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', gap:6, padding:'0 14px', height:'auto', minHeight:48, overflowX: isMobile ? 'visible' : 'auto', flexWrap: isMobile ? 'nowrap' : 'wrap', rowGap:8, paddingBottom: isMobile ? 0 : 4, msOverflowStyle:'none', scrollbarWidth:'none' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginRight:2 }}>
           <div style={{ fontSize:16, fontWeight:700, letterSpacing:'-0.03em' }}>Quintave</div>
           {testerMode && (
             <span style={{ padding:'2px 8px', borderRadius:999, background:'#EEE8FF', color:'#4B3FB4', fontSize:10, fontWeight:800, letterSpacing:'0.03em' }}>TESTER</span>
           )}
         </div>
+
+        {/* Core mode buttons — always visible on both mobile and desktop */}
         <button onClick={() => { setTodayPhaseOverride('morning'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
         <button onClick={() => { setTodayPhaseOverride('midday'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
         <button onClick={() => { setTodayPhaseOverride('evening'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#7F77DD', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☽ Evening</button>
-        <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
-        {testerMode && (<>
-          <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
-          <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
-          <button onClick={() => setShowPractitioner(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#E6F1FB', color:'#0C447C', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>◈ Coach</button>
-          <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
-          <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
-          <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
-          <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
-          <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
-          <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
-          <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
-            Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
-          </label>
-          <button onClick={() => { if(window.confirm('Clear today\'s practice? This cannot be undone.')) setChecked({...checked,[today]:{}}) }}
-            style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Clear</button>
-        </>)}
+
+        {/* Mobile: ☰ opens drawer. Desktop: show all buttons inline */}
+        {isMobile ? (
+          <button onClick={() => setShowDrawer(true)}
+            style={{ marginLeft:'auto', padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:14, cursor:'pointer', flexShrink:0, minHeight:36 }}>
+            ☰
+          </button>
+        ) : (
+          <>
+            <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
+            {testerMode && (<>
+              <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
+              <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
+              <button onClick={() => setShowPractitioner(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#E6F1FB', color:'#0C447C', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>◈ Coach</button>
+              <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
+              <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
+              <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
+              <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
+              <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
+              <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
+              <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+                Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
+              </label>
+              <button onClick={() => { if(window.confirm("Clear today's practice? This cannot be undone.")) setChecked({...checked,[today]:{}}) }}
+                style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Clear</button>
+            </>)}
+          </>
+        )}
       </div>
 
       {/* Tab bar */}
@@ -1335,7 +1414,7 @@ export default function App() {
         ))}
       </div>
 
-      <div className="app-container">
+      <div className="app-container" style={{ paddingBottom: isMobile ? 'calc(64px + env(safe-area-inset-bottom))' : undefined }}>
 
         {/* ── TODAY ── */}
         {tab === 'today' && <>
@@ -1360,7 +1439,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="today-grid" style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:14, marginBottom:16, alignItems:'stretch' }}>
+          <div className="today-grid" style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr auto', gap: isMobile ? 10 : 14, marginBottom:16, alignItems:'stretch' }}>
             <div style={{ ...card, marginBottom:0, display:'flex', gap:18, alignItems:'center' }}>
               <Ring pct={dailyPct}/>
               <div>
@@ -1506,7 +1585,7 @@ export default function App() {
 
           <div className={showTodayDetails ? '' : 'desktop-details'}><TriggerMap triggers={triggers} setTriggers={setTriggers}/></div>
 
-          <div className={showTodayDetails ? 'today-grid' : 'desktop-details today-grid'} style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+          <div className={showTodayDetails ? 'today-grid' : 'desktop-details today-grid'} style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:14 }}>
             <div style={card}>
               <div style={{ fontSize:14, fontWeight:600, marginBottom:10 }}>▽ Field Integration</div>
               <textarea value={evening[today]||''} onChange={e=>setEvening({...evening,[today]:e.target.value})}
@@ -1607,7 +1686,7 @@ export default function App() {
         <OnboardingModal onComplete={() => setShowFTUE(false)} />
       )}
 
-      <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} />
+      <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} isMobile={isMobile} doneToday={doneToday} totalCount={totalCount} />
     </div>
   )
 }
