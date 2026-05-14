@@ -1320,7 +1320,7 @@ export default function App() {
                 { label:'☀ Morning', bg:'#1a1a18', color:'#fff', phase:'morning' },
                 { label:'◈ Midday',  bg:'#1D9E75', color:'#fff', phase:'midday'  },
                 { label:'☽ Evening', bg:'#7F77DD', color:'#fff', phase:'evening' },
-                { label:'Breathwork',bg:'#F4F3F0', color:'#1a1a18', fn:() => setShowBreathwork(true) },
+                { label:'📚 Library', bg:'#F4F3F0', color:'#1a1a18', fn:() => handleTabChange('library') },
               ].map(({ label, bg, color, phase, fn }) => (
                 <button key={label} onClick={() => { if (phase) { setTodayPhaseOverride(phase); handleTabChange('today') } else { fn() } setShowDrawer(false) }}
                   style={{ minHeight:44, borderRadius:10, border:'none', background:bg, color, fontSize:13, fontWeight:700, cursor:'pointer' }}>
@@ -1367,10 +1367,12 @@ export default function App() {
           )}
         </div>
 
-        {/* Core mode buttons — always visible on both mobile and desktop */}
-        <button onClick={() => { setTodayPhaseOverride('morning'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
-        <button onClick={() => { setTodayPhaseOverride('midday'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
-        <button onClick={() => { setTodayPhaseOverride('evening'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#7F77DD', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☽ Evening</button>
+        {/* Mode buttons: desktop shows inline, mobile hides them (they live inside Today card) */}
+        {!isMobile && (<>
+          <button onClick={() => { setTodayPhaseOverride('morning'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☀ Morning</button>
+          <button onClick={() => { setTodayPhaseOverride('midday'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1D9E75', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>◈ Midday</button>
+          <button onClick={() => { setTodayPhaseOverride('evening'); handleTabChange('today') }} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#7F77DD', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>☽ Evening</button>
+        </>)}
 
         {/* Mobile: ☰ opens drawer. Desktop: show all buttons inline */}
         {isMobile ? (
@@ -1405,7 +1407,9 @@ export default function App() {
       <div className="tabbar" style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
         {(testerMode
           ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights'],['analytics','Analytics'],['frequency','Frequency'],['launch','Launch'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']]
-          : [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights']]
+          : isMobile
+            ? [['today','Today'],['progress','Progress'],['insights','Insights']]
+            : [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights']]
         ).map(([id,lbl]) => (
           <button key={id} onClick={() => handleTabChange(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
@@ -1431,7 +1435,9 @@ export default function App() {
               onboardingProfile={onboardingProfile}
               domainScores={domainScores || {}}
               onBreathwork={() => setShowBreathwork(true)}
-              selectedPhaseOverride={todayPhaseOverride}/>
+              selectedPhaseOverride={todayPhaseOverride}
+              onPhaseSelect={phase => setTodayPhaseOverride(phase)}
+              isMobileProp={isMobile}/>
 
             <div style={{ background: '#EEEDFE', borderRadius:10, padding:'12px 16px', borderLeft:'3px solid #7F77DD' }}>
               <div style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'#3C3489', marginBottom:4 }}>Today's tuning focus</div>
