@@ -22,6 +22,19 @@ const BODY_EXPLANATIONS = {
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
+// Responsive hook — re-renders on resize
+function useWindowWidth() {
+  const [width, setWidth] = React.useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  )
+  React.useEffect(() => {
+    const handler = () => setWidth(window.innerWidth)
+    window.addEventListener('resize', handler, { passive: true })
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return width
+}
+
 function usePersistentState(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
@@ -674,12 +687,93 @@ function SystemReadPanel({ decision }) {
   )
 }
 
+// Mobile-optimised collapsed alignment read — shows 2-line summary, tap to expand
+function MobileAlignmentRead({ decision }) {
+  const [expanded, setExpanded] = React.useState(false)
+  if (!decision) return null
+
+  const labels = { d1:'Source', d2:'Form', d3:'Field', d4:'Mind', d5:'Code' }
+  const primary = labels[decision.primaryBlockerId] || 'System'
+  const phaseDisplay = decision?.phaseSummary?.displayPhase || decision?.phaseSummary?.phase || 'Baseline'
+  const strategyDisplay = STRATEGY_LABELS[decision.strategy] || 'Stabilize'
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {/* Always-visible 1-line summary */}
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
+          border: '1px solid #DFE3F0',
+          borderRadius: 10,
+          padding: '10px 12px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, background: '#EEEDFE', color: '#3C3489', padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>
+            {phaseDisplay.replace(/_/g,' ')}
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#555', whiteSpace: 'nowrap' }}>
+            Focus: {primary}
+          </span>
+          <span style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>
+            {strategyDisplay}
+          </span>
+        </div>
+        <span style={{ fontSize: 11, color: '#888', flexShrink: 0 }}>{expanded ? '▲' : '▼ Full read'}</span>
+      </div>
+
+      {/* Expanded full panel */}
+      {expanded && (
+        <div style={{
+          marginTop: 8,
+          background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
+          border: '1px solid #DFE3F0',
+          borderRadius: 12,
+          padding: '12px 14px',
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#777', marginBottom: 6 }}>
+            Today's Alignment Read
+          </div>
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Core reference: <strong>Source</strong></div>
+          <PhaseReadCards
+            phase={decision?.phaseSummary?.displayPhase || decision?.phaseSummary?.phase || 'Baseline'}
+            primaryFocus={primary}
+            trajectory={decision?.trajectorySummary?.trend?.replaceAll('_',' ')?.replace(/\b\w/g, c => c.toUpperCase()) || 'Baseline Building'}
+            systemBias={decision?.behaviorMode?.replaceAll('_',' ')?.replace(/\b\w/g, c => c.toUpperCase()) || 'Stabilize First'}
+          />
+          <CoherenceProgressLayer decision={decision} />
+          <div style={{ fontSize: 13, fontWeight: 950, color: '#1a1a18', marginTop: 6 }}>
+            <strong>Primary attunement body:</strong> {primary}
+            {BODY_EXPLANATIONS[primary] && (
+              <span style={{ color: '#6B6780', fontSize: 12, fontWeight: 400, marginLeft: 6 }}>({BODY_EXPLANATIONS[primary]})</span>
+            )}
+          </div>
+          <div style={{ fontSize: 12, color: '#444', marginTop: 6, lineHeight: 1.5 }}>
+            <strong>Alignment response:</strong> {STRATEGY_LABELS[decision.strategy] || decision.strategy?.replaceAll('_',' ') || 'Stabilize'}
+          </div>
+          {decision.reason && (
+            <div style={{ fontSize: 12, color: '#555', marginTop: 4, lineHeight: 1.5 }}>{decision.reason}</div>
+          )}
+          <TesterDiagnostics decision={decision} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null }) {
   const today = getDateKey(new Date())
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
   const [lastFeedback, setLastFeedback] = useState(null)
   const [completionEvents, setCompletionEvents] = useState([])
   const [dayStatus, setDayStatus] = usePersistentState('q_day_status', {})
+  const [expandedPractice, setExpandedPractice] = React.useState(null)
   const [todayPlans, setTodayPlans] = usePersistentState('q_today_plan', {})
   const firstAlignmentTracked = useRef(false)
 
@@ -816,9 +910,55 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     }
   }
 
+  const isMobile = useWindowWidth() < 768
+  const scrollRef = React.useRef(null)
+  const [showStickyHeader, setShowStickyHeader] = React.useState(false)
+
+  React.useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !isMobile) return
+    const parent = el.closest('.app-shell') || document
+    const scrollEl = parent === document ? window : parent
+    const onScroll = () => {
+      const rect = el.getBoundingClientRect()
+      setShowStickyHeader(rect.top < -60)
+    }
+    scrollEl.addEventListener('scroll', onScroll, { passive: true })
+    return () => scrollEl.removeEventListener('scroll', onScroll)
+  }, [isMobile])
+
+  const p = isMobile ? 14 : 20
+
   return (
-    <div className="today-card" style={{ background: '#fff', borderRadius: 16, border: bdr, padding: '18px 20px', marginBottom: 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
-    <SystemReadPanel decision={plan.decision} />
+    <div ref={scrollRef} className="today-card" style={{ background: '#fff', borderRadius: isMobile ? 14 : 16, border: bdr, padding: `${p}px ${p}px`, marginBottom: 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
+
+      {/* Sticky mini-header — appears on mobile after scrolling past the card */}
+      {isMobile && showStickyHeader && (
+        <div style={{
+          position: 'fixed', top: 48, left: 0, right: 0, zIndex: 90,
+          background: '#fff', borderBottom: bdr,
+          padding: '8px 14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18' }}>
+            {plan.decision ? `${(plan.decision.phaseSummary?.displayPhase || plan.decision.phaseSummary?.phase || 'Recovery').replace(/_/g,' ')}` : 'Alignment'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#3C3489' }}>
+              {plan.completionState.completeRequired}/{plan.dailyMinimum}
+            </div>
+            <div style={{ width: 80, height: 5, background: '#F0EFEC', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ width: `${plan.completionState.pct}%`, height: 5, background: plan.completionState.dailyMinimumMet ? '#1D9E75' : '#7F77DD', borderRadius: 999 }}/>
+            </div>
+          </div>
+        </div>
+      )}
+    {/* On mobile, SystemReadPanel is collapsed by default with a tap-to-expand summary */}
+    {isMobile ? (
+      <MobileAlignmentRead decision={plan.decision} />
+    ) : (
+      <SystemReadPanel decision={plan.decision} />
+    )}
       {showOnboarding && (
         <div style={{
           background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
@@ -944,7 +1084,10 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       )}
 
-      {activePhase.items.map(item => (
+      {(() => {
+        return activePhase.items.map(item => {
+          const isExpanded = expandedPractice === item.key
+          return (
         <div className="practice-row" key={`${activePhase.id}-${item.key}`} style={{
           display: 'flex',
           alignItems: 'center',
@@ -975,19 +1118,29 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
             {item.isDone ? '✓' : ''}
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a18' }}>{item.name}</span>
+            {/* Practice header row — always visible */}
+            <div
+              onClick={() => isMobile && setExpandedPractice(isExpanded ? null : item.key)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', cursor: isMobile ? 'pointer' : 'default' }}
+            >
+              <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 800, color: '#1a1a18' }}>{item.name}</span>
               <PriorityBadge priority={item.priority} />
               {item.highLeverage && (
-                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#FFF3E0', border: '1px solid #FFB74D55', color: '#E65100', fontWeight: 900, whiteSpace: 'nowrap' }}>⚡ High leverage</span>
+                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#FFF3E0', border: '1px solid #FFB74D55', color: '#E65100', fontWeight: 900, whiteSpace: 'nowrap' }}>⚡</span>
               )}
               <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: item.domain.bg, color: item.domain.text }}>{item.domain.name}</span>
-              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#F7F6F3', color: '#666', border: bdr, fontWeight: 800 }}>+{item.scoreTotal || 0} signal</span>
+              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#F7F6F3', color: '#666', border: bdr, fontWeight: 800 }}>+{item.scoreTotal || 0}</span>
+              {isMobile && <span style={{ fontSize: 10, color: '#bbb', marginLeft: 'auto' }}>{isExpanded ? '▲' : '▼'}</span>}
             </div>
-            <div style={{ fontSize: 11, color: '#777', marginTop: 5, fontWeight: 800 }}>Why this practice is here</div>
-            <div style={{ fontSize: 12, color: item.domain.color, marginTop: 2 }}>{item.why}</div>
-            {item.highLeverage && item.leverageLabel && (
-              <div style={{ fontSize: 11, color: '#BA7517', marginTop: 3, fontWeight: 800 }}>⚡ {item.leverageLabel}</div>
+            {/* Detail — always visible on desktop, accordion on mobile */}
+            {(!isMobile || isExpanded) && (
+              <>
+                <div style={{ fontSize: 11, color: '#777', marginTop: 5, fontWeight: 800 }}>Why this practice is here</div>
+                <div style={{ fontSize: 12, color: item.domain.color, marginTop: 2 }}>{item.why}</div>
+                {item.highLeverage && item.leverageLabel && (
+                  <div style={{ fontSize: 11, color: '#BA7517', marginTop: 3, fontWeight: 800 }}>⚡ {item.leverageLabel}</div>
+                )}
+              </>
             )}
             {item.isDone && <div style={{ fontSize: 12, color: '#1D9E75', marginTop: 3 }}>✓ {item.identityFeedback}</div>}
           </div>
@@ -998,7 +1151,11 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
             </button>
           )}
         </div>
-      ))}
+          )}
+        </div>
+      )})
+      })()
+      }
 
       {plan.completionState.dailyMinimumMet ? (
         <DayLockedIn plan={plan} />
