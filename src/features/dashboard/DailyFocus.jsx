@@ -310,7 +310,7 @@ function DayLockedIn({ plan }) {
   )
 }
 
-function BetaFeedbackLayer({ plan }) {
+function BetaFeedbackLayer({ plan, isMobile }) {
   const today = getDateKey(new Date())
   const [submitted, setSubmitted] = useState(() => {
     try {
@@ -359,7 +359,7 @@ function BetaFeedbackLayer({ plan }) {
       borderRadius: 16,
       border: '1px solid #7F77DD30',
       background: 'linear-gradient(135deg, #F3F1FF, #FCFBF8)',
-      padding: '15px 16px'
+      padding: isMobile ? '11px 12px' : '15px 16px'
     }}>
       <div style={{ fontSize: 11, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6F6A7A', marginBottom: 6 }}>
         Beta Feedback
@@ -395,12 +395,12 @@ function BetaFeedbackLayer({ plan }) {
         value={note}
         onChange={e => setNote(e.target.value)}
         placeholder="Anything feel off, confusing, too easy, or too hard?"
-        rows={3}
+        rows={isMobile ? 2 : 3}
         style={{
           width: '100%',
           border: bdr,
           borderRadius: 12,
-          padding: '10px 12px',
+          padding: '8px 12px',
           fontSize: 13,
           fontFamily: 'inherit',
           resize: 'vertical',
@@ -408,6 +408,7 @@ function BetaFeedbackLayer({ plan }) {
           background: '#fff',
           color: '#1a1a18',
           lineHeight: 1.5,
+          maxHeight: isMobile ? '80px' : '200px',
           boxSizing: 'border-box'
         }}
       />
@@ -975,7 +976,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   const p = isMobile ? 14 : 20
 
   return (
-    <div ref={scrollRef} className="today-card" style={{ background: '#fff', borderRadius: isMobile ? 14 : 16, border: bdr, padding: `${p}px ${p}px`, marginBottom: 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
+    <div ref={scrollRef} className="today-card" style={{ background: '#fff', borderRadius: isMobile ? 14 : 16, border: bdr, padding: `${p}px ${p}px`, marginBottom: isMobile ? 100 : 16, boxShadow: '0 10px 26px rgba(0,0,0,0.035)' }}>
 
       {/* Sticky mini-header — appears on mobile after scrolling past the card */}
       {isMobile && showStickyHeader && (
@@ -1182,8 +1183,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         <div className="practice-row" key={`${activePhase.id}-${item.key}`} style={{
           display: 'flex',
           alignItems: 'center',
-          gap: isMobile ? 8 : 11,
-          padding: isMobile ? (item.priority === 'Critical' ? '9px 0' : '7px 0') : (item.priority === 'Critical' ? '13px 0' : '11px 0'),
+          gap: isMobile ? 7 : 11,
+          padding: isMobile ? (item.priority === 'Critical' ? '7px 0' : '5px 0') : (item.priority === 'Critical' ? '13px 0' : '11px 0'),
           borderBottom: bdr,
           background: item.priority === 'Critical' && !item.isDone ? 'linear-gradient(90deg, rgba(216,90,48,0.055), transparent 60%)' : 'transparent',
           borderRadius: item.priority === 'Critical' ? 10 : 0
@@ -1254,7 +1255,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </>
       )}
 
-      <BetaFeedbackLayer plan={plan} />
+      <BetaFeedbackLayer plan={plan} isMobile={isMobile} />
     </div>
   )
 }
