@@ -886,7 +886,7 @@ function MobileTuningFocus({ tip, domainId }) {
     d5: { headline: 'Your Code is running the day.', bullets: ['Notice one automatic reaction today', 'Create a gap between stimulus and response', 'That gap is where freedom lives'] },
   }
 
-  const mobile = MOBILE_TIPS[domainId] || { headline: 'Today's tuning focus', bullets: [] }
+  const mobile = MOBILE_TIPS[domainId] || { headline: "Today's tuning focus", bullets: [] }
 
   return (
     <div style={{ background: '#EEEDFE', borderRadius: 10, padding: '11px 14px', borderLeft: '3px solid #7F77DD' }}>
