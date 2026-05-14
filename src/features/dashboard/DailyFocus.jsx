@@ -1107,16 +1107,19 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       )}
 
-      <div className="phase-tabs" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
-        {PHASES.map(p => (
-          <PhasePill
-            key={p.id}
-            phase={plan.phases[p.id]}
-            active={activePhaseId === p.id}
-            onClick={() => setSelectedPhase(p.id)}
-          />
-        ))}
-      </div>
+      {/* PhasePill row — desktop only. Mobile uses the inline segmented control above. */}
+      {!isMobile && (
+        <div className="phase-tabs" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
+          {PHASES.map(p => (
+            <PhasePill
+              key={p.id}
+              phase={plan.phases[p.id]}
+              active={activePhaseId === p.id}
+              onClick={() => setSelectedPhase(p.id)}
+            />
+          ))}
+        </div>
+      )}
 
       <div style={{
         background: activePhase.locked ? '#FAECE7' : '#F8F7F4',
