@@ -873,6 +873,47 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Mobile tuning focus — scannable bullets + expandable detail
+function MobileTuningFocus({ tip, domainId }) {
+  const [expanded, setExpanded] = React.useState(false)
+
+  // Parse the long tip into headline + bullets for mobile
+  const MOBILE_TIPS = {
+    d1: { headline: 'Source is asking for attention.', bullets: ['Start with Stillness Exposure', 'Even 5 minutes recalibrates everything', 'Rest as the awareness beneath thought'] },
+    d2: { headline: 'Form is the platform everything runs on.', bullets: ['Prioritize sleep quality tonight', 'Move your body today', 'Fuel it with intention'] },
+    d3: { headline: 'Your Field is holding charge.', bullets: ['Name one feeling you are carrying', 'Locate it in your body', 'Breathe into it — let it move'] },
+    d4: { headline: 'Mind is your primary tuning point.', bullets: ['Set your Morning Directive before anything else', 'One deliberate intention changes the whole day', 'Respond — do not react'] },
+    d5: { headline: 'Your Code is running the day.', bullets: ['Notice one automatic reaction today', 'Create a gap between stimulus and response', 'That gap is where freedom lives'] },
+  }
+
+  const mobile = MOBILE_TIPS[domainId] || { headline: 'Today's tuning focus', bullets: [] }
+
+  return (
+    <div style={{ background: '#EEEDFE', borderRadius: 10, padding: '11px 14px', borderLeft: '3px solid #7F77DD' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7F77DD', marginBottom: 5 }}>
+        Today's tuning focus
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a18', marginBottom: expanded ? 8 : 6, lineHeight: 1.4 }}>
+        {mobile.headline}
+      </div>
+      {mobile.bullets.map((b, i) => (
+        <div key={i} style={{ fontSize: 12, color: '#3C3489', lineHeight: 1.5, paddingLeft: 2 }}>• {b}</div>
+      ))}
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{ fontSize: 11, color: '#7F77DD', fontWeight: 700, marginTop: 8, cursor: 'pointer' }}
+      >
+        {expanded ? '▲ Less' : '▼ Why this matters'}
+      </div>
+      {expanded && (
+        <div style={{ fontSize: 12, color: '#3C3489', lineHeight: 1.6, marginTop: 6, borderTop: '1px solid #7F77DD20', paddingTop: 8 }}>
+          {tip}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [tab, setTab] = useState('today')
   const [session, setSession] = useState(null)
@@ -1439,25 +1480,45 @@ export default function App() {
               onPhaseSelect={phase => setTodayPhaseOverride(phase)}
               isMobileProp={isMobile}/>
 
-            <div style={{ background: '#EEEDFE', borderRadius:10, padding:'12px 16px', borderLeft:'3px solid #7F77DD' }}>
-              <div style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'#3C3489', marginBottom:4 }}>Today's tuning focus</div>
-              <div style={{ fontSize:13, color:'#3C3489', lineHeight:1.6 }}>{COACHING_TIPS[coachingDomain]}</div>
-            </div>
+            {isMobile ? (
+              <MobileTuningFocus tip={COACHING_TIPS[coachingDomain]} domainId={coachingDomain} />
+            ) : (
+              <div style={{ background: '#EEEDFE', borderRadius:10, padding:'12px 16px', borderLeft:'3px solid #7F77DD' }}>
+                <div style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'#3C3489', marginBottom:4 }}>Today's tuning focus</div>
+                <div style={{ fontSize:13, color:'#3C3489', lineHeight:1.6 }}>{COACHING_TIPS[coachingDomain]}</div>
+              </div>
+            )}
           </div>
 
           <div className="today-grid" style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr auto', gap: isMobile ? 10 : 14, marginBottom:16, alignItems:'stretch' }}>
-            <div style={{ ...card, marginBottom:0, display:'flex', gap:18, alignItems:'center' }}>
-              <Ring pct={dailyPct}/>
-              <div>
-                <div style={{ fontSize:10, color:'#888', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:3 }}>Tuning session</div>
-                <input type="date" defaultValue={new Date().toISOString().slice(0,10)}
-                  style={{ width:140, fontSize:13, color:'#1a1a18', background:'#F7F6F3', border:bdr, borderRadius:7, padding:'6px 9px', fontFamily:'inherit', outline:'none', marginBottom:10 }}/>
-                <div style={{ display:'flex', gap:18 }}>
-                  <div><div style={{ fontSize:16, fontWeight:700 }}>{doneToday}/{totalCount}</div><div style={{ fontSize:11, color:'#888' }}>Practices tuned</div></div>
-                  <div><div style={{ fontSize:16, fontWeight:700, color: triggerRate>0?'#1D9E75':'#1a1a18' }}>{triggerRate}%</div><div style={{ fontSize:11, color:'#888' }}>Pattern overrides</div></div>
+            {isMobile ? (
+              /* Mobile: slim progress strip — replaces large Ring widget */
+              <div style={{ background:'#fff', border:bdr, borderRadius:12, padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, fontWeight:700, color:'#1a1a18', marginBottom:5 }}>
+                    <span>{doneToday}/{totalCount} practices</span>
+                    <span style={{ color: triggerRate>0?'#1D9E75':'#888', fontWeight:600 }}>{triggerRate}% overrides</span>
+                  </div>
+                  <div style={{ height:5, borderRadius:999, background:'#F0EFEC', overflow:'hidden' }}>
+                    <div style={{ height:5, borderRadius:999, background:'#7F77DD', width:`${dailyPct}%`, transition:'width 0.4s' }}/>
+                  </div>
+                  <div style={{ fontSize:10, color:'#888', marginTop:4 }}>{Math.round(dailyPct)}% complete today</div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ ...card, marginBottom:0, display:'flex', gap:18, alignItems:'center' }}>
+                <Ring pct={dailyPct}/>
+                <div>
+                  <div style={{ fontSize:10, color:'#888', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:3 }}>Tuning session</div>
+                  <input type="date" defaultValue={new Date().toISOString().slice(0,10)}
+                    style={{ width:140, fontSize:13, color:'#1a1a18', background:'#F7F6F3', border:bdr, borderRadius:7, padding:'6px 9px', fontFamily:'inherit', outline:'none', marginBottom:10 }}/>
+                  <div style={{ display:'flex', gap:18 }}>
+                    <div><div style={{ fontSize:16, fontWeight:700 }}>{doneToday}/{totalCount}</div><div style={{ fontSize:11, color:'#888' }}>Practices tuned</div></div>
+                    <div><div style={{ fontSize:16, fontWeight:700, color: triggerRate>0?'#1D9E75':'#1a1a18' }}>{triggerRate}%</div><div style={{ fontSize:11, color:'#888' }}>Pattern overrides</div></div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{ ...card, marginBottom:0 }}>
               <div style={{ fontSize:14, fontWeight:600, marginBottom:10 }}>◉ Morning Directive</div>
