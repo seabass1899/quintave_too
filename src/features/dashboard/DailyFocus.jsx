@@ -1192,10 +1192,10 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           <button className="practice-check tap-target" onClick={() => handleCheck(item)} disabled={isMissedToday}
             title={isMissedToday ? 'This day is closed as missed. Resume alignment tomorrow.' : item.isDone ? 'Mark incomplete' : 'Mark complete'}
             style={{
-              width: 24,
-              height: 24,
+              width: isMobile ? 20 : 24,
+              height: isMobile ? 20 : 24,
               borderRadius: '50%',
-              border: `1.8px solid ${item.priority === 'Critical' ? '#D85A30' : item.domain.color}`,
+              border: `1.5px solid ${item.priority === 'Critical' ? '#D85A30' : item.domain.color}`,
               background: item.isDone ? item.domain.color : 'transparent',
               color: '#fff',
               cursor: isMissedToday ? 'not-allowed' : 'pointer',
