@@ -857,6 +857,10 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   const frozen = buildFrozenPhaseItems(phase, planSnapshot, dayUsed)
   if (frozen) return frozen
 
+  // Alias so pushSmart context passes the right variable name to scoreCandidate
+  const todayChecked = todayChecks || {}
+  const dayStatus = {}  // dayStatus not available here; adaptive profile already cached at plan level
+
   const weak = weakestDomains(domainScores, date)
   const pool = PHASE_POOLS[phase] || []
   const history = getRecentPracticeHistory(checked, date, 7)
