@@ -153,7 +153,7 @@ function formatImpact(scoreImpact = {}) {
     .join(' · ')
 }
 
-function StreakPanel({ plan }) {
+function StreakPanel({ plan, isMobile }) {
   const streak = plan.streak || { current: 0, longest: 0 }
   const current = streak.current || 0
   const message = current >= 30
@@ -166,7 +166,26 @@ function StreakPanel({ plan }) {
           ? '3-day momentum: stability is beginning to form.'
           : current > 0
             ? 'Momentum begins here. Lock in tomorrow to compound it.'
-            : 'No active momentum yet. Complete today’s minimum to begin.'
+            : "No active momentum yet. Complete today's minimum to begin."
+
+  if (isMobile) {
+    return (
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 7 }}>
+          <div style={{ border: '1px solid #D85A3030', borderRadius: 10, background: current ? '#FAECE7' : '#fff', padding: '7px 12px', fontSize: 12, fontWeight: 900, color: current ? '#712B13' : '#1a1a18', flex: 1, textAlign: 'center' }}>
+            🔥 {current} day streak
+          </div>
+          <div style={{ border: bdr, borderRadius: 10, background: '#FCFBF8', padding: '7px 12px', fontSize: 12, fontWeight: 800, color: '#666', flex: 1, textAlign: 'center' }}>
+            🏆 Best: {streak.longest || current}
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: current ? '#3C3489' : '#888', fontWeight: current ? 700 : 400, lineHeight: 1.45, paddingLeft: 2 }}>
+          {message}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
       <div style={{ border: '1px solid #D85A3030', borderRadius: 999, background: current ? '#FAECE7' : '#fff', padding: '7px 11px', fontSize: 12, fontWeight: 900, color: current ? '#712B13' : '#1a1a18' }}>
@@ -717,33 +736,40 @@ function MobileAlignmentRead({ decision }) {
 
   return (
     <div style={{ marginBottom: 12 }}>
-      {/* Always-visible 1-line summary */}
+      {/* Compact stacked card — easier to parse than horizontal pill row */}
       <div
         onClick={() => setExpanded(v => !v)}
         style={{
           background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
           border: '1px solid #DFE3F0',
-          borderRadius: 10,
-          padding: '10px 12px',
+          borderRadius: 12,
+          padding: '11px 13px',
           cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
         }}
       >
-        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 800, background: '#EEEDFE', color: '#3C3489', padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>
-            {phaseDisplay}
-          </span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#555', whiteSpace: 'nowrap' }}>
-            Focus: {primary}
-          </span>
-          <span style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>
-            {strategyDisplay}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Row 1: Phase */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#7F77DD', flexShrink: 0 }}>Phase</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1a18', lineHeight: 1.2 }}>{phaseDisplay}</span>
+            </div>
+            {/* Row 2: Primary Focus */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#888', flexShrink: 0, minWidth: 36 }}>Focus</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#3C3489' }}>{primary}</span>
+            </div>
+            {/* Row 3: Mode */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#888', flexShrink: 0, minWidth: 36 }}>Mode</span>
+              <span style={{ fontSize: 12, color: '#555' }}>{strategyDisplay}</span>
+            </div>
+          </div>
+          <span style={{ fontSize: 11, color: '#888', flexShrink: 0, marginTop: 2 }}>{expanded ? '▲' : '▼'}</span>
         </div>
-        <span style={{ fontSize: 11, color: '#888', flexShrink: 0 }}>{expanded ? '▲' : '▼ Full read'}</span>
+        {!expanded && (
+          <div style={{ fontSize: 10, color: '#7F77DD', fontWeight: 700, marginTop: 8, textAlign: 'right' }}>Full read ▼</div>
+        )}
       </div>
 
       {/* Expanded full panel */}
@@ -785,7 +811,7 @@ function MobileAlignmentRead({ decision }) {
   )
 }
 
-export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null }) {
+export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false }) {
   const today = getDateKey(new Date())
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
   const [lastFeedback, setLastFeedback] = useState(null)
@@ -928,7 +954,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     }
   }
 
-  const isMobile = useWindowWidth() < 768
+  const windowWidth = useWindowWidth()
+  const isMobile = isMobileProp || windowWidth < 768
   const scrollRef = React.useRef(null)
   const [showStickyHeader, setShowStickyHeader] = React.useState(false)
 
@@ -1022,7 +1049,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         <div style={{ width: `${plan.completionState.pct}%`, height: '100%', background: plan.completionState.dailyMinimumMet ? '#1D9E75' : '#7F77DD', transition: 'width 220ms ease' }} />
       </div>
 
-      <StreakPanel plan={plan} />
+      <StreakPanel plan={plan} isMobile={isMobile} />
 
       {isRecoveryMode && (
         <div style={{ background: '#FAEEDA', color: '#633806', border: '1px solid #BA751735', borderRadius: 10, padding: '9px 12px', marginBottom: 11, fontSize: 12, fontWeight: 800 }}>
@@ -1033,6 +1060,50 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       {requestedWasLocked && (
         <div style={{ background: '#FAECE7', color: '#712B13', border: '1px solid #D85A3030', borderRadius: 10, padding: '9px 12px', marginBottom: 11, fontSize: 12 }}>
           {plan.phases[requestedPhaseId].label} is locked. {plan.phases[requestedPhaseId].lockReason} Showing {activePhase.label} first.
+        </div>
+      )}
+
+      {/* Mobile inline phase switcher — replaces topbar Morning/Midday/Evening buttons */}
+      {isMobile && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {[
+            { id: 'morning', label: '☀ Morning', bg: '#1a1a18', color: '#fff' },
+            { id: 'midday',  label: '◈ Midday',  bg: '#1D9E75', color: '#fff' },
+            { id: 'evening', label: '☽ Evening', bg: '#7F77DD', color: '#fff' },
+          ].map(({ id, label, bg, color }) => {
+            const isActive = activePhaseId === id
+            const isLocked = !!plan.phases[id]?.locked
+            return (
+              <button key={id}
+                onClick={() => {
+                  if (isLocked) return
+                  setSelectedPhase(id)
+                  if (onPhaseSelect) onPhaseSelect(id)
+                }}
+                disabled={isLocked}
+                style={{
+                  flex: 1,
+                  minHeight: 38,
+                  borderRadius: 9,
+                  border: 'none',
+                  background: isLocked ? '#F0EFEC' : isActive ? bg : '#F4F3F0',
+                  color: isLocked ? '#AAA' : isActive ? color : '#555',
+                  fontSize: 12,
+                  fontWeight: isActive ? 800 : 600,
+                  cursor: isLocked ? 'not-allowed' : 'pointer',
+                  opacity: isLocked ? 0.6 : 1,
+                }}
+              >
+                {label}
+                {!isLocked && (
+                  <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.75 }}>
+                    {plan.phases[id]?.completion?.completeRequired}/{plan.phases[id]?.completion?.required}
+                  </span>
+                )}
+                {isLocked && <span style={{ fontSize: 10, marginLeft: 4 }}>locked</span>}
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -1108,8 +1179,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         <div className="practice-row" key={`${activePhase.id}-${item.key}`} style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 11,
-          padding: item.priority === 'Critical' ? '13px 0' : '11px 0',
+          gap: isMobile ? 8 : 11,
+          padding: isMobile ? (item.priority === 'Critical' ? '9px 0' : '7px 0') : (item.priority === 'Critical' ? '13px 0' : '11px 0'),
           borderBottom: bdr,
           background: item.priority === 'Critical' && !item.isDone ? 'linear-gradient(90deg, rgba(216,90,48,0.055), transparent 60%)' : 'transparent',
           borderRadius: item.priority === 'Critical' ? 10 : 0
@@ -1138,21 +1209,21 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
             {/* Practice header row — always visible */}
             <div
               onClick={() => isMobile && setExpandedPractice(isExpanded ? null : item.key)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', cursor: isMobile ? 'pointer' : 'default' }}
+              style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6, flexWrap: 'wrap', cursor: isMobile ? 'pointer' : 'default' }}
             >
               <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 800, color: '#1a1a18' }}>{item.name}</span>
               <PriorityBadge priority={item.priority} />
               {item.highLeverage && (
                 <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#FFF3E0', border: '1px solid #FFB74D55', color: '#E65100', fontWeight: 900, whiteSpace: 'nowrap' }}>⚡</span>
               )}
-              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: item.domain.bg, color: item.domain.text }}>{item.domain.name}</span>
-              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: '#F7F6F3', color: '#666', border: bdr, fontWeight: 800 }}>+{item.scoreTotal || 0}</span>
+              <span style={{ fontSize: 10, padding: isMobile ? '2px 5px' : '2px 7px', borderRadius: 99, background: item.domain.bg, color: item.domain.text }}>{item.domain.name}</span>
+              <span style={{ fontSize: 10, padding: isMobile ? '2px 5px' : '2px 7px', borderRadius: 99, background: '#F7F6F3', color: '#666', border: bdr, fontWeight: 800 }}>+{item.scoreTotal || 0}</span>
               {isMobile && <span style={{ fontSize: 10, color: '#bbb', marginLeft: 'auto' }}>{isExpanded ? '▲' : '▼'}</span>}
             </div>
             {/* Detail — always visible on desktop, accordion on mobile */}
             {(!isMobile || isExpanded) && (
               <>
-                <div style={{ fontSize: 11, color: '#777', marginTop: 5, fontWeight: 800 }}>Why this practice is here</div>
+                <div style={{ fontSize: 10, color: '#777', marginTop: isMobile ? 3 : 5, fontWeight: 800 }}>Why</div>
                 <div style={{ fontSize: 12, color: item.domain.color, marginTop: 2 }}>{item.why}</div>
                 {item.highLeverage && item.leverageLabel && (
                   <div style={{ fontSize: 11, color: '#BA7517', marginTop: 3, fontWeight: 800 }}>⚡ {item.leverageLabel}</div>
