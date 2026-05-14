@@ -1442,7 +1442,7 @@ export default function App() {
         {(testerMode
           ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights'],['analytics','Analytics'],['frequency','Frequency'],['launch','Launch'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']]
           : isMobile
-            ? [['today','Today'],['progress','Progress'],['insights','Insights']]
+            ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights']]
             : [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights']]
         ).map(([id,lbl]) => (
           <button key={id} onClick={() => handleTabChange(id)}
