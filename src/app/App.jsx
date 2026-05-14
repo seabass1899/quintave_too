@@ -1452,7 +1452,7 @@ export default function App() {
         ))}
       </div>
 
-      <div className="app-container" style={{ paddingBottom: isMobile ? 'calc(64px + env(safe-area-inset-bottom))' : undefined }}>
+      <div className="app-container" style={{ paddingBottom: isMobile ? 'calc(110px + env(safe-area-inset-bottom))' : undefined }}>
 
         {/* ── TODAY ── */}
         {tab === 'today' && <>
