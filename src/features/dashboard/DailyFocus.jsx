@@ -1084,10 +1084,9 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       )}
 
-      {(() => {
-        return activePhase.items.map(item => {
-          const isExpanded = expandedPractice === item.key
-          return (
+      {activePhase.items.map(item => {
+        const isExpanded = expandedPractice === item.key
+        return (
         <div className="practice-row" key={`${activePhase.id}-${item.key}`} style={{
           display: 'flex',
           alignItems: 'center',
@@ -1151,11 +1150,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
             </button>
           )}
         </div>
-          )}
-        </div>
-      )})
-      })()
-      }
+        )
+      })}
 
       {plan.completionState.dailyMinimumMet ? (
         <DayLockedIn plan={plan} />
