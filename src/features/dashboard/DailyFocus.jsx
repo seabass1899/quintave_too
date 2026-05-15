@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
-import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile } from '../intelligence/patternLearningModel'
+import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile, predictTomorrow } from '../intelligence/patternLearningModel'
 import AdaptiveReasonCard from '../intelligence/AdaptiveReasonCard'
 import { trackEvent } from '../../app/utils/analytics'
 import PhaseReadCards from '../../components/PhaseReadCards'
@@ -837,6 +837,72 @@ function MobileAlignmentRead({ decision }) {
   )
 }
 
+// ─── Tomorrow Prediction Mini — shown in Today tab after Day Locked In ──────────
+function TomorrowPredictionMini({ pred, onOpenProgress, isMobile }) {
+  if (!pred) return null
+  const directionColor = pred.predictedDirection === 'stable_or_rising' ? '#085041'
+    : pred.predictedDirection === 'stable' ? '#378ADD' : '#BA7517'
+  const directionBg = pred.predictedDirection === 'stable_or_rising' ? '#E1F5EE'
+    : pred.predictedDirection === 'stable' ? '#E6F1FB' : '#FAEEDA'
+  const arrow = pred.predictedDirection === 'stable_or_rising' ? '↑'
+    : pred.predictedDirection === 'stable' ? '→' : '↓'
+
+  return (
+    <div style={{
+      marginTop: 10,
+      background: '#F8F7F4',
+      border: '0.5px solid rgba(0,0,0,0.08)',
+      borderRadius: 12,
+      padding: isMobile ? '11px 13px' : '13px 16px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', marginBottom: 5 }}>
+            Tomorrow's prediction
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, background: directionBg, color: directionColor, padding: '3px 9px', borderRadius: 99 }}>
+              {arrow} {pred.predictedDirection === 'stable_or_rising' ? 'Rising' : pred.predictedDirection === 'stable' ? 'Stable' : 'At risk'}
+            </span>
+            {pred.likelyDrift && (
+              <span style={{ fontSize: 12, color: '#666' }}>
+                Likely drift: <strong>{pred.likelyDrift.name}</strong>
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 12, color: '#555', lineHeight: 1.45 }}>
+            {pred.highestLeverageMove}
+          </div>
+          {pred.risks[0] && (
+            <div style={{ fontSize: 11, color: '#BA7517', marginTop: 4, fontWeight: 600 }}>
+              ⚠ {pred.risks[0].label}
+            </div>
+          )}
+        </div>
+        {onOpenProgress && (
+          <button
+            onClick={onOpenProgress}
+            style={{
+              flexShrink: 0,
+              padding: '7px 12px',
+              borderRadius: 8,
+              border: '0.5px solid rgba(0,0,0,0.12)',
+              background: '#fff',
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#3C3489',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Full report →
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Adaptive Intelligence Badge ─────────────────────────────────────────────
 // Shows when the engine has learned from the user's patterns and adapted today's plan.
 function AdaptiveIntelligenceBadge({ plan, isMobile }) {
@@ -895,7 +961,7 @@ function PatternBreakNotice({ plan }) {
   )
 }
 
-export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false }) {
+export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false, dayStatus = {}, onOpenProgress = null }) {
   const today = getDateKey(new Date())
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
   const [lastFeedback, setLastFeedback] = useState(null)
@@ -1046,6 +1112,11 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   // Load pattern profile once per render — used by AdaptiveReasonCard for all practice items
   const patternProfile = React.useMemo(() => {
     try { return loadPatternProfile() } catch { return null }
+  }, [])
+
+  // Tomorrow prediction — computed once, shown in DayLockedIn area
+  const tomorrowPred = React.useMemo(() => {
+    try { return predictTomorrow(checked, dayStatus, domainScores) } catch { return null }
   }, [])
   const scrollRef = React.useRef(null)
   const [showStickyHeader, setShowStickyHeader] = React.useState(false)
@@ -1372,7 +1443,10 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       })}
 
       {plan.completionState.dailyMinimumMet ? (
-        <DayLockedIn plan={plan} />
+        <>
+          <DayLockedIn plan={plan} />
+          <TomorrowPredictionMini pred={tomorrowPred} onOpenProgress={onOpenProgress} isMobile={isMobile} />
+        </>
       ) : (
         <>
           <FailureState plan={plan} onReopen={reopenMissedDay} />
