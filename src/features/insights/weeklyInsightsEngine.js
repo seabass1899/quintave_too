@@ -75,16 +75,16 @@ function buildWeeklySummary(checked, dayStatus, date) {
     ? Math.round(((locked - priorLocked) / priorLocked) * 100)
     : null
 
-  const headline = locked >= 6 ? 'Strong alignment week — the system held.'
-    : locked >= 4 ? 'Solid week with some gaps. The pattern is forming.'
-    : locked >= 2 ? 'Inconsistent week. The signal is still building.'
-    : 'Difficult week. Recovery and consistency are the priorities.'
+  const headline = locked >= 6 ? 'Strong coherence week. Momentum is becoming predictable.'
+    : locked >= 4 ? 'Building momentum. Consistency is beginning to compound.'
+    : locked >= 2 ? 'Foundation week. Consistency has not stabilized yet.'
+    : 'Reset week. Recovery and re-entry are the only priorities.'
 
   const soWhat = locked >= 5
-    ? 'Consistency at this level starts creating durable coherence — not just daily signal.'
+    ? 'Consistency at this level creates durable coherence — the system is learning your patterns faster.'
     : locked >= 3
-      ? 'The system is building a baseline. Three more consistent days will create momentum.'
-      : 'Completion below 50% this week means tomorrow is more important than usual.'
+      ? 'The baseline is forming. Three more consistent days will create compounding momentum.'
+      : 'Every completed day this week carries more weight than usual. Tomorrow matters most.'
 
   return {
     locked,
@@ -133,7 +133,7 @@ function buildBodyTrends(checked, date) {
   const hasSufficientData = domainData.some(d => d.count7 >= 2)
 
   const soWhat = strongest && weakest && strongest.id !== weakest.id
-    ? `${strongest.name} is your anchor body this week. ${weakest.name} needs attention — low engagement here creates downstream drift in other bodies.`
+    ? `${strongest.name} is your anchor body this week. ${weakest.name} needs attention — when this body stays low, coherence drag compounds into the bodies that depend on it.`
     : 'Build body engagement across all domains before focusing on depth in any single one.'
 
   return {
@@ -161,20 +161,27 @@ function buildEffectivePractice(checked, date) {
 
   if (!topMomentum) return null
 
-  const rate = Math.round(topMomentum.rate * 100)
+  // Cap display at 100% — rates above 100% mean library completions > assignments,
+  // which is valid data but breaks user trust if shown raw.
+  const rawRate = topMomentum.rate
+  const rate = Math.min(100, Math.round(rawRate * 100))
+  const isHighCarryover = rawRate > 1.0
   const ripple = topMomentum.domainId
 
-  const impact = `Completing ${topMomentum.name} correlates with higher same-day completion across other practices.`
+  const impact = isHighCarryover
+    ? `${topMomentum.name} has a strong carryover effect — completing it early tends to pull other practices into completion.`
+    : `Completing ${topMomentum.name} correlates with higher same-day completion across other practices.`
   const soWhat = `When ${topMomentum.name} gets done, the rest of the day holds better. Lead with it.`
 
   return {
     practice: topMomentum,
     avoided: topAvoided,
     rate,
+    isHighCarryover,
     rippleDomain: getDomainName(ripple),
     impact,
     soWhat,
-    confidence: topMomentum.rate >= 0.7 ? 0.85 : 0.7,
+    confidence: rawRate >= 0.7 ? 0.85 : 0.7,
   }
 }
 

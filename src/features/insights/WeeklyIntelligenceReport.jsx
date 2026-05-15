@@ -61,7 +61,7 @@ function SummaryCard({ summary }) {
         {[
           { label: 'Aligned days', value: `${summary.locked}/7` },
           { label: 'Consistency', value: `${Math.round(summary.completionRate * 100)}%` },
-          { label: 'Signal generated', value: `${summary.weeklySignal} practices` },
+          { label: 'Signal generated', value: `${summary.weeklySignal} signal points` },
         ].map(({ label, value }) => (
           <div key={label} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px' }}>
             <div style={{ fontSize: 10, color: '#aaa', marginBottom: 3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</div>
@@ -128,7 +128,7 @@ function EffectivePracticeCard({ effectivePractice }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, background: '#E1F5EE', color: '#085041', padding: '3px 9px', borderRadius: 99, fontWeight: 700 }}>
-              {effectivePractice.rate}% completion rate
+              {effectivePractice.isHighCarryover ? 'High carryover effect' : `${effectivePractice.rate}% completion rate`}
             </span>
             <span style={{ fontSize: 12, color: '#888' }}>
               {effectivePractice.rippleDomain} domain
