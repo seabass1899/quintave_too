@@ -813,3 +813,419 @@ export function predictTomorrow(checked = {}, dayStatus = {}, domainScores = {},
     hasSufficientData: profile.hasEnoughData,
   }
 }
+
+// ─── Predictive Intelligence Layer ───────────────────────────────────────────
+// Three functions added to complete Sprint 4:
+//   getTrajectoryForecast()  — per-body stabilization/drift prediction
+//   getBehavioralRisks()     — if-A-then-B correlation detection
+//   getMomentumState()       — named momentum state with days-to-stabilization
+
+const DOMAIN_LABELS = { d1: 'Source', d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
+const MOVABLE_IDS   = ['d2', 'd3', 'd4', 'd5']
+
+// ─── Gap 1: Trajectory Forecast ───────────────────────────────────────────────
+
+/**
+ * Per-body trajectory forecast with confidence scores.
+ * Answers: "If current behavior continues, what happens to each body?"
+ *
+ * Returns an array of body forecasts, each with:
+ *   - status: 'stabilizing' | 'stable' | 'drifting' | 'recovering' | 'at_risk'
+ *   - daysToChange: estimated days until status changes (null if unknown)
+ *   - confidence: 0–1
+ *   - label: human-readable forecast
+ *   - soWhat: "so what" interpretation
+ */
+export function getTrajectoryForecast(checked = {}, dayStatus = {}, domainScores = {}, date = new Date()) {
+  const profile = getOrComputeProfile(checked, dayStatus, date)
+  const { domainTrends, avoidance, momentum, phasePerformance } = profile
+
+  // Compute per-body completion velocity over last 7 days vs 3 days
+  // Velocity = rate of change in completion, not just current level
+  const plans = (() => {
+    try { return JSON.parse(localStorage.getItem('q_today_plan') || '{}') } catch { return {} }
+  })()
+
+  const domainVelocity = {}
+  MOVABLE_IDS.forEach(id => {
+    const recent3 = []
+    const recent7 = []
+    for (let i = 1; i <= 7; i++) {
+      const key = getPreviousDateKey(date, i)
+      const checks = checked[key] || {}
+      const practices = Object.keys(checks).filter(k => k.startsWith(id + '_') && checks[k]).length
+      if (i <= 3) recent3.push(practices)
+      recent7.push(practices)
+    }
+    const avg3 = recent3.reduce((a, b) => a + b, 0) / Math.max(recent3.length, 1)
+    const avg7 = recent7.reduce((a, b) => a + b, 0) / Math.max(recent7.length, 1)
+    // Positive velocity = improving, negative = declining
+    domainVelocity[id] = avg7 > 0 ? (avg3 - avg7) / avg7 : 0
+  })
+
+  const forecasts = MOVABLE_IDS.map(id => {
+    const trend = domainTrends.find(d => d.id === id)
+    const isAvoided = avoidance.some(a => a.domainId === id && a.severity !== 'mild')
+    const hasMomentum = momentum.some(m => m.domainId === id)
+    const velocity = domainVelocity[id] || 0
+    const score7 = trend?.score7 || 0
+    const name = DOMAIN_LABELS[id] || id
+
+    // Determine forecast status and days-to-change
+    let status, daysToChange, label, soWhat, confidence
+
+    if (trend?.trend === 'rising' && velocity > 0 && !isAvoided) {
+      status = 'stabilizing'
+      // Higher velocity = faster stabilization
+      daysToChange = velocity > 0.3 ? 2 : velocity > 0.1 ? 4 : 6
+      confidence = Math.min(0.88, 0.6 + velocity * 0.9)
+      label = `${name} stabilizing — ~${daysToChange} days`
+      soWhat = `${name} is responding to consistent input. Continue current practices.`
+
+    } else if (trend?.trend === 'stable' && hasMomentum && !isAvoided) {
+      status = 'stable'
+      daysToChange = null
+      confidence = 0.82
+      label = `${name} stable`
+      soWhat = `${name} is holding. No intervention needed — maintain current frequency.`
+
+    } else if (trend?.trend === 'falling' && velocity < -0.1) {
+      status = 'at_risk'
+      daysToChange = Math.abs(velocity) > 0.3 ? 2 : 4
+      confidence = Math.min(0.90, 0.65 + Math.abs(velocity) * 0.8)
+      label = `${name} drift risk elevated`
+      soWhat = `${name} is declining with negative momentum. One targeted practice tomorrow significantly reduces drift risk.`
+
+    } else if (trend?.trend === 'falling' || isAvoided) {
+      status = 'drifting'
+      daysToChange = null
+      confidence = isAvoided ? 0.78 : 0.70
+      label = `${name} drifting`
+      soWhat = `${name} needs direct attention. Avoidance patterns are compounding — lower-friction entry point recommended.`
+
+    } else if (trend?.trend === 'rising' && velocity <= 0) {
+      status = 'recovering'
+      daysToChange = 3
+      confidence = 0.72
+      label = `${name} recovering slowly`
+      soWhat = `${name} is improving but velocity is low. Consistency over the next 3 days will accelerate recovery.`
+
+    } else {
+      status = 'stable'
+      daysToChange = null
+      confidence = 0.65
+      label = `${name} baseline`
+      soWhat = `${name} is at baseline. Engagement here creates the largest coherence return right now.`
+    }
+
+    return {
+      id,
+      name,
+      status,
+      daysToChange,
+      label,
+      soWhat,
+      confidence,
+      velocity,
+      trend: trend?.trend || 'stable',
+      color: { d2: '#1D9E75', d3: '#BA7517', d4: '#378ADD', d5: '#E24B4A' }[id] || '#7F77DD',
+    }
+  })
+
+  // Overall confidence = average of all body confidences
+  const overallConfidence = Math.round(
+    (forecasts.reduce((a, b) => a + b.confidence, 0) / forecasts.length) * 100
+  )
+
+  return {
+    forecasts,
+    overallConfidence,
+    hasSufficientData: profile.hasEnoughData,
+    generatedAt: date.toISOString(),
+  }
+}
+
+// ─── Gap 2: Behavioral Risk Detection ────────────────────────────────────────
+
+/**
+ * If-A-then-B behavioral correlation detection.
+ * Answers: "What usually breaks my coherence?"
+ *
+ * Looks for sequential day patterns:
+ *   IF [condition on day N] → [outcome on day N+1] occurs 3+ times
+ *   → surface as a behavioral risk pattern
+ *
+ * Confidence threshold: 0.65 (never surface below this)
+ */
+export function getBehavioralRisks(checked = {}, dayStatus = {}, date = new Date()) {
+  const risks = []
+  const DAYS_BACK = 21
+
+  // Build per-day signals
+  const daySignals = []
+  for (let i = 1; i <= DAYS_BACK; i++) {
+    const key = getPreviousDateKey(date, i)
+    const prevKey = getPreviousDateKey(date, i + 1)
+    const checks = checked[key] || {}
+    const prevChecks = checked[prevKey] || {}
+    const status = dayStatus[key]?.status || 'open'
+
+    // Domain completion counts
+    const domainDone = {}
+    MOVABLE_IDS.forEach(id => {
+      domainDone[id] = Object.keys(checks).filter(k => k.startsWith(id + '_') && checks[k]).length
+    })
+
+    // Phase completion (from plan snapshot)
+    const plans = (() => {
+      try { return JSON.parse(localStorage.getItem('q_today_plan') || '{}') } catch { return {} }
+    })()
+    const plan = plans[key]
+    const phasesDone = {}
+    if (plan?.phases) {
+      Object.entries(plan.phases).forEach(([phase, p]) => {
+        const items = p?.items || []
+        const done = items.filter(item => item?.key && checks[item.key]).length
+        phasesDone[phase] = items.length > 0 ? done / items.length : null
+      })
+    }
+
+    // Total done
+    const totalDone = Object.values(checks).filter(Boolean).length
+
+    daySignals.push({
+      key,
+      domainDone,
+      phasesDone,
+      totalDone,
+      status,
+      isLocked: status === 'locked',
+    })
+  }
+
+  // ── Rule 1: Low Form → poor Evening completion next day ────────────────────
+  let lowFormThenPoorEvening = 0
+  let lowFormCount = 0
+  for (let i = 0; i < daySignals.length - 1; i++) {
+    const today = daySignals[i]
+    const tomorrow = daySignals[i + 1]
+    if (today.domainDone.d2 === 0) {
+      lowFormCount++
+      if (tomorrow.phasesDone?.evening !== null && (tomorrow.phasesDone?.evening || 0) < 0.5) {
+        lowFormThenPoorEvening++
+      }
+    }
+  }
+  if (lowFormCount >= 3 && lowFormThenPoorEvening / lowFormCount >= 0.6) {
+    const confidence = Math.min(0.90, 0.5 + (lowFormThenPoorEvening / lowFormCount) * 0.6)
+    if (confidence >= 0.65) {
+      risks.push({
+        id: 'form_evening_link',
+        severity: 'moderate',
+        headline: 'Low Form days predict weak Evening alignment.',
+        detail: `On ${lowFormThenPoorEvening} of ${lowFormCount} days with no Form practices, Evening completion dropped below 50% the following day.`,
+        soWhat: 'Completing even one Form practice changes the trajectory of the day. Form stability is the foundation the evening builds on.',
+        confidence,
+        rule: 'IF no Form → next-day Evening weak',
+      })
+    }
+  }
+
+  // ── Rule 2: Two missed evenings → next-day drift ──────────────────────────
+  let twoMissedEveningsThenDrift = 0
+  let twoMissedEveningsCount = 0
+  for (let i = 1; i < daySignals.length - 1; i++) {
+    const yesterday = daySignals[i]
+    const dayBefore  = daySignals[i + 1]
+    const tomorrow   = daySignals[i - 1]
+    const yEve = yesterday.phasesDone?.evening
+    const dbEve = dayBefore.phasesDone?.evening
+    if (yEve !== null && yEve < 0.4 && dbEve !== null && dbEve < 0.4) {
+      twoMissedEveningsCount++
+      if (tomorrow.totalDone < 2) twoMissedEveningsThenDrift++
+    }
+  }
+  if (twoMissedEveningsCount >= 2 && twoMissedEveningsThenDrift / Math.max(twoMissedEveningsCount, 1) >= 0.55) {
+    const confidence = Math.min(0.85, 0.55 + (twoMissedEveningsThenDrift / twoMissedEveningsCount) * 0.5)
+    if (confidence >= 0.65) {
+      risks.push({
+        id: 'evening_drift_chain',
+        severity: 'high',
+        headline: 'Two missed Evening sessions predict next-day drift.',
+        detail: `This pattern appeared ${twoMissedEveningsThenDrift} times in your history. Missing Evening integration two days in a row reduces next-day completion significantly.`,
+        soWhat: 'Evening is where tomorrow gets primed. Even completing one Evening practice breaks this chain.',
+        confidence,
+        rule: 'IF evening missed 2x → next-day drift',
+      })
+    }
+  }
+
+  // ── Rule 3: High-friction overload → completion collapse ──────────────────
+  const profile = getOrComputeProfile(checked, dayStatus, date)
+  const highFrictionAvoided = profile.avoidance?.filter(a => a.friction >= 2 && a.severity !== 'mild') || []
+  if (highFrictionAvoided.length >= 2) {
+    // Check if days with multiple high-friction assignments have lower completion
+    let highFrictionDays = 0
+    let highFrictionLowCompletion = 0
+    daySignals.forEach(day => {
+      const hfDone = highFrictionAvoided.filter(a => {
+        const [dId, idx] = a.key.split('_')
+        return day.domainDone[dId] > 0
+      }).length
+      if (hfDone === 0 && day.totalDone < 2) {
+        highFrictionDays++
+        if (day.totalDone < 2) highFrictionLowCompletion++
+      }
+    })
+    if (highFrictionDays >= 3) {
+      risks.push({
+        id: 'friction_overload',
+        severity: 'moderate',
+        headline: 'High-friction practices are reducing overall completion.',
+        detail: `${highFrictionAvoided.map(a => a.name).join(', ')} — these practices are being consistently skipped and dragging down daily totals.`,
+        soWhat: 'The engine is already deprioritizing these. Replacing them with lower-friction alternatives in the same domain generates comparable signal with higher follow-through.',
+        confidence: 0.78,
+        rule: 'IF high-friction assigned → completion drops',
+      })
+    }
+  }
+
+  // ── Rule 4: Morning momentum predicts whole-day success ───────────────────
+  let morningHighThenSuccess = 0
+  let morningHighCount = 0
+  daySignals.forEach(day => {
+    const mRate = day.phasesDone?.morning
+    if (mRate !== null && mRate >= 0.75) {
+      morningHighCount++
+      if (day.totalDone >= 3) morningHighThenSuccess++
+    }
+  })
+  if (morningHighCount >= 3 && morningHighThenSuccess / morningHighCount >= 0.7) {
+    const confidence = Math.min(0.92, 0.6 + (morningHighThenSuccess / morningHighCount) * 0.4)
+    if (confidence >= 0.65) {
+      risks.push({
+        id: 'morning_momentum',
+        severity: 'opportunity',
+        headline: 'Strong Morning completion predicts whole-day success.',
+        detail: `On ${morningHighThenSuccess} of ${morningHighCount} days with high Morning completion, total daily practices were 3 or more.`,
+        soWhat: 'Morning is your highest-leverage window. Completing Morning fully creates a cascade effect through Midday and Evening.',
+        confidence,
+        rule: 'IF morning high → whole-day success',
+      })
+    }
+  }
+
+  return risks
+    .filter(r => r.confidence >= 0.65)
+    .sort((a, b) => {
+      const order = { high: 3, moderate: 2, opportunity: 1 }
+      return (order[b.severity] || 0) - (order[a.severity] || 0)
+    })
+    .slice(0, 4)
+}
+
+// ─── Gap 3: Momentum State ────────────────────────────────────────────────────
+
+/**
+ * Named momentum state distinct from streak.
+ * Streak = consecutive days. Momentum = signal quality and trajectory.
+ *
+ * States: accelerating | stable | fragile | declining | recovering
+ * Includes days-to-stabilization estimate when relevant.
+ */
+export function getMomentumState(checked = {}, dayStatus = {}, date = new Date()) {
+  const profile = getOrComputeProfile(checked, dayStatus, date)
+  const { momentum, avoidance, phasePerformance, domainTrends } = profile
+
+  // Compute streak
+  let currentStreak = 0
+  for (let i = 0; i < 30; i++) {
+    const key = getPreviousDateKey(date, i)
+    if (dayStatus[key]?.status === 'locked') currentStreak++
+    else break
+  }
+
+  // Completion velocity over last 7 days (are we getting more done each day?)
+  const dailyTotals = []
+  for (let i = 1; i <= 7; i++) {
+    const key = getPreviousDateKey(date, i)
+    const checks = checked[key] || {}
+    dailyTotals.push(Object.values(checks).filter(Boolean).length)
+  }
+  const recent3Avg = dailyTotals.slice(0, 3).reduce((a, b) => a + b, 0) / 3
+  const older4Avg  = dailyTotals.slice(3).reduce((a, b) => a + b, 0) / 4
+  const velocityTrend = older4Avg > 0 ? (recent3Avg - older4Avg) / older4Avg : 0
+
+  // Fragility indicators
+  const hasStrongAvoidance  = avoidance.some(a => a.severity === 'strong')
+  const worstPhase = phasePerformance.find(p => p.rate !== null && p.rate < 0.3)
+  const risingBodies = domainTrends.filter(d => d.id !== 'd1' && d.trend === 'rising').length
+  const fallingBodies = domainTrends.filter(d => d.id !== 'd1' && d.trend === 'falling').length
+
+  // Determine momentum state
+  let state, label, detail, soWhat, daysToStabilization, color
+
+  if (currentStreak >= 3 && velocityTrend > 0.1 && risingBodies >= 2) {
+    state = 'accelerating'
+    label = 'Signal accelerating'
+    daysToStabilization = Math.max(1, 4 - Math.floor(velocityTrend * 5))
+    detail = `${currentStreak}-day streak with increasing completion velocity. ${risingBodies} bodies trending up. You are ${daysToStabilization}–${daysToStabilization + 2} days from stable momentum.`
+    soWhat = 'Do not add complexity right now. The system is building itself. Protect the streak.'
+    color = '#085041'
+
+  } else if (currentStreak >= 2 && velocityTrend >= -0.1 && !hasStrongAvoidance) {
+    state = 'stable'
+    label = 'Signal stable'
+    daysToStabilization = null
+    detail = `${currentStreak}-day streak holding. Completion rate is consistent. No significant drift detected.`
+    soWhat = 'The system is holding. Add one degree of depth to one practice this week to begin compounding.'
+    color = '#378ADD'
+
+  } else if (currentStreak >= 1 && (worstPhase || hasStrongAvoidance) && velocityTrend >= -0.2) {
+    state = 'fragile'
+    label = 'Momentum fragile'
+    daysToStabilization = 3
+    detail = `Streak is active but ${worstPhase ? worstPhase.label + ' window is weak' : 'avoidance patterns are present'}. Momentum exists but has a structural weak point.`
+    soWhat = `Protect the streak first. Address the ${worstPhase ? worstPhase.label.toLowerCase() : 'avoidance'} pattern second. Don't try to fix both simultaneously.`
+    color = '#BA7517'
+
+  } else if (currentStreak === 0 && velocityTrend < -0.1) {
+    state = 'declining'
+    label = 'Signal declining'
+    daysToStabilization = null
+    detail = `No active streak. Completion velocity is dropping. ${fallingBodies > 0 ? fallingBodies + ' bodies trending down.' : ''} Re-entry is the priority.`
+    soWhat = 'Lower the bar. Complete 1 practice tomorrow — any practice. Re-entry beats optimization.'
+    color = '#E24B4A'
+
+  } else if (currentStreak === 0 && velocityTrend >= -0.1) {
+    state = 'recovering'
+    label = 'Signal recovering'
+    daysToStabilization = 3
+    detail = `Streak reset recently but completion is stabilizing. Velocity is neutral to slightly positive. ${daysToStabilization} consistent days will re-enter momentum.`
+    soWhat = `${daysToStabilization} more aligned days re-enters active momentum. Focus on minimum completion — not performance.`
+    color = '#7F77DD'
+
+  } else {
+    state = 'stable'
+    label = 'Building baseline'
+    daysToStabilization = 5
+    detail = 'System is still building enough data for reliable momentum tracking. Continue consistent practice.'
+    soWhat = 'Every aligned day adds to the signal quality. The engine learns faster with consistency.'
+    color = '#888'
+  }
+
+  return {
+    state,
+    label,
+    detail,
+    soWhat,
+    daysToStabilization,
+    color,
+    currentStreak,
+    velocityTrend,
+    risingBodies,
+    fallingBodies,
+    hasStrongAvoidance,
+    hasSufficientData: profile.hasEnoughData,
+  }
+}
