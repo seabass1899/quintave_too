@@ -329,7 +329,8 @@ function BetaFeedbackLayer({ plan, isMobile }) {
   const today = getDateKey(new Date())
   const [submitted, setSubmitted] = useState(() => {
     try {
-      const data = JSON.parse(localStorage.getItem('q_beta_feedback') || '{}')
+      let data = {}
+      try { data = JSON.parse(localStorage.getItem('q_beta_feedback') || '{}') } catch { try { localStorage.removeItem('q_beta_feedback') } catch {} }
       return !!data[today]
     } catch {
       return false
@@ -361,7 +362,8 @@ function BetaFeedbackLayer({ plan, isMobile }) {
       createdAt: new Date().toISOString(),
     }
     try {
-      const existing = JSON.parse(localStorage.getItem('q_beta_feedback') || '{}')
+      let existing = {}
+      try { existing = JSON.parse(localStorage.getItem('q_beta_feedback') || '{}') } catch { existing = {} }
       localStorage.setItem('q_beta_feedback', JSON.stringify({ ...existing, [today]: entry }))
     } catch {}
     setSubmitted(true)
@@ -997,7 +999,22 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   }, [isMissedToday, checked, today, setChecked])
 
   const todayPlanSnapshot = todayPlans?.[today]
-  const basePlan = useMemo(() => generateTodayPlan({ domainScores, checked: effectiveChecked, dayStatus, phaseLocking: true }), [domainScores, effectiveChecked, dayStatus])
+  // Guard: ensure domainScores has at least one valid numeric score before planning.
+  // If onboarding data is corrupt, use neutral scores so the engine doesn't crash.
+  const safeDomainScores = React.useMemo(() => {
+    const hasValid = domainScores && typeof domainScores === 'object' &&
+      Object.values(domainScores).some(v => typeof v === 'number' && v > 0)
+    return hasValid ? domainScores : { d1: 5, d2: 5, d3: 5, d4: 5, d5: 5 }
+  }, [domainScores])
+
+  const basePlan = useMemo(() => {
+    try {
+      return generateTodayPlan({ domainScores: safeDomainScores, checked: effectiveChecked, dayStatus, phaseLocking: true })
+    } catch (e) {
+      console.error('generateTodayPlan failed:', e)
+      return null
+    }
+  }, [safeDomainScores, effectiveChecked, dayStatus])
 
   useEffect(() => {
     const existing = todayPlans?.[today]
@@ -1008,13 +1025,34 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     }))
   }, [today, todayPlans, basePlan, setTodayPlans])
 
-  const plan = useMemo(() => generateTodayPlan({
-    domainScores,
-    checked: effectiveChecked,
-    dayStatus,
-    phaseLocking: true,
-    planSnapshot: todayPlanSnapshot,
-  }), [domainScores, effectiveChecked, dayStatus, todayPlanSnapshot])
+  const plan = useMemo(() => {
+    try {
+      return generateTodayPlan({
+        domainScores: safeDomainScores,
+        checked: effectiveChecked,
+        dayStatus,
+        phaseLocking: true,
+        planSnapshot: todayPlanSnapshot,
+      })
+    } catch (e) {
+      console.error('generateTodayPlan (full) failed:', e)
+      return null
+    }
+  }, [safeDomainScores, effectiveChecked, dayStatus, todayPlanSnapshot])
+
+  // If plan generation failed, render a minimal recovery state
+  if (!plan) {
+    return (
+      <div style={{ padding: 32, textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Loading your alignment...</div>
+        <div style={{ fontSize: 14, color: '#888', marginBottom: 20 }}>If this persists, try refreshing the page.</div>
+        <button onClick={() => window.location.reload()}
+          style={{ padding: '10px 20px', borderRadius: 10, background: '#1a1a18', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+          Refresh
+        </button>
+      </div>
+    )
+  }
 
   const requestedPhaseId = selectedPhase || selectedPhaseOverride || plan.currentPhase
   const activePhaseId = getResolvedPhaseId(plan, requestedPhaseId)
@@ -1110,8 +1148,15 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   const isMobile = isMobileProp || windowWidth < 768
 
   // Load pattern profile once per render — used by AdaptiveReasonCard for all practice items
+  // Validates schema before returning — corrupt/partial profiles return null
   const patternProfile = React.useMemo(() => {
-    try { return loadPatternProfile() } catch { return null }
+    try {
+      const p = loadPatternProfile()
+      if (!p || typeof p !== 'object') return null
+      // Validate required shape — if missing key arrays, treat as corrupt
+      if (!Array.isArray(p.avoidance) || !Array.isArray(p.momentum)) return null
+      return p
+    } catch { return null }
   }, [])
 
   // Tomorrow prediction — computed once, shown in DayLockedIn area
