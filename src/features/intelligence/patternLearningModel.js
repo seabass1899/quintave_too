@@ -685,3 +685,131 @@ export function getOrComputeProfile(checked = {}, dayStatus = {}, date = new Dat
   }
   return analyzePatterns(checked, dayStatus, date)
 }
+
+// ─── Tomorrow Prediction Layer ────────────────────────────────────────────────
+
+const DOMAIN_NAMES_PLM = { d1: 'Source', d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
+
+/**
+ * Predict tomorrow's likely state based on:
+ * - today's completion
+ * - current streak
+ * - avoidance patterns
+ * - domain trends
+ * - feedback sentiment
+ *
+ * Returns a TomorrowPrediction object for display.
+ */
+export function predictTomorrow(checked = {}, dayStatus = {}, domainScores = {}, date = new Date()) {
+  const profile = getOrComputeProfile(checked, dayStatus, date)
+  const { avoidance, momentum, phasePerformance, domainTrends, feedback } = profile
+
+  const today = date.toDateString()
+  const todayChecks = checked[today] || {}
+  const todayDone  = Object.values(todayChecks).filter(Boolean).length
+  const todayStatus = dayStatus[today]?.status || 'open'
+
+  // Streak and continuity
+  let currentStreak = 0
+  for (let i = 0; i < 30; i++) {
+    const key = getPreviousDateKey(date, i)
+    if (dayStatus[key]?.status === 'locked') currentStreak++
+    else break
+  }
+
+  // Likely drift body tomorrow — highest-risk movable body
+  const risingDomains = domainTrends.filter(d => d.id !== 'd1' && d.trend === 'falling')
+    .sort((a, b) => (a.score7 - a.score14Normalized) - (b.score7 - b.score14Normalized))
+  const likelyDrift = risingDomains[0] || domainTrends.find(d => d.id !== 'd1') || null
+
+  // Most avoided body — highest friction risk tomorrow
+  const topAvoidance = avoidance.filter(a => a.severity !== 'mild')[0] || null
+
+  // Highest leverage move for tomorrow
+  const bestPhase = phasePerformance.find(p => p.rate !== null)
+  const topMomentum = momentum[0] || null
+  const highestLeverageMove = topMomentum
+    ? `Begin with ${topMomentum.name} — your most reliable practice.`
+    : bestPhase
+      ? `Prioritize ${bestPhase.label} practices — your strongest completion window.`
+      : 'Begin with a Source anchor practice before anything else.'
+
+  // Risk factors
+  const risks = []
+
+  if (todayStatus !== 'locked' && todayDone < 2) {
+    risks.push({
+      label: 'Low completion today',
+      desc: 'Completing fewer than 2 practices today increases tomorrow\'s coherence drag.',
+      severity: 'high',
+    })
+  }
+
+  if (topAvoidance && topAvoidance.severity === 'strong') {
+    risks.push({
+      label: `${DOMAIN_NAMES_PLM[topAvoidance.domainId] || 'Domain'} avoidance pattern`,
+      desc: `${topAvoidance.name} has been consistently skipped. This will compound if not addressed.`,
+      severity: 'moderate',
+    })
+  }
+
+  const worstPhase = phasePerformance.slice().reverse().find(p => p.rate !== null && p.rate < 0.35)
+  if (worstPhase) {
+    risks.push({
+      label: `${worstPhase.label} window consistently weak`,
+      desc: `${worstPhase.label} has a ${Math.round(worstPhase.rate * 100)}% completion rate. Consider reducing load in that window.`,
+      severity: 'moderate',
+    })
+  }
+
+  // Opportunity signals
+  const opportunities = []
+
+  if (currentStreak >= 2) {
+    opportunities.push({
+      label: `${currentStreak}-day streak`,
+      desc: `Continuing tomorrow locks in a ${currentStreak + 1}-day alignment. Momentum compounds after day 3.`,
+    })
+  }
+
+  if (topMomentum) {
+    opportunities.push({
+      label: `${topMomentum.name} momentum`,
+      desc: `${Math.round(topMomentum.rate * 100)}% completion rate. This practice is building real signal.`,
+    })
+  }
+
+  if (domainTrends.some(d => d.id !== 'd1' && d.trend === 'rising')) {
+    const rising = domainTrends.find(d => d.id !== 'd1' && d.trend === 'rising')
+    opportunities.push({
+      label: `${rising.name} rising`,
+      desc: `${rising.name} practices are trending up. Continue building momentum here.`,
+    })
+  }
+
+  // Predicted coherence direction
+  const predictedDirection = todayStatus === 'locked'
+    ? (currentStreak >= 3 ? 'stable_or_rising' : 'stable')
+    : (todayDone >= 2 ? 'stable' : 'likely_declining')
+
+  const directionLabel = {
+    stable_or_rising: 'Stable or rising — momentum is compounding.',
+    stable:           'Stable — system is holding, not yet compounding.',
+    likely_declining: 'At risk — incomplete today creates drag tomorrow.',
+  }[predictedDirection]
+
+  return {
+    generatedAt: new Date().toISOString(),
+    predictedDirection,
+    directionLabel,
+    likelyDrift: likelyDrift ? {
+      id: likelyDrift.id,
+      name: DOMAIN_NAMES_PLM[likelyDrift.id] || likelyDrift.name,
+      trend: likelyDrift.trend,
+    } : null,
+    highestLeverageMove,
+    risks: risks.slice(0, 2),
+    opportunities: opportunities.slice(0, 2),
+    hasSufficientData: profile.hasEnoughData,
+  }
+}
