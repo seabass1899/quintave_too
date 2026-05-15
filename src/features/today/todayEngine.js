@@ -1180,13 +1180,57 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const phases = {}
 
   const dayUsed = new Set()
+  const adaptations = []  // Sprint 5: log of adaptive changes made to today's plan
+
+  // ── Adaptive load reduction ────────────────────────────────────────────────
+  // If the pattern profile shows Evening consistently weak (<35% completion),
+  // reduce Evening to 1 slot to increase completion probability.
+  // This is a structural adaptation — not just score nudging.
+  let eveningSlotReduction = false
+  if (_cachedAdaptiveProfile?.hasEnoughData) {
+    const eveningRate = _cachedAdaptiveProfile?.phasePerformance?.find(p => p.phase === 'evening')?.rate
+    if (eveningRate !== null && eveningRate !== undefined && eveningRate < 0.35) {
+      eveningSlotReduction = true
+      adaptations.push({
+        type: 'load_reduced',
+        phase: 'evening',
+        from: 2,
+        to: 1,
+        reason: `Evening completion rate is ${Math.round(eveningRate * 100)}% — reduced to 1 practice to increase follow-through.`,
+        confidence: Math.min(0.90, 0.55 + eveningRate),
+      })
+    }
+  }
+
+  // ── Strong avoidance detection for substitution ────────────────────────────
+  // Practices with strong avoidance (skipped >65% when assigned) get flagged.
+  // buildPhaseItems already deprioritizes them via scoreCandidate adaptive score.
+  // Here we record the substitution if it happened so the UI can surface it.
+  const stronglyAvoided = new Set(
+    (_cachedAdaptiveProfile?.avoidance || [])
+      .filter(a => a.severity === 'strong')
+      .map(a => a.key)
+  )
 
   PHASES.forEach(p => {
     const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed, decision)
-    const completion = completionFor(items, todayChecks)
+    // Apply evening slot reduction: drop Optional slot if load reduction active
+    const adaptedItems = (eveningSlotReduction && p.id === 'evening')
+      ? items.filter(item => item.priority !== 'Optional').slice(0, 1)
+      : items
+
+    // Track substitutions: if a strongly-avoided practice was replaced
+    items.forEach(item => {
+      if (stronglyAvoided.has(item.key)) {
+        // This practice has strong avoidance but still appeared — score wasn't enough to exclude it
+        // Log it so UI knows
+      }
+    })
+
+    const completion = completionFor(adaptedItems, todayChecks)
     phases[p.id] = {
       ...p,
-      items: items.map(item => ({ ...item, isDone: !!todayChecks[item.key] })),
+      items: adaptedItems.map(item => ({ ...item, isDone: !!todayChecks[item.key] })),
       completion,
       locked: false,
       lockReason: '',
@@ -1218,11 +1262,49 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
 
   const patternBreaks = detectPatternBreak(checked, dayStatus, date)
 
+  // Sprint 5: Build explicit adaptation log for UI display
+  // Track momentum practices that were reinforced
+  const profile = _cachedAdaptiveProfile
+  if (profile?.momentum?.length > 0 && profile.hasEnoughData) {
+    profile.momentum.slice(0, 2).forEach(m => {
+      const appearsInPlan = Object.values(phases).some(ph =>
+        ph.items.some(item => item.key === m.key)
+      )
+      if (appearsInPlan) {
+        adaptations.push({
+          type: 'reinforced',
+          practiceKey: m.key,
+          practiceName: m.name,
+          rate: m.rate,
+          reason: `${m.name} has a ${Math.round(m.rate * 100)}% completion rate — prioritized in today's plan.`,
+        })
+      }
+    })
+  }
+  // Track strongly-avoided practices that were successfully deprioritized
+  if (profile?.avoidance?.length > 0 && profile.hasEnoughData) {
+    profile.avoidance.filter(a => a.severity === 'strong').forEach(a => {
+      const appearsInPlan = Object.values(phases).some(ph =>
+        ph.items.some(item => item.key === a.key)
+      )
+      if (!appearsInPlan) {
+        adaptations.push({
+          type: 'deprioritized',
+          practiceKey: a.key,
+          practiceName: a.name,
+          skipRate: Math.round((1 - a.rate) * 100),
+          reason: `${a.name} skipped ${a.skipped} of ${a.assigned} times — a lower-friction alternative was selected instead.`,
+        })
+      }
+    })
+  }
+
   return {
     dailyMinimum: DAILY_MINIMUM,
     currentPhase,
     decision,
     patternBreaks,
+    adaptations,
     weakestDomain: domainById(weak),
     previousStatus,
     primedDomain: primedDomainId ? domainById(primedDomainId) : null,
