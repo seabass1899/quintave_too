@@ -113,6 +113,34 @@ const SCHEDULE = [
 const DAYS = ['S','M','T','W','T','F','S']
 const tk = () => new Date().toDateString()
 
+// Day rollover hook — fires when the date changes (e.g. app left open past midnight)
+// Refreshes the page so the plan snapshot re-generates for the new day.
+function useDayRollover() {
+  const lastDay = React.useRef(new Date().toDateString())
+  React.useEffect(() => {
+    const check = () => {
+      const today = new Date().toDateString()
+      if (today !== lastDay.current) {
+        lastDay.current = today
+        // Invalidate pattern profile so tomorrow's plan gets fresh weights
+        try {
+          const cached = localStorage.getItem('q_pattern_profile')
+          if (cached) {
+            const p = JSON.parse(cached)
+            p.generatedAt = null
+            localStorage.setItem('q_pattern_profile', JSON.stringify(p))
+          }
+        } catch {}
+        // Force re-render so plan snapshot picks up the new date
+        window.location.reload()
+      }
+    }
+    // Check every 60 seconds — low overhead, catches rollover within a minute
+    const timer = setInterval(check, 60_000)
+    return () => clearInterval(timer)
+  }, [])
+}
+
 // ─── Storage is handled by src/app/state/useLocalStorage.js ──────────────────
 
 // ─── Breathwork Timer ─────────────────────────────────────────────────────────
@@ -943,6 +971,25 @@ export default function App() {
   const isMobile = useWindowWidth() < 768
   const [showDrawer, setShowDrawer] = useState(false)
   const [authReady, setAuthReady] = useState(false)
+  useDayRollover() // detect midnight rollover
+
+  // ─── Safe localStorage helpers ────────────────────────────────────────────
+  // All localStorage reads go through these — never throw, always return fallback
+  const safeLS = (key, fallback = null) => {
+    try {
+      const raw = localStorage.getItem(key)
+      if (raw === null || raw === undefined) return fallback
+      const parsed = JSON.parse(raw)
+      return parsed ?? fallback
+    } catch {
+      // Corrupt JSON — clear it so it doesn't keep poisoning reads
+      try { localStorage.removeItem(key) } catch {}
+      return fallback
+    }
+  }
+  const safeLSSet = (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
+  }
   const [showAuth, setShowAuth] = useState(false)
   const [todayPhaseOverride, setTodayPhaseOverride] = useState(null)
   const [checked,   setChecked]   = useLS('q_checked', {})
@@ -1212,7 +1259,16 @@ export default function App() {
   const card = { background:'#fff', borderRadius:14, border:bdr, padding:'16px 18px', marginBottom:14 }
 
   // Gate: show onboarding if not completed
-  if (!onboardingProfile) {
+  // Guard: require both profile and valid domain scores before rendering the app.
+  // Corrupt or incomplete onboarding data sends the user back to onboarding
+  // rather than crashing the engine with empty domain scores.
+  const hasValidOnboarding = onboardingProfile &&
+    onboardingProfile.completedAt &&
+    onboardingProfile.scores &&
+    typeof onboardingProfile.scores === 'object' &&
+    Object.keys(onboardingProfile.scores).length > 0
+
+  if (!hasValidOnboarding) {
     return <Onboarding onComplete={(profile) => setOnboardingProfile(profile)} />
   }
 
@@ -1736,7 +1792,7 @@ export default function App() {
           <div>
             <WeeklyIntelligenceReport
               checked={checked || {}}
-              dayStatus={(() => { try { return JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch { return {} } })()}
+              dayStatus={safeLS('q_day_status', {})}
               domainScores={domainScores || {}}
             />
           </div>
@@ -1770,7 +1826,7 @@ export default function App() {
           onboardingProfile={onboardingProfile}
           earnedMilestones={earnedMilestones || []}
           domainScores={domainScores || {}}
-          dayStatus={(() => { try { return JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch { return {} } })()}
+          dayStatus={safeLS('q_day_status', {})}
         />}
 
         {tab === 'programs' && <Programs checked={checked} domainScores={domainScores} onboardingProfile={onboardingProfile}/>}
