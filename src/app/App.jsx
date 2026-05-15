@@ -1498,7 +1498,9 @@ export default function App() {
               onBreathwork={() => setShowBreathwork(true)}
               selectedPhaseOverride={todayPhaseOverride}
               onPhaseSelect={phase => setTodayPhaseOverride(phase)}
-              isMobileProp={isMobile}/>
+              isMobileProp={isMobile}
+              dayStatus={(() => { try { return JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch { return {} } })()}
+              onOpenProgress={() => handleTabChange('progress')}/>
 
             {isMobile ? (
               <MobileTuningFocus tip={COACHING_TIPS[coachingDomain]} domainId={coachingDomain} />
@@ -1757,7 +1759,9 @@ export default function App() {
           checked={checked || {}}
           onboardingProfile={onboardingProfile}
           earnedMilestones={earnedMilestones || []}
-          domainScores={domainScores || {}}/>}
+          domainScores={domainScores || {}}
+          dayStatus={(() => { try { return JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch { return {} } })()}
+        />}
 
         {tab === 'programs' && <Programs checked={checked} domainScores={domainScores} onboardingProfile={onboardingProfile}/>}
 
