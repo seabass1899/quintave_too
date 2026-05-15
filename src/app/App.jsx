@@ -11,6 +11,7 @@ import EveningMode from '../features/modes/EveningMode'
 import CoherenceSignature from '../features/signature/CoherenceSignature'
 import { DOMAINS, PRACTICES, COHERENCE_STATES, getCoherenceState, getCoherenceScore as _getCoherenceScore } from '../data'
 import ProgressTab from '../features/progress/ProgressTab'
+import WeeklyIntelligenceReport from '../features/insights/WeeklyIntelligenceReport'
 import DailyFocus from '../features/dashboard/DailyFocus'
 import Programs from '../features/programs/Programs'
 import NoiseAudit from '../features/modes/NoiseAudit'
@@ -1731,7 +1732,17 @@ export default function App() {
           exportBackup={exportBackup}/>}
 
 
-        {(tab === 'insights' || tab === 'frequency') && <FrequencyLayer
+        {tab === 'insights' && (
+          <div>
+            <WeeklyIntelligenceReport
+              checked={checked || {}}
+              dayStatus={(() => { try { return JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch { return {} } })()}
+              domainScores={domainScores || {}}
+            />
+          </div>
+        )}
+
+        {(tab === 'frequency') && <FrequencyLayer
           checked={checked || {}}
           onboardingProfile={onboardingProfile}
           domainScores={domainScores || {}}
