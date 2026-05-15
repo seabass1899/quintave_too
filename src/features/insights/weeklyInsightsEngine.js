@@ -77,7 +77,7 @@ function buildWeeklySummary(checked, dayStatus, date) {
 
   const headline = locked >= 6 ? 'Strong coherence week. Momentum is becoming predictable.'
     : locked >= 4 ? 'Building momentum. Consistency is beginning to compound.'
-    : locked >= 2 ? 'Foundation week. Consistency has not stabilized yet.'
+    : locked >= 2 ? 'Foundation week. The signal is strengthening, but not stable yet.'
     : 'Reset week. Recovery and re-entry are the only priorities.'
 
   const soWhat = locked >= 5
@@ -169,7 +169,7 @@ function buildEffectivePractice(checked, date) {
   const ripple = topMomentum.domainId
 
   const impact = isHighCarryover
-    ? `${topMomentum.name} has a strong carryover effect — completing it early tends to pull other practices into completion.`
+    ? `${topMomentum.name} creates downstream completion. When it gets done early, the rest of the day becomes easier to stabilize.`
     : `Completing ${topMomentum.name} correlates with higher same-day completion across other practices.`
   const soWhat = `When ${topMomentum.name} gets done, the rest of the day holds better. Lead with it.`
 
