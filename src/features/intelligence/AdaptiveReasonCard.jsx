@@ -40,7 +40,7 @@ const MODE_SIGNALS = {
   collapse_rebuild:   'Collapse state — basic stabilization before anything else.',
 }
 
-function buildReasonBullets(item, decision, patternProfile) {
+function buildReasonBullets(item, decision, patternProfile, suppressSystemContext = false) {
   const bullets = []
   const domainId = item?.phaseDomainId || item?.domain?.id
   const domainName = DOMAIN_NAMES[domainId] || item?.domain?.name || 'Domain'
@@ -132,9 +132,15 @@ function buildReasonBullets(item, decision, patternProfile) {
     })
   }
 
-  // Cap at 3 bullets, deduplicate type
+  // When system context is suppressed, remove bullets that repeat the alignment read
+  const SYSTEM_TYPES = new Set(['strategy', 'mode'])
+  const filtered = suppressSystemContext
+    ? bullets.filter(b => !SYSTEM_TYPES.has(b.type))
+    : bullets
+
+  // Cap at 3, deduplicate type
   const seen = new Set()
-  return bullets.filter(b => {
+  return filtered.filter(b => {
     if (seen.has(b.type)) return false
     seen.add(b.type)
     return true
@@ -153,7 +159,7 @@ function bulletColor(type, domainColor) {
   }
 }
 
-export default function AdaptiveReasonCard({ item, decision, patternProfile, isMobile }) {
+export default function AdaptiveReasonCard({ item, decision, patternProfile, isMobile, suppressSystemContext = false }) {
   const [expanded, setExpanded] = useState(false)
 
   if (!item || !decision) return null
@@ -162,7 +168,7 @@ export default function AdaptiveReasonCard({ item, decision, patternProfile, isM
   const hasAdaptation = patternProfile?.hasEnoughData || item?.highLeverage || decision?.behaviorMode
   if (!hasAdaptation) return null
 
-  const bullets = buildReasonBullets(item, decision, patternProfile)
+  const bullets = buildReasonBullets(item, decision, patternProfile, suppressSystemContext)
   if (bullets.length === 0) return null
 
   const domainId = item?.phaseDomainId || item?.domain?.id
