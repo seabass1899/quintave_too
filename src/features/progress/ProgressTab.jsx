@@ -1,7 +1,170 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { DOMAINS, PRACTICES, getCoherenceState, getCoherenceScore } from '../../data'
+import { getWeeklyIntelligence, predictTomorrow, loadPatternProfile } from '../intelligence/patternLearningModel'
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
+
+
+// ─── Weekly Intelligence Card ─────────────────────────────────────────────────
+function WeeklyIntelligenceCard({ intel, isSunday }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!intel) return null
+
+  const borderColor = isSunday ? '#7F77DD' : 'rgba(0,0,0,0.08)'
+  const headerBg    = isSunday ? 'linear-gradient(135deg, #F3F1FF, #EEEDFE)' : '#F8F7F4'
+
+  return (
+    <div style={{ border: `1px solid ${borderColor}`, borderRadius: 14, marginBottom: 14, overflow: 'hidden' }}>
+      {/* Header — always visible */}
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{ background: headerBg, padding: '13px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: isSunday ? '#7F77DD' : '#888' }}>
+              {isSunday ? '✦ Weekly Intelligence Report' : 'Weekly Intelligence'}
+            </span>
+            {isSunday && (
+              <span style={{ fontSize: 10, background: '#7F77DD', color: '#fff', borderRadius: 99, padding: '2px 7px', fontWeight: 700 }}>New</span>
+            )}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', lineHeight: 1.3 }}>
+            {intel.weekSummary}
+          </div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+            {intel.weekLocked}/7 days aligned{intel.weekMissed > 0 ? ` · ${intel.weekMissed} missed` : ''}
+          </div>
+        </div>
+        <span style={{ fontSize: 12, color: '#888', flexShrink: 0, marginTop: 2 }}>{expanded ? '▲' : '▼'}</span>
+      </div>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div style={{ padding: '14px 16px', background: '#fff' }}>
+          {/* Sections grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 14 }}>
+            {intel.sections.map((s, i) => (
+              <div key={i} style={{ background: '#F8F7F4', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', marginBottom: 4 }}>
+                  {s.label}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1a18', marginBottom: 3, lineHeight: 1.2 }}>
+                  {s.value}
+                </div>
+                <div style={{ fontSize: 11, color: '#666', lineHeight: 1.45 }}>
+                  {s.detail}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Recommendation */}
+          <div style={{ background: '#EEEDFE', borderLeft: '3px solid #7F77DD', borderRadius: '0 10px 10px 0', padding: '10px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7F77DD', marginBottom: 5 }}>
+              This week's recommendation
+            </div>
+            <div style={{ fontSize: 13, color: '#3C3489', lineHeight: 1.55 }}>
+              {intel.recommendation}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Tomorrow Prediction Card ──────────────────────────────────────────────────
+function TomorrowPredictionCard({ pred }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!pred) return null
+
+  const directionColor = pred.predictedDirection === 'stable_or_rising' ? '#085041'
+    : pred.predictedDirection === 'stable' ? '#378ADD' : '#BA7517'
+  const directionBg = pred.predictedDirection === 'stable_or_rising' ? '#E1F5EE'
+    : pred.predictedDirection === 'stable' ? '#E6F1FB' : '#FAEEDA'
+
+  return (
+    <div style={{ border: bdr, borderRadius: 14, marginBottom: 14, overflow: 'hidden' }}>
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{ background: '#F8F7F4', padding: '13px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', marginBottom: 4 }}>
+            Tomorrow's prediction
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, fontWeight: 800, background: directionBg, color: directionColor, padding: '3px 9px', borderRadius: 99 }}>
+              {pred.predictedDirection === 'stable_or_rising' ? '↑ Rising' : pred.predictedDirection === 'stable' ? '→ Stable' : '↓ At risk'}
+            </span>
+            {pred.likelyDrift && (
+              <span style={{ fontSize: 12, color: '#666' }}>
+                Likely drift: <strong>{pred.likelyDrift.name}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+        <span style={{ fontSize: 12, color: '#888', flexShrink: 0, marginTop: 2 }}>{expanded ? '▲' : '▼'}</span>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: '12px 16px', background: '#fff' }}>
+          {/* Direction label */}
+          <div style={{ fontSize: 13, color: '#555', marginBottom: 12, lineHeight: 1.5 }}>
+            {pred.directionLabel}
+          </div>
+
+          {/* Highest leverage move */}
+          <div style={{ background: '#1a1a18', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#aaa', marginBottom: 4 }}>
+              Highest leverage move
+            </div>
+            <div style={{ fontSize: 13, color: '#fff', lineHeight: 1.5, fontWeight: 600 }}>
+              {pred.highestLeverageMove}
+            </div>
+          </div>
+
+          {/* Risks + Opportunities in 2-col */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {pred.risks.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#BA7517', marginBottom: 6 }}>
+                  Risk factors
+                </div>
+                {pred.risks.map((r, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#633806', background: '#FAEEDA', borderRadius: 8, padding: '7px 9px', marginBottom: 6 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>{r.label}</div>
+                    <div style={{ opacity: 0.85 }}>{r.desc}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {pred.opportunities.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#085041', marginBottom: 6 }}>
+                  Opportunities
+                </div>
+                {pred.opportunities.map((o, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#085041', background: '#E1F5EE', borderRadius: 8, padding: '7px 9px', marginBottom: 6 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>{o.label}</div>
+                    <div style={{ opacity: 0.85 }}>{o.desc}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!pred.hasSufficientData && (
+            <div style={{ fontSize: 11, color: '#888', marginTop: 8, fontStyle: 'italic' }}>
+              Prediction accuracy improves after 7+ days of consistent check-ins.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function MiniBar({ value, max, color, height = 6 }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
@@ -29,7 +192,7 @@ function TrendSpark({ data, color }) {
   )
 }
 
-export default function ProgressTab({ checked, onboardingProfile, earnedMilestones, domainScores }) {
+export default function ProgressTab({ checked, onboardingProfile, earnedMilestones, domainScores, dayStatus }) {
   const [expandedDomain, setExpandedDomain] = useState(null)
   const today = new Date()
   
@@ -37,6 +200,23 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
   const safeChecked = checked || {}
   const safeMilestones = earnedMilestones || []
   const safeDomainScores = domainScores || {}
+  const safeDayStatus = dayStatus || {}
+
+  // Weekly intelligence — computed once, uses pattern profile under the hood
+  const weeklyIntel = useMemo(() => {
+    try {
+      return getWeeklyIntelligence(safeChecked, safeDayStatus, safeDomainScores)
+    } catch { return null }
+  }, [])
+
+  // Tomorrow prediction
+  const tomorrowPred = useMemo(() => {
+    try {
+      return predictTomorrow(safeChecked, safeDayStatus, safeDomainScores)
+    } catch { return null }
+  }, [])
+
+  const isWeeklyReportDay = today.getDay() === 0 // Sunday
 
   // ── 30-day history ──
   const last30 = Array.from({ length: 30 }, (_, i) => {
@@ -127,7 +307,18 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
     <div>
       <div style={{ marginBottom: 6 }}>
         <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 2 }}>Your progress</div>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 20 }}>Your coherence journey — all in one place.</div>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>Your coherence journey — all in one place.</div>
+
+        {/* Weekly Intelligence Report — always available, highlighted on Sundays */}
+        {weeklyIntel && (
+          <WeeklyIntelligenceCard intel={weeklyIntel} isSunday={isWeeklyReportDay} />
+        )}
+
+        {/* Tomorrow Prediction */}
+        {tomorrowPred && (
+          <TomorrowPredictionCard pred={tomorrowPred} />
+        )}
+      </div>
       </div>
 
       {/* ── Row 1: Key stats ── */}
