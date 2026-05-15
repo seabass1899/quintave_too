@@ -1499,7 +1499,6 @@ export default function App() {
               selectedPhaseOverride={todayPhaseOverride}
               onPhaseSelect={phase => setTodayPhaseOverride(phase)}
               isMobileProp={isMobile}
-              dayStatus={(() => { try { return JSON.parse(localStorage.getItem('q_day_status') || '{}') } catch { return {} } })()}
               onOpenProgress={() => handleTabChange('progress')}/>
 
             {isMobile ? (
