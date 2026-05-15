@@ -155,7 +155,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 34, right: 0, zIndex: 9999,
+          position: 'fixed', top: 54, right: 16, zIndex: 9999,
           width: 280, background: '#fff', border: bdr,
           borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
           padding: 14,
