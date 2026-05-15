@@ -267,8 +267,8 @@ function DayLockedIn({ plan }) {
   const ranked = summary.ranked || []
   const streak = plan.streak || { current: 0, longest: 0 }
   return (
-    <div style={{ marginTop: 14, borderRadius: 16, background: 'linear-gradient(135deg, #E1F5EE, #F7FCFA)', border: '1px solid #1D9E7535', padding: '16px 16px', boxShadow: '0 10px 24px rgba(29,158,117,0.10)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+    <div style={{ marginTop: 14, borderRadius: 16, background: 'linear-gradient(135deg, #E1F5EE, #F7FCFA)', border: '1px solid #1D9E7535', padding: '22px 20px', boxShadow: '0 10px 24px rgba(29,158,117,0.10)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 4 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 950, color: '#085041', letterSpacing: '-0.03em' }}>Day Locked In ✓</div>
           <div style={{ fontSize: 13, color: '#085041', marginTop: 5, lineHeight: 1.55 }}>
@@ -293,12 +293,25 @@ function DayLockedIn({ plan }) {
         </div>
       </div>
       <div className="domain-impact-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 7, marginTop: 14 }}>
-        {ranked.slice(0, 5).map(({ domain, points }) => (
-          <div key={domain.id} style={{ background: '#fff', border: `1px solid ${domain.color}28`, borderRadius: 11, padding: '8px 9px' }}>
-            <div style={{ fontSize: 11, color: domain.text, fontWeight: 850 }}>{domain.name}</div>
-            <div style={{ fontSize: 17, color: domain.color, fontWeight: 950, marginTop: 2 }}>+{points}</div>
-          </div>
-        ))}
+        {ranked.slice(0, 5).map(({ domain, points }) => {
+          const isSource = domain.id === 'd1'
+          // Source never changes — only access quality varies. Show access label, not a growth score.
+          const sourceAccessMap = { 80: 'Clear', 60: 'Stable', 40: 'Accessible', 20: 'Distorted', 0: 'Faint' }
+          const sourceLabel = Object.entries(sourceAccessMap).reverse().find(([threshold]) => points >= Number(threshold))?.[1] || 'Accessible'
+          return (
+            <div key={domain.id} style={{ background: '#fff', border: `1px solid ${domain.color}28`, borderRadius: 11, padding: '8px 9px' }}>
+              <div style={{ fontSize: 11, color: domain.text, fontWeight: 850 }}>{domain.name}</div>
+              {isSource ? (
+                <>
+                  <div style={{ fontSize: 11, color: domain.color, fontWeight: 950, marginTop: 2 }}>{sourceLabel}</div>
+                  <div style={{ fontSize: 9, color: '#aaa', marginTop: 1 }}>access</div>
+                </>
+              ) : (
+                <div style={{ fontSize: 17, color: domain.color, fontWeight: 950, marginTop: 2 }}>+{points}</div>
+              )}
+            </div>
+          )
+        })}
       </div>
       {!!summary.feedbackLines?.length && (
         <div style={{ marginTop: 13, display: 'grid', gap: 5 }}>
@@ -1338,12 +1351,13 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
                 )}
               </>
             )}
-            {/* Adaptive reason — collapsed tag on mobile, full card on desktop */}
+            {/* Adaptive reason — practice-specific only; system context already in alignment read */}
             <AdaptiveReasonCard
               item={item}
               decision={plan.decision}
               patternProfile={patternProfile}
               isMobile={isMobile}
+              suppressSystemContext={true}
             />
             {item.isDone && <div style={{ fontSize: 12, color: '#1D9E75', marginTop: 3 }}>✓ {item.identityFeedback}</div>}
           </div>
