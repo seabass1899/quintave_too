@@ -961,7 +961,7 @@ function PatternBreakNotice({ plan }) {
   )
 }
 
-export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false, dayStatus = {}, onOpenProgress = null }) {
+export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false, onOpenProgress = null }) {
   const today = getDateKey(new Date())
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
   const [lastFeedback, setLastFeedback] = useState(null)
