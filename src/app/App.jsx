@@ -24,6 +24,7 @@ import FrequencyLayer from '../features/frequency/FrequencyLayer'
 import AuthBox from '../features/auth/AuthBox'
 import SyncControls from '../features/sync/SyncControls'
 import { supabase, getSession } from './supabaseClient'
+import { silentSync } from './services/syncService'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
 
@@ -1167,6 +1168,10 @@ export default function App() {
     const wasChecked = !!todayChecks[pk]
     const newChecked = { ...checked, [today]: { ...(checked[today]||{}), [pk]: !wasChecked }}
     setChecked(newChecked)
+    // Sprint 6: silent background sync after every practice check-in
+    if (session?.user?.id) {
+      setTimeout(() => silentSync(session.user.id), 800)
+    }
     // Mark today as an active day in the streak calendar
     if (!wasChecked) {
       setWeekDays(prev => ({ ...prev, [today]: true }))
