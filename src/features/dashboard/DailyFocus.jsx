@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
-import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile } from '../intelligence/patternLearningModel'
+import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile } from '../intelligence/patternLearningModel'
+import AdaptiveReasonCard from '../intelligence/AdaptiveReasonCard'
 import { trackEvent } from '../../app/utils/analytics'
 import PhaseReadCards from '../../components/PhaseReadCards'
 
@@ -1028,6 +1029,11 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
 
   const windowWidth = useWindowWidth()
   const isMobile = isMobileProp || windowWidth < 768
+
+  // Load pattern profile once per render — used by AdaptiveReasonCard for all practice items
+  const patternProfile = React.useMemo(() => {
+    try { return loadPatternProfile() } catch { return null }
+  }, [])
   const scrollRef = React.useRef(null)
   const [showStickyHeader, setShowStickyHeader] = React.useState(false)
 
@@ -1332,6 +1338,13 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
                 )}
               </>
             )}
+            {/* Adaptive reason — collapsed tag on mobile, full card on desktop */}
+            <AdaptiveReasonCard
+              item={item}
+              decision={plan.decision}
+              patternProfile={patternProfile}
+              isMobile={isMobile}
+            />
             {item.isDone && <div style={{ fontSize: 12, color: '#1D9E75', marginTop: 3 }}>✓ {item.identityFeedback}</div>}
           </div>
           {item.hasTimer && (
