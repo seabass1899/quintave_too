@@ -905,33 +905,66 @@ function TomorrowPredictionMini({ pred, onOpenProgress, isMobile }) {
   )
 }
 
-// ─── Adaptive Intelligence Badge ─────────────────────────────────────────────
-// Shows when the engine has learned from the user's patterns and adapted today's plan.
+// ─── Adaptive Intelligence Badge — Sprint 5 ──────────────────────────────────
+// Reads plan.adaptations[] for specific, earned adaptation messages.
+// Each message is practice-specific and explains exactly what the engine changed.
 function AdaptiveIntelligenceBadge({ plan, isMobile }) {
+  const [expanded, setExpanded] = React.useState(false)
+  const adaptations = plan?.adaptations || []
   const ai = plan?.adaptiveIntelligence
-  if (!ai?.isAdapted) return null
 
-  const parts = []
-  if (ai.topAvoidedPractice) parts.push(`Reduced ${ai.topAvoidedPractice}`)
-  if (ai.topMomentumPractice) parts.push(`Reinforcing ${ai.topMomentumPractice}`)
-  if (parts.length === 0) return null
+  // Show badge if we have specific adaptations OR generic adaptation signal
+  if (adaptations.length === 0 && !ai?.isAdapted) return null
+
+  // Build human-readable messages from adaptations[]
+  const messages = adaptations
+    .filter(a => a.type === 'reinforced' || a.type === 'deprioritized' || a.type === 'load_reduced')
+    .map(a => {
+      if (a.type === 'reinforced') return `Reinforcing ${a.practiceName}`
+      if (a.type === 'deprioritized') return `Reduced ${a.practiceName} (${a.skipRate}% skip rate)`
+      if (a.type === 'load_reduced') return `${a.phase.charAt(0).toUpperCase() + a.phase.slice(1)} load reduced`
+      return null
+    })
+    .filter(Boolean)
+
+  // Fall back to generic if no specific messages
+  const displayMessages = messages.length > 0 ? messages : [
+    ai?.topMomentumPractice ? `Reinforcing ${ai.topMomentumPractice}` : null,
+    ai?.topAvoidedPractice ? `Reduced ${ai.topAvoidedPractice}` : null,
+  ].filter(Boolean)
+
+  if (displayMessages.length === 0) return null
 
   return (
     <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
       background: '#F3F1FF',
       border: '1px solid #7F77DD30',
-      borderRadius: 8,
-      padding: isMobile ? '6px 10px' : '7px 12px',
+      borderRadius: 10,
+      padding: isMobile ? '6px 10px' : '8px 12px',
       marginBottom: 10,
-      flexWrap: 'wrap',
     }}>
-      <span style={{ fontSize: 11, color: '#7F77DD', fontWeight: 900 }}>◈ Adapted</span>
-      <span style={{ fontSize: 11, color: '#5a5870' }}>
-        {parts.join(' · ')}
-      </span>
+      <div
+        onClick={() => adaptations.length > 1 && setExpanded(v => !v)}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', cursor: adaptations.length > 1 ? 'pointer' : 'default' }}
+      >
+        <span style={{ fontSize: 11, color: '#7F77DD', fontWeight: 900, flexShrink: 0 }}>◈ Adapted</span>
+        <span style={{ fontSize: 11, color: '#5a5870', flex: 1 }}>
+          {displayMessages[0]}
+          {displayMessages.length > 1 && !expanded && (
+            <span style={{ color: '#7F77DD', marginLeft: 4 }}>+{displayMessages.length - 1} more ▼</span>
+          )}
+        </span>
+      </div>
+      {expanded && displayMessages.slice(1).map((msg, i) => (
+        <div key={i} style={{ fontSize: 11, color: '#5a5870', marginTop: 4, paddingLeft: 20 }}>
+          · {msg}
+        </div>
+      ))}
+      {expanded && adaptations.find(a => a.type === 'load_reduced') && (
+        <div style={{ fontSize: 11, color: '#7F77DD', marginTop: 6, paddingLeft: 20, fontStyle: 'italic' }}>
+          {adaptations.find(a => a.type === 'load_reduced').reason}
+        </div>
+      )}
     </div>
   )
 }
