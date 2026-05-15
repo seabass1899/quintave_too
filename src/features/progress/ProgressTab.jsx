@@ -319,7 +319,6 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
           <TomorrowPredictionCard pred={tomorrowPred} />
         )}
       </div>
-      </div>
 
       {/* ── Row 1: Key stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
