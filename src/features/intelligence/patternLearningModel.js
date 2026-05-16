@@ -599,7 +599,7 @@ export function getWeeklyIntelligence(checked = {}, dayStatus = {}, domainScores
     sections.push({
       label: 'Most effective practice',
       value: mostEffective.name,
-      detail: `${Math.round(mostEffective.rate * 100)}% completion rate — your most reliable signal builder.`,
+      detail: `${mostEffective.rate > 1.0 ? 'High carryover effect' : Math.round(mostEffective.rate * 100) + '% completion rate'} — your most reliable signal builder.`,
     })
   }
 
@@ -615,7 +615,7 @@ export function getWeeklyIntelligence(checked = {}, dayStatus = {}, domainScores
     sections.push({
       label: 'Best performing window',
       value: bestPhase.label,
-      detail: `${Math.round((bestPhase.rate || 0) * 100)}% completion rate in your ${bestPhase.label} practices.`,
+      detail: `${Math.round(Math.min(100, (bestPhase.rate || 0) * 100))}% completion rate in your ${bestPhase.label} practices.`,
     })
   }
 
@@ -775,7 +775,7 @@ export function predictTomorrow(checked = {}, dayStatus = {}, domainScores = {},
   if (topMomentum) {
     opportunities.push({
       label: `${topMomentum.name} momentum`,
-      desc: `${Math.round(topMomentum.rate * 100)}% completion rate. This practice is building real signal.`,
+      desc: `${topMomentum.rate > 1.0 ? 'High carryover effect' : Math.round(topMomentum.rate * 100) + '% completion rate'}. This practice is building real signal.`,
     })
   }
 
