@@ -13,7 +13,6 @@ import { DOMAINS, PRACTICES, COHERENCE_STATES, getCoherenceState, getCoherenceSc
 import ProgressTab from '../features/progress/ProgressTab'
 import WeeklyIntelligenceReport from '../features/insights/WeeklyIntelligenceReport'
 import PredictiveIntelligencePanel from '../features/insights/PredictiveIntelligencePanel'
-import CoherenceProfile from '../features/profile/CoherenceProfile'
 import DailyFocus from '../features/dashboard/DailyFocus'
 import Programs from '../features/programs/Programs'
 import NoiseAudit from '../features/modes/NoiseAudit'
@@ -1452,6 +1451,14 @@ export default function App() {
                 </button>
               ))}
             </div>
+            {/* Cloud sync — always visible for all users in mobile drawer */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Cloud sync</div>
+              <div style={{ padding: '0 2px' }}>
+                <SyncControls session={session} authReady={authReady} onShowAuth={() => { setShowAuth(true); setShowDrawer(false) }} />
+              </div>
+            </div>
+
             {testerMode && (
               <>
                 <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Tester tools</div>
@@ -1471,7 +1478,6 @@ export default function App() {
                       {label}
                     </button>
                   ))}
-                  <SyncControls session={session} authReady={authReady} onShowAuth={() => { setShowAuth(true); setShowDrawer(false) }} />
                   <label style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', padding:'0 14px' }}>
                     Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
                   </label>
@@ -1531,10 +1537,10 @@ export default function App() {
       {/* Tab bar */}
       <div className="tabbar" style={{ background:'#fff', borderBottom:bdr, padding:'0 16px', display:'flex', overflowX:'auto', msOverflowStyle:'none', scrollbarWidth:'none' }}>
         {(testerMode
-          ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights'],['profile','Signature'],['analytics','Analytics'],['frequency','Frequency'],['launch','Launch'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']]
+          ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights'],['analytics','Analytics'],['frequency','Frequency'],['launch','Launch'],['history','History'],['map','System Map'],['foundation','Foundation'],['schedule','Schedule'],['programs','Programs']]
           : isMobile
-            ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights'],['profile','Signature']]
-            : [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights'],['profile','Signature']]
+            ? [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights']]
+            : [['today','Today'],['library','Library'],['progress','Progress'],['insights','Insights']]
         ).map(([id,lbl]) => (
           <button key={id} onClick={() => handleTabChange(id)}
             style={{ padding:'10px 16px', fontSize:13, cursor:'pointer', border:'none', background:'none', color: tab===id ? '#1a1a18' : '#888', fontWeight: tab===id ? 600 : 400, borderBottom: tab===id ? '2px solid #1a1a18' : '2px solid transparent', whiteSpace:'nowrap' }}>
@@ -1810,15 +1816,6 @@ export default function App() {
               />
             </div>
           </div>
-        )}
-
-        {tab === 'profile' && (
-          <CoherenceProfile
-            checked={checked || {}}
-            dayStatus={safeLS('q_day_status', {})}
-            domainScores={domainScores || {}}
-            onboardingProfile={onboardingProfile}
-          />
         )}
 
         {(tab === 'frequency') && <FrequencyLayer
