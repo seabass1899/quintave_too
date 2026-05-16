@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { DOMAINS, COHERENCE_STATES } from '../../data'
+import { signInWithMagicLink } from '../app/supabaseClient'
 
 // Inline coherence score — avoids import resolution issues on some mobile browsers
 const getCoherenceScore = (scores) => {
@@ -99,8 +100,10 @@ export default function Onboarding({ onComplete }) {
   })
   const [userName, setUserName] = useState('')
   const [focusMode, setFocusMode] = useState(null)
-  const [phase, setPhase] = useState('welcome') // welcome | questions | name | results
+  const [phase, setPhase] = useState('welcome') // welcome | questions | name | results | email
   const [animating, setAnimating] = useState(false)
+  const [email, setEmail] = useState('')
+  const [emailStatus, setEmailStatus] = useState('idle') // idle | sending | sent | skipped | error
 
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
   const card = { background: '#fff', borderRadius: 16, border: bdr, padding: '28px 32px' }
@@ -489,13 +492,142 @@ export default function Onboarding({ onComplete }) {
             </div>
           </div>
 
-          <button onClick={() => focusMode && handleComplete(focusMode)} disabled={!focusMode}
+          <button onClick={() => focusMode && setPhase('email')} disabled={!focusMode}
             style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: focusMode ? '#1a1a18' : '#E5E3DE', color: focusMode ? '#fff' : '#888', fontSize: 15, fontWeight: 700, cursor: focusMode ? 'pointer' : 'default', letterSpacing: '-0.01em', marginBottom: 10 }}>
             Begin my tuning practice →
           </button>
           <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>
             Your coherence signature is saved as your baseline. Return to this assessment anytime to measure how far you have come.
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── EMAIL SIGN-IN ────────────────────────────────────────────────────────────
+  // Shown after mode selection — before completing onboarding.
+  // Magic link sent to email; user can also skip (data stays local only).
+  if (phase === 'email') {
+    const handleSendMagicLink = async () => {
+      const trimmed = email.trim().toLowerCase()
+      if (!trimmed || !trimmed.includes('@')) return
+      setEmailStatus('sending')
+      try {
+        const { error } = await signInWithMagicLink(trimmed)
+        if (error) throw error
+        setEmailStatus('sent')
+      } catch (e) {
+        setEmailStatus('error')
+      }
+    }
+
+    const handleSkip = () => {
+      setEmailStatus('skipped')
+      handleComplete(focusMode)
+    }
+
+    const handleContinueAfterSent = () => {
+      handleComplete(focusMode)
+    }
+
+    return (
+      <div style={wrapper}>
+        <div style={inner}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', color: '#888', textTransform: 'uppercase', marginBottom: 14 }}>
+              One last step
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>
+              Protect your progress.
+            </div>
+            <div style={{ fontSize: 14, color: '#666', lineHeight: 1.7, maxWidth: 380, margin: '0 auto' }}>
+              Enter your email to sync your coherence data across devices and protect against data loss.
+              A sign-in link will be sent — no password needed.
+            </div>
+          </div>
+
+          {emailStatus === 'sent' ? (
+            /* Sent state */
+            <div style={{ ...card, textAlign: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>✦</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a18', marginBottom: 8 }}>
+                Check your email
+              </div>
+              <div style={{ fontSize: 13, color: '#666', lineHeight: 1.65, marginBottom: 20 }}>
+                A sign-in link was sent to <strong>{email}</strong>.
+                Open it on any device to sync your progress automatically.
+              </div>
+              <button onClick={handleContinueAfterSent}
+                style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: '#1a1a18', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                Enter Quintave →
+              </button>
+            </div>
+          ) : (
+            /* Email input state */
+            <>
+              <div style={{ ...card, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a18', marginBottom: 10 }}>
+                  Your email
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendMagicLink()}
+                  placeholder="you@example.com"
+                  autoFocus
+                  style={{
+                    width: '100%', padding: '14px 16px', borderRadius: 10,
+                    border: '1.5px solid rgba(0,0,0,0.12)', fontSize: 15,
+                    fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+                    marginBottom: 12, background: '#FAFAFA',
+                  }}
+                />
+
+                {/* What you get */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                  {[
+                    { icon: '☁', text: 'Sync across devices' },
+                    { icon: '🔒', text: 'Data never lost' },
+                    { icon: '◈', text: 'Pattern memory preserved' },
+                    { icon: '→', text: 'Access from anywhere' },
+                  ].map(({ icon, text }) => (
+                    <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#555' }}>
+                      <span style={{ fontSize: 14 }}>{icon}</span> {text}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleSendMagicLink}
+                  disabled={emailStatus === 'sending' || !email.trim().includes('@')}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: 10, border: 'none',
+                    background: email.trim().includes('@') ? '#1a1a18' : '#E5E3DE',
+                    color: email.trim().includes('@') ? '#fff' : '#888',
+                    fontSize: 14, fontWeight: 700, cursor: email.trim().includes('@') ? 'pointer' : 'default',
+                    marginBottom: 8,
+                  }}>
+                  {emailStatus === 'sending' ? 'Sending…' : 'Send sign-in link'}
+                </button>
+
+                {emailStatus === 'error' && (
+                  <div style={{ fontSize: 12, color: '#A32D2D', textAlign: 'center', marginBottom: 8 }}>
+                    Could not send link — check your email and try again.
+                  </div>
+                )}
+              </div>
+
+              <button onClick={handleSkip}
+                style={{ width: '100%', padding: '12px', borderRadius: 10, border: '0.5px solid rgba(0,0,0,0.12)', background: 'transparent', color: '#888', fontSize: 13, cursor: 'pointer' }}>
+                Skip for now — continue without cloud sync
+              </button>
+              <div style={{ textAlign: 'center', fontSize: 11, color: '#bbb', marginTop: 8 }}>
+                You can always add cloud sync later from the app.
+              </div>
+            </>
+          )}
         </div>
       </div>
     )
