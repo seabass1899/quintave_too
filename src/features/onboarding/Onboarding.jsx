@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { DOMAINS, COHERENCE_STATES } from '../../data'
-import { signInWithMagicLink } from '../app/supabaseClient'
+import { signInWithMagicLink } from '../../app/supabaseClient'
 
 // Inline coherence score — avoids import resolution issues on some mobile browsers
 const getCoherenceScore = (scores) => {
