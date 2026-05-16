@@ -993,6 +993,14 @@ export default function App() {
     try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
   }
   const [showAuth, setShowAuth] = useState(false)
+  const [syncPromptDismissed, setSyncPromptDismissed] = useState(
+    () => { try { return localStorage.getItem('q_sync_prompt_dismissed') === 'true' } catch { return false } }
+  )
+
+  const dismissSyncPrompt = () => {
+    setSyncPromptDismissed(true)
+    try { localStorage.setItem('q_sync_prompt_dismissed', 'true') } catch {}
+  }
   const [todayPhaseOverride, setTodayPhaseOverride] = useState(null)
   const [checked,   setChecked]   = useLS('q_checked', {})
   const [weekDays,  setWeekDays]  = useLS('q_week', {})
@@ -1558,6 +1566,38 @@ export default function App() {
               Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}{displayName ? `, ${displayName}` : ''}.
             </div>
             <div style={{ fontSize:13, color:'#888', marginBottom:12 }}>Five frequency bodies. One daily tuning practice.</div>
+
+            {/* Cloud sync nudge — shown to existing users who aren't signed in */}
+            {!session && !syncPromptDismissed && authReady && Object.keys(checked || {}).length >= 2 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: '#F3F1FF', border: '1px solid #7F77DD30',
+                borderRadius: 12, padding: isMobile ? '10px 12px' : '11px 16px',
+                marginBottom: 12, flexWrap: 'wrap',
+              }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>☁</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a18', marginBottom: 1 }}>
+                    Your data isn't backed up yet.
+                  </div>
+                  <div style={{ fontSize: 11, color: '#666' }}>
+                    Sign in to protect your progress and sync across devices.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => setShowAuth(true)}
+                    style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: '#7F77DD', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    Sign in
+                  </button>
+                  <button
+                    onClick={dismissSyncPrompt}
+                    style={{ padding: '7px 10px', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.12)', background: 'transparent', color: '#888', fontSize: 12, cursor: 'pointer' }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Today Engine — primary alignment flow */}
             <DailyFocus
