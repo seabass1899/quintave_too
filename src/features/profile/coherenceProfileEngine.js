@@ -370,7 +370,9 @@ export function generateCoherenceProfile(checked = {}, dayStatus = {}, domainSco
     bestWindow: phasePerf.find(p => p.rate !== null)?.label || 'Morning',
   }
 
-  const hasSufficientData = days.filter(d => d.status === 'locked').length >= MIN_DAYS
+  // Count days with actual practice completions — more reliable than status field
+  const daysWithPractices = days.filter(d => d.totalDone > 0).length
+  const hasSufficientData = daysWithPractices >= MIN_DAYS
 
   return {
     generatedAt: date.toISOString(),
