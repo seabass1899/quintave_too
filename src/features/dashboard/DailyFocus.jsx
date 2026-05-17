@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
 import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile, predictTomorrow } from '../intelligence/patternLearningModel'
+import { getDailyCoachMessage, getPatternBreakMessage, getTomorrowCoachMessage } from '../coach/coachEngine'
+import { DailyCoachCard, PatternBreakCoachCard, TomorrowCoachLine } from '../coach/DailyCoachCard'
 import AdaptiveReasonCard from '../intelligence/AdaptiveReasonCard'
 import { trackEvent } from '../../app/utils/analytics'
 import PhaseReadCards from '../../components/PhaseReadCards'
@@ -875,6 +877,7 @@ function TomorrowPredictionMini({ pred, onOpenProgress, isMobile }) {
           <div style={{ fontSize: 12, color: '#555', lineHeight: 1.45 }}>
             {pred.highestLeverageMove}
           </div>
+          <TomorrowCoachLine message={tomorrowCoachMessage} />
           {pred.risks[0] && (
             <div style={{ fontSize: 11, color: '#BA7517', marginTop: 4, fontWeight: 600 }}>
               ⚠ {pred.risks[0].label}
@@ -1180,6 +1183,19 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   const windowWidth = useWindowWidth()
   const isMobile = isMobileProp || windowWidth < 768
 
+  // Coach messages — computed once per render from plan + dayStatus
+  const coachMessage = React.useMemo(() => {
+    try { return getDailyCoachMessage(plan, dayStatus, domainScores) } catch { return null }
+  }, [plan?.currentPhase, plan?.streak?.current, plan?.adaptations?.length])
+
+  const patternBreakMessage = React.useMemo(() => {
+    try { return getPatternBreakMessage(plan) } catch { return null }
+  }, [plan?.patternBreaks?.length])
+
+  const tomorrowCoachMessage = React.useMemo(() => {
+    try { return getTomorrowCoachMessage(plan, dayStatus) } catch { return null }
+  }, [plan?.completionState?.pct, plan?.streak?.current])
+
   // Load pattern profile once per render — used by AdaptiveReasonCard for all practice items
   // Validates schema before returning — corrupt/partial profiles return null
   const patternProfile = React.useMemo(() => {
@@ -1246,7 +1262,8 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     )}
 
     <AdaptiveIntelligenceBadge plan={plan} isMobile={isMobile} />
-    <PatternBreakNotice plan={plan} />
+    <PatternBreakCoachCard message={patternBreakMessage} />
+    <DailyCoachCard message={coachMessage} isMobile={isMobile} />
       {showOnboarding && (
         <div style={{
           background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
