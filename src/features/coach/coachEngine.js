@@ -84,7 +84,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   const loadReduced = adaptations.find(a => a.type === 'load_reduced')
   if (loadReduced) {
     return {
-      headline: "Today's load was reduced.",
+      headline: `Today's load was reduced.`,
       body: `The engine detected that ${loadReduced.phase} completion has been consistently low. One practice today builds more signal than a full plan you won't complete.`,
       action: `Complete the ${loadReduced.phase} minimum — that's the entire goal today.`,
       tone: 'warm',
@@ -96,9 +96,9 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   const deprioritized = adaptations.find(a => a.type === 'deprioritized')
   if (deprioritized && ai?.isAdapted) {
     return {
-      headline: 'The plan was adapted for your patterns.',
+      headline: `The plan was adapted for your patterns.`,
       body: `${deprioritized.practiceName} was deprioritized — it's been skipped ${deprioritized.skipRate}% of the time it was assigned. A lower-friction path to the same signal was selected instead.`,
-      action: 'The engine is learning your resistance points. Follow the adapted plan today.',
+      action: `The engine is learning your resistance points. Follow the adapted plan today.`,
       tone: 'measured',
       source: 'avoidance_adaptation',
     }
@@ -108,7 +108,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   if (streakState === 'compounding' && weekState === 'strong') {
     return {
       headline: `${streak}-day streak. The signal is compounding.`,
-      body: 'This is the phase where consistency stops being effort and starts becoming identity. Do not increase complexity — repeat what is working.',
+      body: `This is the phase where consistency stops being effort and starts becoming identity. Do not increase complexity — repeat what is working.`,
       action: `Protect the streak. ${primary} is your anchor today.`,
       tone: 'celebratory',
       source: 'compounding_momentum',
@@ -118,7 +118,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Building momentum
   if (streakState === 'building' && weekState !== 'reset') {
     return {
-      headline: 'Momentum is stabilizing.',
+      headline: `Momentum is stabilizing.`,
       body: `${streak} aligned days in a row. The system is beginning to compound. Do not add complexity — the consistency itself is the signal.`,
       action: `Complete today's minimum. That's the only move that matters right now.`,
       tone: 'direct',
@@ -129,9 +129,9 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Recovery mode — strategy is recovery first
   if (strategy === 'recovery_first' || behaviorMode === 'lower_friction') {
     return {
-      headline: 'Today is a recovery day.',
+      headline: `Today is a recovery day.`,
       body: `${primary} needs stabilization before expansion. The engine selected lower-friction practices — not because the system is failing, but because recovery is the correct move.`,
-      action: "One completed practice today changes tomorrow\'s baseline. Begin with what is easiest.",
+      action: `One completed practice today changes tomorrow\'s baseline. Begin with what is easiest.`,
       tone: 'warm',
       source: 'recovery_mode',
     }
@@ -140,8 +140,8 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Collapse / rebuild phase
   if (decision?.phaseSummary?.phase === 'collapse_rebuild' || strategy === 'elevate_red_zone_body') {
     return {
-      headline: 'The system is rebuilding.',
-      body: 'You are not unstable — the system is clearing interference before expanding. This phase has a ceiling: get through it with consistency and expansion follows automatically.',
+      headline: `The system is rebuilding.`,
+      body: `You are not unstable — the system is clearing interference before expanding. This phase has a ceiling: get through it with consistency and expansion follows automatically.`,
       action: `${primary} is the correction point. Start there and let the rest follow.`,
       tone: 'warm',
       source: 'collapse_rebuild',
@@ -151,9 +151,9 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Reset state — no streak, low week
   if (streakState === 'reset' && weekState === 'reset') {
     return {
-      headline: 'Re-entry is the only priority.',
-      body: "The streak reset. That is information, not failure. The system does not punish gaps — it responds to what happens next.",
-      action: "Complete one practice today. Not four. One. That starts the signal.",
+      headline: `Re-entry is the only priority.`,
+      body: `The streak reset. That is information, not failure. The system does not punish gaps — it responds to what happens next.`,
+      action: `Complete one practice today. Not four. One. That starts the signal.`,
       tone: 'warm',
       source: 'reset_reentry',
     }
@@ -162,9 +162,9 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Early streak — first few days
   if (streakState === 'active' && streak <= 2) {
     return {
-      headline: 'The signal is forming.',
+      headline: `The signal is forming.`,
       body: `Day ${streak + 1} of building consistency. The pattern learning engine needs 5+ aligned days to detect your behavioral laws. You are building the foundation it reads from.`,
-      action: "Complete today\'s minimum. Every aligned day teaches the system something real about you.",
+      action: `Complete today\'s minimum. Every aligned day teaches the system something real about you.`,
       tone: 'measured',
       source: 'early_streak',
     }
@@ -173,8 +173,8 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Midday correction
   if (phase === 'midday') {
     return {
-      headline: 'Midday is the correction window.',
-      body: 'This is where automatic patterns get interrupted before they compound. One conscious action here changes the trajectory of the rest of the day.',
+      headline: `Midday is the correction window.`,
+      body: `This is where automatic patterns get interrupted before they compound. One conscious action here changes the trajectory of the rest of the day.`,
       action: `${primary} is drifting. Correct it now before the day runs on autopilot.`,
       tone: 'direct',
       source: 'midday_correction',
@@ -184,9 +184,9 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Evening integration
   if (phase === 'evening') {
     return {
-      headline: 'Evening primes tomorrow.',
-      body: "What you complete tonight determines tomorrow\'s starting coherence. Integration here is not optional — it\"s the mechanism by which today\'s signal carries forward.',
-      action: 'Complete the evening practice. It compounds into tomorrow.',
+      headline: `Evening primes tomorrow.`,
+      body: `What you complete tonight determines tomorrow's starting coherence. Integration here is not optional — it is the mechanism by which today's signal carries forward.`,
+      action: `Complete the evening practice. It compounds into tomorrow.`,
       tone: 'measured',
       source: 'evening_integration',
     }
@@ -195,9 +195,9 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   // Stable / advancing
   if (weekState === 'building' || weekState === 'strong') {
     return {
-      headline: 'The system is holding.',
+      headline: `The system is holding.`,
       body: `${primary} is the focus today. Stability at this level means the foundation is forming — not that the work is done.`,
-      action: 'Add one degree of depth to one practice this week. The consistency earned that.',
+      action: `Add one degree of depth to one practice this week. The consistency earned that.`,
       tone: 'measured',
       source: 'stable_advancing',
     }
@@ -205,9 +205,9 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
 
   // Default fallback
   return {
-    headline: "Today\'s alignment begins here.",
+    headline: `Today\'s alignment begins here.`,
     body: `${primary} is today's correction point. The practices selected are specific to your current state — not generic recommendations.`,
-    action: 'Complete the minimum. Signal compounds through repetition, not intensity.',
+    action: `Complete the minimum. Signal compounds through repetition, not intensity.`,
     tone: 'measured',
     source: 'default',
   }
@@ -227,7 +227,7 @@ export function getPatternBreakMessage(plan) {
 
   if (top.type === 'streak_recovery') {
     return {
-      headline: '◈ Alignment restored.',
+      headline: `◈ Alignment restored.`,
       body: top.message,
       tone: 'celebratory',
     }
@@ -235,14 +235,14 @@ export function getPatternBreakMessage(plan) {
 
   if (top.type === 'avoidance_break') {
     return {
-      headline: '◈ Resistance overcome.',
+      headline: `◈ Resistance overcome.`,
       body: top.message,
       tone: 'celebratory',
     }
   }
 
   return {
-    headline: '◈ Pattern interrupted.',
+    headline: `◈ Pattern interrupted.`,
     body: top.message,
     tone: 'celebratory',
   }
