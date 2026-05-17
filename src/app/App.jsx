@@ -1611,6 +1611,8 @@ export default function App() {
               isMobileProp={isMobile}
               onOpenProgress={() => handleTabChange('progress')}/>
 
+            {/* Sprint 8: Dynamic coach card now renders inside DailyFocus above practice cards.
+                Static tuning focus retained as fallback domain tip below the alignment flow. */}
             {isMobile ? (
               <MobileTuningFocus tip={COACHING_TIPS[coachingDomain]} domainId={coachingDomain} />
             ) : (
