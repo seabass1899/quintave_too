@@ -84,7 +84,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   const loadReduced = adaptations.find(a => a.type === 'load_reduced')
   if (loadReduced) {
     return {
-      headline: 'Today's load was reduced.',
+      headline: "Today's load was reduced.",
       body: `The engine detected that ${loadReduced.phase} completion has been consistently low. One practice today builds more signal than a full plan you won't complete.`,
       action: `Complete the ${loadReduced.phase} minimum — that's the entire goal today.`,
       tone: 'warm',
@@ -131,7 +131,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
     return {
       headline: 'Today is a recovery day.',
       body: `${primary} needs stabilization before expansion. The engine selected lower-friction practices — not because the system is failing, but because recovery is the correct move.`,
-      action: 'One completed practice today changes tomorrow\'s baseline. Begin with what is easiest.',
+      action: "One completed practice today changes tomorrow\'s baseline. Begin with what is easiest.",
       tone: 'warm',
       source: 'recovery_mode',
     }
@@ -152,8 +152,8 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   if (streakState === 'reset' && weekState === 'reset') {
     return {
       headline: 'Re-entry is the only priority.',
-      body: 'The streak reset. That is information, not failure. The system does not punish gaps — it responds to what happens next.',
-      action: 'Complete one practice today. Not four. One. That starts the signal.',
+      body: "The streak reset. That is information, not failure. The system does not punish gaps — it responds to what happens next.",
+      action: "Complete one practice today. Not four. One. That starts the signal.",
       tone: 'warm',
       source: 'reset_reentry',
     }
@@ -164,7 +164,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
     return {
       headline: 'The signal is forming.',
       body: `Day ${streak + 1} of building consistency. The pattern learning engine needs 5+ aligned days to detect your behavioral laws. You are building the foundation it reads from.`,
-      action: 'Complete today\'s minimum. Every aligned day teaches the system something real about you.',
+      action: "Complete today\'s minimum. Every aligned day teaches the system something real about you.",
       tone: 'measured',
       source: 'early_streak',
     }
@@ -185,7 +185,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   if (phase === 'evening') {
     return {
       headline: 'Evening primes tomorrow.',
-      body: 'What you complete tonight determines tomorrow\'s starting coherence. Integration here is not optional — it\'s the mechanism by which today\'s signal carries forward.',
+      body: "What you complete tonight determines tomorrow\'s starting coherence. Integration here is not optional — it\"s the mechanism by which today\'s signal carries forward.',
       action: 'Complete the evening practice. It compounds into tomorrow.',
       tone: 'measured',
       source: 'evening_integration',
@@ -205,7 +205,7 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
 
   // Default fallback
   return {
-    headline: 'Today\'s alignment begins here.',
+    headline: "Today\'s alignment begins here.",
     body: `${primary} is today's correction point. The practices selected are specific to your current state — not generic recommendations.`,
     action: 'Complete the minimum. Signal compounds through repetition, not intensity.',
     tone: 'measured',
