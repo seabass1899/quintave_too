@@ -1385,7 +1385,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
           practiceKey: m.key,
           practiceName: m.name,
           rate: m.rate,
-          reason: `${m.name} has a ${Math.round(m.rate * 100)}% completion rate — prioritized in today's plan.`,
+          reason: `${m.name} has a ${m.rate > 1.0 ? 'high carryover effect' : Math.round(m.rate * 100) + '% completion rate'} — prioritized in today's plan.`,
         })
       }
     })
