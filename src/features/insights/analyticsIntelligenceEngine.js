@@ -97,21 +97,29 @@ export function getInterventionROI(checked = {}, dayStatus = {}, date = new Date
         const hasMomentum   = profile.momentum?.some(m => m.key === p.key)
         const domainName    = DOMAIN_NAMES[p.domainId] || p.domainId
 
+        // Cap display values — very high lifts mean strong correlation, not literal 168% more
+        const displaySameDayLift = Math.min(sameDayLift, 85)
+        const displayNextDayLift = Math.min(nextDayLift, 85)
+        const isHighCorrelation  = sameDayLift > 60
+
         return {
           key:          p.key,
           name:         p.name,
           domainId:     p.domainId,
           domainName,
           roiScore,
-          sameDayLift:  Math.round(sameDayLift),
-          nextDayLift:  Math.round(nextDayLift),
+          sameDayLift:  Math.round(displaySameDayLift),
+          nextDayLift:  Math.round(displayNextDayLift),
+          isHighCorrelation,
           completedCount: p.completedCount,
           confidence,
           hasMomentum,
-          soWhat: roiScore > 20
-            ? `When ${p.name} gets done, overall daily completion increases by ~${Math.round(sameDayLift)}%. Lead with this.`
+          soWhat: isHighCorrelation
+            ? `${p.name} is strongly correlated with high-completion days. When it gets done, the rest of the day follows. Lead with this.`
+            : roiScore > 20
+            ? `When ${p.name} gets done, overall daily completion rises noticeably. Lead with this.`
             : roiScore > 5
-            ? `${p.name} has a modest positive effect on the day. Worth keeping in the plan.`
+            ? `${p.name} has a positive effect on the day. Worth keeping in the plan.`
             : `${p.name} shows neutral impact. Consider whether it needs a better time slot.`,
         }
       })
@@ -127,7 +135,9 @@ export function getInterventionROI(checked = {}, dayStatus = {}, date = new Date
       ready: true,
       items: top3,
       topPractice,
-      summary: `${topPractice.name} generates the largest return across your day. Days it gets done, overall completion rises by ~${Math.abs(topPractice.sameDayLift)}%.`,
+      summary: topPractice.isHighCorrelation
+        ? `${topPractice.name} is your highest-impact practice. Days it gets done, overall completion is significantly higher.`
+        : `${topPractice.name} generates the largest return across your day. Days it gets done, overall completion rises by ~${Math.abs(topPractice.sameDayLift)}%.`,
       soWhat: `Lead your day with ${topPractice.name}. The data shows this practice pulls others with it.`,
     }
   } catch { return { ready: false, items: [], topPractice: null } }

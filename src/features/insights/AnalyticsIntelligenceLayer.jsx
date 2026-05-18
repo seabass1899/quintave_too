@@ -177,15 +177,24 @@ function InterventionROISection({ data }) {
             </div>
 
             {/* Stats row */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 6, flexWrap: 'wrap' }}>
-              {item.sameDayLift > 0 && (
+            <div style={{ display: 'flex', gap: 16, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {item.isHighCorrelation ? (
+                <span style={{ fontSize: 11, color: '#085041', fontWeight: 700 }}>
+                  ↑ Strong same-day correlation
+                </span>
+              ) : item.sameDayLift > 0 ? (
                 <span style={{ fontSize: 11, color: '#085041', fontWeight: 700 }}>
                   +{item.sameDayLift}% same-day lift
                 </span>
-              )}
-              {item.nextDayLift > 0 && (
+              ) : null}
+              {!item.isHighCorrelation && item.nextDayLift > 0 && (
                 <span style={{ fontSize: 11, color: '#378ADD', fontWeight: 700 }}>
                   +{item.nextDayLift}% next-day carry
+                </span>
+              )}
+              {item.isHighCorrelation && item.nextDayLift > 0 && (
+                <span style={{ fontSize: 11, color: '#378ADD', fontWeight: 700 }}>
+                  ↑ Next-day carryover detected
                 </span>
               )}
               <ConfidenceDot confidence={item.confidence} />
