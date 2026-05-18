@@ -92,8 +92,11 @@ function buildReasonBullets(item, decision, patternProfile, suppressSystemContex
       })
     } else if (isMomentum) {
       const rate = patternProfile.momentum.find(m => m.key === item.key)?.rate
+      const rateDisplay = rate
+        ? (rate > 1.0 ? 'high carryover effect' : Math.round(rate * 100) + '% completion rate')
+        : 'high completion rate'
       bullets.push({
-        text: `${item.name} has a ${rate ? Math.round(rate * 100) + '%' : 'high'} completion rate in your history — reinforcing what works.`,
+        text: `${item.name} has a ${rateDisplay} in your history — reinforcing what works.`,
         type: 'momentum',
       })
     } else if (avoidedKey) {
