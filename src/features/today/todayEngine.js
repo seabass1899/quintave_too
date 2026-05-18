@@ -1180,7 +1180,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const phases = {}
 
   const dayUsed = new Set()
-  const adaptations = []  // Sprint 5: log of adaptive changes made to today's plan
+  const adaptations = []  // Sprint 5+9: log of adaptive changes made to today's plan
 
   // ── Adaptive load reduction ────────────────────────────────────────────────
   // If the pattern profile shows Evening consistently weak (<35% completion),
@@ -1202,10 +1202,85 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
     }
   }
 
+  // ── Sprint 9: 3-Day Reset Mode ─────────────────────────────────────────────
+  // If the user has missed 3+ of the last 5 days, activate reset mode.
+  // Reset mode drops the plan to minimum viable — 1 practice per phase only.
+  // Goal: restore entry rather than push performance.
+  let resetModeActive = false
+  if (_cachedAdaptiveProfile?.hasEnoughData) {
+    const recentDays = Array.from({ length: 5 }, (_, i) => getPreviousDateKey(date, i + 1))
+    const missedCount = recentDays.filter(k => {
+      const s = dayStatus?.[k]?.status
+      return s === 'missed' || (!s && Object.keys(checked[k] || {}).length === 0)
+    }).length
+    if (missedCount >= 3) {
+      resetModeActive = true
+      adaptations.push({
+        type: 'reset_mode',
+        missedCount,
+        reason: `${missedCount} of the last 5 days were incomplete. Today's plan is simplified to 1 practice per phase — re-entry beats optimization.`,
+        confidence: 0.95,
+      })
+    }
+  }
+
+  // ── Sprint 9: Difficulty Escalation ───────────────────────────────────────
+  // If the user has a 5+ day streak with accelerating velocity, introduce
+  // one higher-friction practice to begin compounding depth.
+  // Only fires when momentum is strong AND no strong avoidance patterns exist.
+  let escalationActive = false
+  if (_cachedAdaptiveProfile?.hasEnoughData && !resetModeActive) {
+    let currentStreak = 0
+    for (let i = 0; i < 30; i++) {
+      const k = getPreviousDateKey(date, i)
+      if (dayStatus?.[k]?.status === 'locked') currentStreak++
+      else break
+    }
+    const recent3 = [1,2,3].map(i => Object.values(checked[getPreviousDateKey(date,i)] || {}).filter(Boolean).length)
+    const older4  = [4,5,6,7].map(i => Object.values(checked[getPreviousDateKey(date,i)] || {}).filter(Boolean).length)
+    const r3avg = recent3.reduce((a,b) => a+b,0) / 3
+    const o4avg = older4.reduce((a,b) => a+b,0) / 4
+    const velocityTrend = o4avg > 0 ? (r3avg - o4avg) / o4avg : 0
+    const hasStrongAvoidance = (_cachedAdaptiveProfile?.avoidance || []).some(a => a.severity === 'strong')
+
+    if (currentStreak >= 5 && velocityTrend > 0.05 && !hasStrongAvoidance) {
+      escalationActive = true
+      adaptations.push({
+        type: 'difficulty_escalated',
+        streak: currentStreak,
+        reason: `${currentStreak}-day streak with increasing momentum. One higher-depth practice introduced to begin compounding.`,
+        confidence: Math.min(0.90, 0.65 + (currentStreak - 5) * 0.03),
+      })
+    }
+  }
+
+  // ── Sprint 9: Practice Substitution Map ───────────────────────────────────
+  // When a practice has strong avoidance, swap it for a lower-friction
+  // alternative in the same domain. This is structural, not just score nudging.
+  // The substitution table maps avoided practice keys to preferred replacements.
+  const SUBSTITUTION_MAP = {
+    // d1 — Source
+    'd1_0': ['d1', 'Observer Drill'],          // Stillness Exposure → Observer Drill
+    'd1_1': ['d1', '5 Recall Triggers'],       // Observer Drill → 5 Recall Triggers
+    // d2 — Form
+    'd2_0': ['d2', 'Breathwork'],              // Sun + Circadian Anchor → Breathwork
+    'd2_1': ['d2', 'Hydration Protocol'],      // Breathwork → Hydration Protocol
+    'd2_2': ['d2', 'Breathwork'],              // Training/Mobility → Breathwork
+    // d3 — Field
+    'd3_0': ['d3', 'Name + Locate Emotion'],   // Somatic Body Scan → Name + Locate
+    'd3_1': ['d3', 'Gratitude + Reframe'],     // Emotional Log → Gratitude + Reframe
+    'd3_2': ['d3', 'Gratitude + Reframe'],     // Forgiveness Protocol → Gratitude
+    // d4 — Mind
+    'd4_0': ['d4', 'Morning Directive'],       // Thought Audit → Morning Directive
+    'd4_1': ['d4', 'Visualization Practice'],  // Daily Mantra → Visualization
+    'd4_2': ['d4', 'Morning Directive'],       // Belief Audit → Morning Directive
+    // d5 — Code
+    'd5_0': ['d5', 'Pattern Interrupt'],       // Theta/Shadow Work → Pattern Interrupt
+    'd5_1': ['d5', 'Affirmation Installation'],// Trigger Mapping → Affirmation
+    'd5_2': ['d5', 'Pattern Interrupt'],       // Identity Decompression → Pattern Interrupt
+  }
+
   // ── Strong avoidance detection for substitution ────────────────────────────
-  // Practices with strong avoidance (skipped >65% when assigned) get flagged.
-  // buildPhaseItems already deprioritizes them via scoreCandidate adaptive score.
-  // Here we record the substitution if it happened so the UI can surface it.
   const stronglyAvoided = new Set(
     (_cachedAdaptiveProfile?.avoidance || [])
       .filter(a => a.severity === 'strong')
@@ -1213,27 +1288,61 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   )
 
   PHASES.forEach(p => {
-    const items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed, decision)
+    let items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed, decision)
+
+    // ── Sprint 9: Apply substitution for strongly-avoided practices ──────────
+    items = items.map(item => {
+      if (stronglyAvoided.has(item.key) && SUBSTITUTION_MAP[item.key]) {
+        const [subDomainId, subName] = SUBSTITUTION_MAP[item.key]
+        const substitute = findPractice(subDomainId, subName)
+        if (substitute && !dayUsed.has(substitute.key)) {
+          adaptations.push({
+            type: 'substituted',
+            original: item.name,
+            replacement: subName,
+            domain: item.domain?.name || item.phaseDomainId,
+            reason: `${item.name} has strong avoidance — replaced with lower-friction ${subName} in the same domain.`,
+            confidence: 0.80,
+          })
+          dayUsed.add(substitute.key)
+          return labelPractice(substitute, item.priority, `Lower-friction substitute for ${item.name}`)
+        }
+      }
+      return item
+    })
+
     // Apply evening slot reduction: drop Optional slot if load reduction active
     const adaptedItems = (eveningSlotReduction && p.id === 'evening')
       ? items.filter(item => item.priority !== 'Optional').slice(0, 1)
       : items
 
-    // Track substitutions: if a strongly-avoided practice was replaced
-    items.forEach(item => {
-      if (stronglyAvoided.has(item.key)) {
-        // This practice has strong avoidance but still appeared — score wasn't enough to exclude it
-        // Log it so UI knows
-      }
-    })
+    // ── Sprint 9: Reset mode — 1 practice per phase ──────────────────────────
+    const finalItems = resetModeActive
+      ? adaptedItems.slice(0, 1)
+      : adaptedItems
 
-    const completion = completionFor(adaptedItems, todayChecks)
+    // ── Sprint 9: Difficulty escalation — boost one high-friction practice ───
+    // Flag the first high-friction practice in morning as "depth" for UI display
+    if (escalationActive && p.id === 'morning') {
+      const highFrictionIdx = finalItems.findIndex(item => getPracticeFriction(item) >= 2)
+      if (highFrictionIdx >= 0) {
+        finalItems[highFrictionIdx] = {
+          ...finalItems[highFrictionIdx],
+          escalated: true,
+          escalationLabel: 'Depth practice — momentum is strong enough to absorb this.',
+        }
+      }
+    }
+
+    const completion = completionFor(finalItems, todayChecks)
     phases[p.id] = {
       ...p,
-      items: adaptedItems.map(item => ({ ...item, isDone: !!todayChecks[item.key] })),
+      items: finalItems.map(item => ({ ...item, isDone: !!todayChecks[item.key] })),
       completion,
       locked: false,
       lockReason: '',
+      resetMode: resetModeActive,
+      escalationActive: escalationActive && p.id === 'morning',
     }
   })
 
@@ -1305,6 +1414,8 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
     decision,
     patternBreaks,
     adaptations,
+    resetModeActive,
+    escalationActive,
     weakestDomain: domainById(weak),
     previousStatus,
     primedDomain: primedDomainId ? domainById(primedDomainId) : null,
