@@ -1229,3 +1229,58 @@ export function getMomentumState(checked = {}, dayStatus = {}, date = new Date()
     hasSufficientData: profile.hasEnoughData,
   }
 }
+
+// ── Sprint 9: Reset Mode Status ───────────────────────────────────────────────
+// Exported so coach and UI can independently query whether reset mode is active.
+// Mirrors the same logic in todayEngine to keep the two in sync.
+export function getResetModeStatus(checked = {}, dayStatus = {}, date = new Date()) {
+  try {
+    const recentDays = Array.from({ length: 5 }, (_, i) => getPreviousDateKey(date, i + 1))
+    const missedCount = recentDays.filter(k => {
+      const s = dayStatus?.[k]?.status
+      return s === 'missed' || (!s && Object.keys(checked[k] || {}).length === 0)
+    }).length
+    const profile = getOrComputeProfile(checked, dayStatus, date)
+    const active = profile.hasEnoughData && missedCount >= 3
+    return {
+      active,
+      missedCount,
+      message: active
+        ? `${missedCount} of the last 5 days incomplete. Re-entry mode — 1 practice per phase is enough today.`
+        : null,
+      recoveryTarget: 3, // aligned days needed to exit reset mode
+    }
+  } catch { return { active: false, missedCount: 0, message: null } }
+}
+
+// ── Sprint 9: Escalation Status ───────────────────────────────────────────────
+// Returns whether difficulty escalation is active and why.
+export function getEscalationStatus(checked = {}, dayStatus = {}, date = new Date()) {
+  try {
+    const profile = getOrComputeProfile(checked, dayStatus, date)
+    if (!profile.hasEnoughData) return { active: false }
+
+    let currentStreak = 0
+    for (let i = 0; i < 30; i++) {
+      const k = getPreviousDateKey(date, i)
+      if (dayStatus?.[k]?.status === 'locked') currentStreak++
+      else break
+    }
+    const recent3 = [1,2,3].map(i => Object.values(checked[getPreviousDateKey(date,i)] || {}).filter(Boolean).length)
+    const older4  = [4,5,6,7].map(i => Object.values(checked[getPreviousDateKey(date,i)] || {}).filter(Boolean).length)
+    const r3avg = recent3.reduce((a,b) => a+b,0) / 3
+    const o4avg = older4.reduce((a,b) => a+b,0) / 4
+    const velocityTrend = o4avg > 0 ? (r3avg - o4avg) / o4avg : 0
+    const hasStrongAvoidance = (profile.avoidance || []).some(a => a.severity === 'strong')
+    const active = currentStreak >= 5 && velocityTrend > 0.05 && !hasStrongAvoidance
+
+    return {
+      active,
+      currentStreak,
+      velocityTrend: Math.round(velocityTrend * 100),
+      message: active
+        ? `${currentStreak}-day streak — momentum is strong enough for depth. One higher-challenge practice introduced.`
+        : null,
+    }
+  } catch { return { active: false } }
+}
