@@ -451,8 +451,273 @@ function BetaFeedbackLayer({ plan, isMobile }) {
   )
 }
 
+// ── Domain Detail Content ─────────────────────────────────────────────────────
+const DOMAIN_DETAIL = {
+  d1: {
+    name: 'Source',
+    subtitle: 'The reference field — the awareness beneath thought',
+    color: { bg: '#EEEDFE', text: '#3C3489', border: '#7F77DD', accent: '#5B52C8' },
+    symbol: '◎',
+    governs: [
+      'Your deepest sense of self — the observer beneath the noise',
+      'The stable reference point all other bodies orient toward',
+      'Intuitive clarity and access to inner knowing',
+      'The signal that remains when everything else is stripped away',
+    ],
+    whenLow: [
+      'Feeling disconnected from yourself — like you\'re running on autopilot',
+      'Everything feels equally urgent, nothing feels meaningful',
+      'Difficulty accessing stillness even for a moment',
+      'A sense of being lost inside your own life',
+    ],
+    whenHigh: [
+      'A quiet confidence that doesn\'t depend on circumstances',
+      'Clear inner knowing — decisions come from a grounded place',
+      'The noise of the world is present but doesn\'t pull you away',
+      'You return to yourself quickly after disturbance',
+    ],
+    practices: ['Stillness Exposure', 'Visualization Practice', 'Observer Drill'],
+    note: 'Source never weakens — only your access to it changes. The practices here clear interference, not strengthen the source itself.',
+  },
+  d2: {
+    name: 'Form',
+    subtitle: 'The physical vessel — energy, recovery, and biological foundation',
+    color: { bg: '#E1F5EE', text: '#085041', border: '#1D9E75', accent: '#1D9E75' },
+    symbol: '◈',
+    governs: [
+      'Sleep quality and recovery depth',
+      'Physical energy, vitality, and resilience',
+      'Nervous system regulation through the body',
+      'The biological platform every other domain runs on',
+    ],
+    whenLow: [
+      'Persistent fatigue that doesn\'t resolve with rest',
+      'Emotional dysregulation triggered by small things',
+      'Difficulty concentrating or sustaining focus',
+      'The feeling of pushing through the day rather than moving through it',
+    ],
+    whenHigh: [
+      'Consistent energy without the afternoon crash',
+      'Emotional steadiness — less reactive, more responsive',
+      'Physical presence — you feel at home in your body',
+      'Recovery is fast — you bounce back from stress quickly',
+    ],
+    practices: ['Sleep 7h+', 'Movement Practice', 'Nourishment Intention'],
+    note: 'Form is the foundation. When Form is low, every other body becomes harder to stabilize — they borrow from a depleted resource.',
+  },
+  d3: {
+    name: 'Field',
+    subtitle: 'Emotional charge and nervous system tone',
+    color: { bg: '#FAEEDA', text: '#633806', border: '#BA7517', accent: '#BA7517' },
+    symbol: '◈',
+    governs: [
+      'Emotional processing and charge release',
+      'Nervous system regulation — calm vs activated states',
+      'Relational attunement and empathic sensitivity',
+      'How you carry — or discharge — emotional weight',
+    ],
+    whenLow: [
+      'Carrying emotional weight without knowing where it came from',
+      'Reactivity — small triggers create disproportionate responses',
+      'Feeling "charged" or on edge without a clear reason',
+      'Suppressing emotion rather than moving it through',
+    ],
+    whenHigh: [
+      'Emotional experiences move through rather than accumulate',
+      'You can name what you feel and locate it in your body',
+      'Relational interactions feel nourishing, not draining',
+      'A sense of emotional spaciousness — room to feel without being overwhelmed',
+    ],
+    practices: ['Breathwork', 'Gratitude + Reframe', 'Field Discharge'],
+    note: 'Field is your emotional processing system. Unprocessed charge in Field creates interference across all other bodies — especially Mind.',
+  },
+  d4: {
+    name: 'Mind',
+    subtitle: 'Focus, cognition, and directive capacity',
+    color: { bg: '#E6F1FB', text: '#0C447C', border: '#378ADD', accent: '#378ADD' },
+    symbol: '◈',
+    governs: [
+      'Focused attention and sustained concentration',
+      'Intentional thinking vs automatic mental loops',
+      'The ability to set and hold a directive',
+      'Cognitive clarity and decision-making quality',
+    ],
+    whenLow: [
+      'Scattered attention — difficulty completing a single thought',
+      'Reactive thinking — responding to what the world puts in front of you',
+      'Mental loops that repeat without resolution',
+      'Decisions feel overwhelming or get deferred indefinitely',
+    ],
+    whenHigh: [
+      'One clear directive at a time — and the ability to hold it',
+      'Thoughts feel chosen rather than automatic',
+      'Focus arrives quickly and sustains through resistance',
+      'Mental clarity that makes complex decisions feel straightforward',
+    ],
+    practices: ['Morning Directive', 'Thought Audit', 'Pattern Interrupt'],
+    note: 'Mind is the steering domain. A clear Mind directive at the start of the day reduces reactive decision-making by 60-70% for most people.',
+  },
+  d5: {
+    name: 'Code',
+    subtitle: 'Behavioral patterns and automatic loops',
+    color: { bg: '#FAECE7', text: '#712B13', border: '#D85A30', accent: '#D85A30' },
+    symbol: '◈',
+    governs: [
+      'Automatic behaviors and habitual responses',
+      'Identity-level patterns — who you are when no one is watching',
+      'The gap between intention and action',
+      'Behavioral loops that run beneath conscious awareness',
+    ],
+    whenLow: [
+      'Knowing what to do and consistently not doing it',
+      'Automatic reactions that contradict your stated values',
+      'Feeling controlled by patterns rather than directing them',
+      'A gap between who you intend to be and how you actually show up',
+    ],
+    whenHigh: [
+      'Your automatic behaviors align with your intentions',
+      'Pattern interruption becomes natural — you catch loops early',
+      'Identity and action are congruent — no internal conflict',
+      'New behaviors integrate quickly because the system is coherent',
+    ],
+    practices: ['Identity Decompression', 'Affirmation Installation', '5 Recall Triggers'],
+    note: 'Code is where coherence becomes permanent. Short-term changes in Form, Field, and Mind only stabilize when Code begins to update.',
+  },
+}
+
+// ── Domain Detail Modal ───────────────────────────────────────────────────────
+function DomainDetailModal({ domainId, onClose, isMobile }) {
+  const detail = DOMAIN_DETAIL[domainId]
+  if (!detail) return null
+  const { name, subtitle, color, governs, whenLow, whenHigh, practices, note } = detail
+
+  // Trap focus / close on backdrop click
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const Section = ({ title, items, bulletColor }) => (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', marginBottom: 8 }}>
+        {title}
+      </div>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5, alignItems: 'flex-start' }}>
+          <span style={{ color: bulletColor || color.accent, fontSize: 14, lineHeight: 1.4, flexShrink: 0 }}>◦</span>
+          <span style={{ fontSize: 13, color: '#333', lineHeight: 1.5 }}>{item}</span>
+        </div>
+      ))}
+    </div>
+  )
+
+  const modalContent = (
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{
+        background: '#fff',
+        borderRadius: isMobile ? '20px 20px 0 0' : 16,
+        width: isMobile ? '100%' : 520,
+        maxHeight: isMobile ? '88vh' : '80vh',
+        overflowY: 'auto',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        background: color.bg,
+        borderBottom: `3px solid ${color.border}`,
+        borderRadius: isMobile ? '20px 20px 0 0' : '16px 16px 0 0',
+        padding: '20px 20px 16px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 20, color: color.accent }}>{detail.symbol}</span>
+              <span style={{ fontSize: 22, fontWeight: 900, color: color.text }}>{name}</span>
+            </div>
+            <div style={{ fontSize: 13, color: color.border, fontWeight: 500, lineHeight: 1.4 }}>{subtitle}</div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#888', padding: '0 0 0 12px', lineHeight: 1 }}
+          >✕</button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '20px 20px 24px' }}>
+        <Section title="What this domain governs" items={governs} />
+        <Section title="When this body is low" items={whenLow} bulletColor="#BA4A4A" />
+        <Section title="When this body is high" items={whenHigh} bulletColor="#1D9E75" />
+
+        {/* Practices */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', marginBottom: 8 }}>
+            Practices that move this body
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {practices.map((p, i) => (
+              <span key={i} style={{
+                background: color.bg,
+                color: color.text,
+                border: `1px solid ${color.border}40`,
+                borderRadius: 99,
+                padding: '4px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+              }}>{p}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Note */}
+        <div style={{
+          background: '#F8F7F4',
+          border: '0.5px solid rgba(0,0,0,0.08)',
+          borderLeft: `3px solid ${color.accent}`,
+          borderRadius: 8,
+          padding: '10px 14px',
+          fontSize: 12,
+          color: '#555',
+          lineHeight: 1.55,
+          fontStyle: 'italic',
+        }}>
+          {note}
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.45)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: isMobile ? 'flex-end' : 'center',
+        justifyContent: 'center',
+        padding: isMobile ? 0 : 20,
+      }}
+    >
+      {modalContent}
+    </div>
+  )
+}
+
 function CoherenceProgressLayer({ decision }) {
   if (!decision) return null
+  const [selectedDomain, setSelectedDomain] = React.useState(null)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
   const DOMAIN_STYLES = {
     d1: { bg: '#EEEDFE', text: '#3C3489', border: '#7F77DD' },
@@ -490,6 +755,7 @@ function CoherenceProgressLayer({ decision }) {
   ]
 
   return (
+    <>
     <div style={{
       marginTop: 14,
       marginBottom: 14,
@@ -516,17 +782,26 @@ function CoherenceProgressLayer({ decision }) {
         {rows.map(row => {
           const style = DOMAIN_STYLES[row.id] || DOMAIN_STYLES.d1
           return (
-            <div key={row.id} style={{
-              background: style.bg,
-              border: `1px solid ${style.border}30`,
-              borderTop: `3px solid ${style.border}`,
-              borderRadius: 10,
-              padding: '10px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 10,
-            }}>
+            <div
+              key={row.id}
+              onClick={() => setSelectedDomain(row.id)}
+              title="Tap to learn more"
+              style={{
+                background: style.bg,
+                border: `1px solid ${style.border}30`,
+                borderTop: `3px solid ${style.border}`,
+                borderRadius: 10,
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                cursor: 'pointer',
+                transition: 'box-shadow 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = `0 2px 12px ${style.border}30`}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+            >
               <div>
                 <div style={{
                   fontSize: 13,
@@ -544,18 +819,35 @@ function CoherenceProgressLayer({ decision }) {
                   {row.state}
                 </div>
               </div>
-              <div style={{
-                color: style.border,
-                fontSize: 20,
-                fontWeight: 700,
-              }}>
-                {row.symbol}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div style={{
+                  color: style.border,
+                  fontSize: 20,
+                  fontWeight: 700,
+                }}>
+                  {row.symbol}
+                </div>
+                <div style={{ fontSize: 9, color: style.border, opacity: 0.7, fontWeight: 600, letterSpacing: '0.04em' }}>
+                  INFO
+                </div>
               </div>
             </div>
           )
         })}
       </div>
+      {/* Tap hint — only shown first few times */}
+      <div style={{ fontSize: 10, color: '#aaa', textAlign: 'right', marginTop: 4, fontStyle: 'italic' }}>
+        Tap any body to learn more
+      </div>
     </div>
+    {selectedDomain && (
+      <DomainDetailModal
+        domainId={selectedDomain}
+        onClose={() => setSelectedDomain(null)}
+        isMobile={isMobile}
+      />
+    )}
+  </>
   )
 }
 
