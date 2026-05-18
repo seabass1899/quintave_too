@@ -842,7 +842,7 @@ function MobileAlignmentRead({ decision }) {
 }
 
 // ─── Tomorrow Prediction Mini — shown in Today tab after Day Locked In ──────────
-function TomorrowPredictionMini({ pred, onOpenProgress, isMobile }) {
+function TomorrowPredictionMini({ pred, onOpenProgress, isMobile, tomorrowCoachMessage }) {
   if (!pred) return null
   const directionColor = pred.predictedDirection === 'stable_or_rising' ? '#085041'
     : pred.predictedDirection === 'stable' ? '#378ADD' : '#BA7517'
@@ -1090,6 +1090,19 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     )
   }
 
+  // Coach messages — must be declared before any JSX that references them
+  const coachMessage = React.useMemo(() => {
+    try { return getDailyCoachMessage(plan, dayStatus, domainScores) } catch { return null }
+  }, [plan?.currentPhase, plan?.streak?.current, plan?.adaptations?.length])
+
+  const patternBreakMessage = React.useMemo(() => {
+    try { return getPatternBreakMessage(plan) } catch { return null }
+  }, [plan?.patternBreaks?.length])
+
+  const tomorrowCoachMessage = React.useMemo(() => {
+    try { return getTomorrowCoachMessage(plan, dayStatus) } catch { return null }
+  }, [plan?.completionState?.pct, plan?.streak?.current])
+
   const requestedPhaseId = selectedPhase || selectedPhaseOverride || plan.currentPhase
   const activePhaseId = getResolvedPhaseId(plan, requestedPhaseId)
   const activePhase = plan.phases[activePhaseId]
@@ -1182,20 +1195,6 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
 
   const windowWidth = useWindowWidth()
   const isMobile = isMobileProp || windowWidth < 768
-
-  // Coach messages — computed once per render from plan + dayStatus
-  const coachMessage = React.useMemo(() => {
-    try { return getDailyCoachMessage(plan, dayStatus, domainScores) } catch { return null }
-  }, [plan?.currentPhase, plan?.streak?.current, plan?.adaptations?.length])
-
-  const patternBreakMessage = React.useMemo(() => {
-    try { return getPatternBreakMessage(plan) } catch { return null }
-  }, [plan?.patternBreaks?.length])
-
-  const tomorrowCoachMessage = React.useMemo(() => {
-    try { return getTomorrowCoachMessage(plan, dayStatus) } catch { return null }
-  }, [plan?.completionState?.pct, plan?.streak?.current])
-
   // Load pattern profile once per render — used by AdaptiveReasonCard for all practice items
   // Validates schema before returning — corrupt/partial profiles return null
   const patternProfile = React.useMemo(() => {
@@ -1540,7 +1539,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
       {plan.completionState.dailyMinimumMet ? (
         <>
           <DayLockedIn plan={plan} />
-          <TomorrowPredictionMini pred={tomorrowPred} onOpenProgress={onOpenProgress} isMobile={isMobile} />
+          <TomorrowPredictionMini pred={tomorrowPred} onOpenProgress={onOpenProgress} isMobile={isMobile} tomorrowCoachMessage={tomorrowCoachMessage} />
         </>
       ) : (
         <>
