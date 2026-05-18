@@ -13,6 +13,7 @@ import { DOMAINS, PRACTICES, COHERENCE_STATES, getCoherenceState, getCoherenceSc
 import ProgressTab from '../features/progress/ProgressTab'
 import WeeklyIntelligenceReport from '../features/insights/WeeklyIntelligenceReport'
 import PredictiveIntelligencePanel from '../features/insights/PredictiveIntelligencePanel'
+import AnalyticsIntelligenceLayer from '../features/insights/AnalyticsIntelligenceLayer'
 import DailyFocus from '../features/dashboard/DailyFocus'
 import Programs from '../features/programs/Programs'
 import NoiseAudit from '../features/modes/NoiseAudit'
@@ -1857,6 +1858,11 @@ export default function App() {
                 domainScores={domainScores || {}}
               />
             </div>
+            <AnalyticsIntelligenceLayer
+              checked={checked || {}}
+              dayStatus={safeLS('q_day_status', {})}
+              domainScores={domainScores || {}}
+            />
           </div>
         )}
 
