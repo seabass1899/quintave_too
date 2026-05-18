@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
+import ReactDOM from 'react-dom'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
 import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile, predictTomorrow } from '../intelligence/patternLearningModel'
 import { getDailyCoachMessage, getPatternBreakMessage, getTomorrowCoachMessage } from '../coach/coachEngine'
@@ -586,12 +587,22 @@ const DOMAIN_DETAIL = {
 }
 
 // ── Domain Detail Modal ───────────────────────────────────────────────────────
-function DomainDetailModal({ domainId, onClose, isMobile }) {
+function DomainDetailModal({ domainId, onClose }) {
   const detail = DOMAIN_DETAIL[domainId]
   if (!detail) return null
   const { name, subtitle, color, governs, whenLow, whenHigh, practices, note } = detail
 
-  // Trap focus / close on backdrop click
+  // Use hook for reliable mobile detection
+  const width = useWindowWidth()
+  const isMobile = width < 768
+
+  // Prevent body scroll while modal open
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  // Close on Escape
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -612,112 +623,112 @@ function DomainDetailModal({ domainId, onClose, isMobile }) {
     </div>
   )
 
-  const modalContent = (
-    <div
-      onClick={e => e.stopPropagation()}
-      style={{
-        background: '#fff',
-        borderRadius: isMobile ? '20px 20px 0 0' : 16,
-        width: isMobile ? '100%' : 520,
-        maxHeight: isMobile ? '88vh' : '80vh',
-        overflowY: 'auto',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Header */}
-      <div style={{
-        background: color.bg,
-        borderBottom: `3px solid ${color.border}`,
-        borderRadius: isMobile ? '20px 20px 0 0' : '16px 16px 0 0',
-        padding: '20px 20px 16px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 20, color: color.accent }}>{detail.symbol}</span>
-              <span style={{ fontSize: 22, fontWeight: 900, color: color.text }}>{name}</span>
-            </div>
-            <div style={{ fontSize: 13, color: color.border, fontWeight: 500, lineHeight: 1.4 }}>{subtitle}</div>
-          </div>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#888', padding: '0 0 0 12px', lineHeight: 1 }}
-          >✕</button>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div style={{ padding: '20px 20px 24px' }}>
-        <Section title="What this domain governs" items={governs} />
-        <Section title="When this body is low" items={whenLow} bulletColor="#BA4A4A" />
-        <Section title="When this body is high" items={whenHigh} bulletColor="#1D9E75" />
-
-        {/* Practices */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', marginBottom: 8 }}>
-            Practices that move this body
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {practices.map((p, i) => (
-              <span key={i} style={{
-                background: color.bg,
-                color: color.text,
-                border: `1px solid ${color.border}40`,
-                borderRadius: 99,
-                padding: '4px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-              }}>{p}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Note */}
-        <div style={{
-          background: '#F8F7F4',
-          border: '0.5px solid rgba(0,0,0,0.08)',
-          borderLeft: `3px solid ${color.accent}`,
-          borderRadius: 8,
-          padding: '10px 14px',
-          fontSize: 12,
-          color: '#555',
-          lineHeight: 1.55,
-          fontStyle: 'italic',
-        }}>
-          {note}
-        </div>
-      </div>
-    </div>
-  )
-
-  return (
+  const modal = (
     <div
       onClick={onClose}
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.45)',
-        zIndex: 1000,
+        background: 'rgba(0,0,0,0.55)',
+        zIndex: 9999,
         display: 'flex',
         alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
         padding: isMobile ? 0 : 20,
+        WebkitOverflowScrolling: 'touch',
       }}
     >
-      {modalContent}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: '#fff',
+          borderRadius: isMobile ? '20px 20px 0 0' : 16,
+          width: isMobile ? '100%' : 520,
+          maxHeight: isMobile ? '88vh' : '80vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          background: color.bg,
+          borderBottom: `3px solid ${color.border}`,
+          borderRadius: isMobile ? '20px 20px 0 0' : '16px 16px 0 0',
+          padding: '20px 20px 16px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 20, color: color.accent }}>{detail.symbol}</span>
+                <span style={{ fontSize: 22, fontWeight: 900, color: color.text }}>{name}</span>
+              </div>
+              <div style={{ fontSize: 13, color: color.border, fontWeight: 500, lineHeight: 1.4 }}>{subtitle}</div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 24, color: '#888', padding: '0 0 0 16px', lineHeight: 1, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >✕</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 20px 32px', overflowY: 'auto' }}>
+          <Section title="What this domain governs" items={governs} />
+          <Section title="When this body is low" items={whenLow} bulletColor="#BA4A4A" />
+          <Section title="When this body is high" items={whenHigh} bulletColor="#1D9E75" />
+
+          {/* Practices */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', marginBottom: 8 }}>
+              Practices that move this body
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {practices.map((p, i) => (
+                <span key={i} style={{
+                  background: color.bg,
+                  color: color.text,
+                  border: `1px solid ${color.border}40`,
+                  borderRadius: 99,
+                  padding: '4px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}>{p}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Note */}
+          <div style={{
+            background: '#F8F7F4',
+            border: '0.5px solid rgba(0,0,0,0.08)',
+            borderLeft: `3px solid ${color.accent}`,
+            borderRadius: 8,
+            padding: '10px 14px',
+            fontSize: 12,
+            color: '#555',
+            lineHeight: 1.55,
+            fontStyle: 'italic',
+          }}>
+            {note}
+          </div>
+        </div>
+      </div>
     </div>
   )
+
+  return ReactDOM.createPortal(modal, document.body)
 }
 
 function CoherenceProgressLayer({ decision }) {
   if (!decision) return null
   const [selectedDomain, setSelectedDomain] = React.useState(null)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const width = useWindowWidth()
+  const isMobile = width < 768
 
   const DOMAIN_STYLES = {
     d1: { bg: '#EEEDFE', text: '#3C3489', border: '#7F77DD' },
@@ -844,7 +855,6 @@ function CoherenceProgressLayer({ decision }) {
       <DomainDetailModal
         domainId={selectedDomain}
         onClose={() => setSelectedDomain(null)}
-        isMobile={isMobile}
       />
     )}
   </>
