@@ -18,6 +18,7 @@
  */
 
 import { getPreviousDateKey } from '../../shared/dateUtils'
+// behavioralIntelligenceEngine signals come through plan.behavioralIntel
 
 function safeRead(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback }
@@ -79,6 +80,59 @@ export function getDailyCoachMessage(plan, dayStatus, domainScores, date = new D
   const primaryBody  = decision?.primaryBlockerId
   const bodyNames    = { d1:'Source', d2:'Form', d3:'Field', d4:'Mind', d5:'Code' }
   const primary      = bodyNames[primaryBody] || 'the system'
+
+  // ── Recovery arc coaching (Sprint 10) ────────────────────────────────────
+  // Uses behavioralIntelligenceEngine signals for more precise arc-aware coaching
+  const bi = plan?.behavioralIntel
+  const recoveryArc = bi?.recoveryArc
+
+  // Sudden drop — external disruption detected
+  if (recoveryArc?.type === 'sudden_drop') {
+    return {
+      headline: `A disruption was detected — not a failure.`,
+      body: `The pattern shows a strong aligned period followed by a sudden stop. This is an external disruption pattern, not motivation failure. The system does not need catching up — it needs re-entry.`,
+      action: `Complete one practice today. That is the entire goal. The streak rebuilds from here.`,
+      tone: 'warm',
+      source: 'sudden_drop_arc',
+    }
+  }
+
+  // Gradual fade — friction accumulation
+  if (recoveryArc?.type === 'gradual_fade') {
+    return {
+      headline: `Friction has been building gradually.`,
+      body: `Completion has declined slowly over the past week. This is not a motivation problem — the plan has become subtly harder than available energy. The engine is adjusting accordingly.`,
+      action: `Focus on the lowest-friction practice first. Completion restores momentum more than intensity.`,
+      tone: 'warm',
+      source: 'gradual_fade_arc',
+    }
+  }
+
+  // Volatile pattern — schedule instability
+  if (recoveryArc?.type === 'volatile') {
+    return {
+      headline: `The pattern needs an anchor.`,
+      body: `Completion alternates between aligned and missed days without stabilizing. This suggests schedule or environment variability. One fixed daily practice — regardless of everything else — creates the stability the system can build on.`,
+      action: `Choose one practice as non-negotiable today. Everything else is optional.`,
+      tone: 'direct',
+      source: 'volatile_arc',
+    }
+  }
+
+  // Upstream domain risk — address cause, not symptom
+  const upstreamRisk = adaptations.find(a => a.type === 'upstream_risk')
+  if (upstreamRisk && upstreamRisk.severity === 'high') {
+    const sourceNames = { d1:'Source', d2:'Form', d3:'Field', d4:'Mind', d5:'Code' }
+    const sourceName = sourceNames[upstreamRisk.sourceId] || 'an upstream body'
+    const targetName = sourceNames[upstreamRisk.targetId] || 'a downstream body'
+    return {
+      headline: `${sourceName} is driving the ${targetName} drift.`,
+      body: `The system detected a causal pattern: ${sourceName} depletion is generating interference in ${targetName}. Correcting ${targetName} directly will not hold — the source needs to be addressed first.`,
+      action: `Prioritize the ${sourceName} practice today. It resolves the cause, not just the symptom.`,
+      tone: 'measured',
+      source: 'upstream_risk',
+    }
+  }
 
   // Load reduction fired — special recovery message
   const loadReduced = adaptations.find(a => a.type === 'load_reduced')
