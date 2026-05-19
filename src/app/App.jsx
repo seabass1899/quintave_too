@@ -24,7 +24,7 @@ import AnalyticsTab from '../features/analytics/AnalyticsTab'
 import FrequencyLayer from '../features/frequency/FrequencyLayer'
 import AuthBox from '../features/auth/AuthBox'
 import SyncControls from '../features/sync/SyncControls'
-import { supabase, getSession } from './supabaseClient'
+import { supabase, getSession, loadCloudState, applyCloudStateToLocal } from './supabaseClient'
 import { silentSync } from './services/syncService'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
@@ -1052,29 +1052,32 @@ export default function App() {
   }, [testerMode])
 
 
+  // ── Cloud restore — defined at component level so it has access to all setters ──
+  const restoreFromCloud = React.useCallback(async (userId) => {
+    if (!userId) return
+    try {
+      setCloudRestoring(true)
+      const cloudData = await loadCloudState(userId)
+      if (cloudData) {
+        // Write all fields to localStorage
+        applyCloudStateToLocal(cloudData)
+        // Directly update React state — useLS won't re-read localStorage on its own
+        if (cloudData.onboarding?.completedAt) {
+          setOnboardingProfile(cloudData.onboarding)
+        }
+        if (cloudData.checked && Object.keys(cloudData.checked).length > 0) {
+          setChecked(cloudData.checked)
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud restore failed:', e)
+    } finally {
+      setCloudRestoring(false)
+    }
+  }, []) // eslint-disable-line
+
   useEffect(() => {
     let mounted = true
-
-    // ── Cloud restore helper ───────────────────────────────────────────────
-    // Called whenever we have a session but no local onboarding data.
-    // Fetches from Supabase and restores to localStorage so the user
-    // never sees the onboarding screen on a magic-link tab.
-    const restoreFromCloud = async (userId) => {
-      try {
-        setCloudRestoring(true)
-        const cloudData = await loadCloudState(userId)
-        if (cloudData && mounted) {
-          applyCloudStateToLocal(cloudData)
-          // Force React to re-read the restored localStorage values
-          // by triggering a storage event that useLS hooks can pick up
-          window.dispatchEvent(new Event('storage'))
-        }
-      } catch (e) {
-        console.warn('Cloud restore failed:', e)
-      } finally {
-        if (mounted) setCloudRestoring(false)
-      }
-    }
 
     getSession()
       .then(async (currentSession) => {
@@ -1121,7 +1124,7 @@ export default function App() {
       mounted = false
       data?.subscription?.unsubscribe?.()
     }
-  }, [])
+  }, [restoreFromCloud])
 
   const today = tk()
   const todayChecks = checked[today] || {}
