@@ -5,6 +5,7 @@ import { calculateCoherenceState } from '../frequency/coherenceStateModel'
 import { calculateCoherenceTrajectory } from '../frequency/coherenceTrajectoryModel'
 import { calculateCoherenceMemory } from '../frequency/coherenceMemoryModel'
 import { calculateCoherencePhase } from '../frequency/coherencePhaseModel'
+import { getBehavioralIntelligence, applyConfidenceModifiers, getDomainConfidenceModifiers } from '../intelligence/behavioralIntelligenceEngine'
 
 export const PHASES = [
   { id: 'morning', label: 'Morning', role: 'Initialize', required: 2, proceedMinimum: 1, unlockHour: 0 },
@@ -1161,6 +1162,19 @@ export function generateTomorrowPrime(domainId) {
 }
 
 export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus = {}, date = new Date(), phaseLocking = true, planSnapshot = null, onboardingProfile = null } = {}) {
+  // ── Behavioral Intelligence — runs once per plan generation ──────────────
+  // Applies feedback loop corrections, domain interaction risks,
+  // recovery arc classification, and phase routing improvements.
+  let behavioralIntel = null
+  let effectiveDomainScores = domainScores
+  try {
+    behavioralIntel = getBehavioralIntelligence(domainScores, checked, dayStatus, onboardingProfile, date)
+    // Apply feedback-corrected scores so the engine uses validated domain weights
+    effectiveDomainScores = behavioralIntel.adjustedScores || domainScores
+  } catch {
+    effectiveDomainScores = domainScores
+  }
+
   // Compute adaptive profile once and cache it for all scoreCandidate calls this plan generation
   try {
     _cachedAdaptiveProfile = typeof window !== 'undefined'
@@ -1175,12 +1189,55 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const todayChecks = checked?.[dateKey] || {}
   const previousStatus = dayStatus?.[previousDateKey] || null
   const primedDomainId = previousStatus?.correctionDomain || null
-  const decision = buildAlignmentDecision({ domainScores, checked, dayStatus, date, primedDomainId, onboardingProfile })
+  // Use feedback-adjusted scores for all downstream decisions
+  const decision = buildAlignmentDecision({ domainScores: effectiveDomainScores, checked, dayStatus, date, primedDomainId, onboardingProfile })
   const currentPhase = getCurrentPhase(date)
   const phases = {}
 
   const dayUsed = new Set()
-  const adaptations = []  // Sprint 5+9: log of adaptive changes made to today's plan
+  const adaptations = []  // Sprint 5+9+10: log of adaptive changes made to today's plan
+
+  // ── Recovery arc adaptation ────────────────────────────────────────────────
+  // If a sudden drop is detected, override to reset mode automatically.
+  // If gradual fade, add a friction-audit adaptation note.
+  if (behavioralIntel?.hasSuddenDrop && !behavioralIntel?.hasSuddenDrop === false) {
+    adaptations.push({
+      type: 'sudden_drop_detected',
+      reason: behavioralIntel.recoveryArc.message,
+      recommendations: behavioralIntel.recoveryArc.recommendations,
+    })
+  }
+  if (behavioralIntel?.hasGradualFade) {
+    adaptations.push({
+      type: 'gradual_fade_detected',
+      reason: behavioralIntel.recoveryArc.message,
+      recommendations: behavioralIntel.recoveryArc.recommendations,
+    })
+  }
+
+  // ── Upstream domain risk flagging ─────────────────────────────────────────
+  // When an upstream domain is causing downstream drift, flag it so
+  // the coach can surface the correct intervention (fix source, not symptom).
+  if (behavioralIntel?.upstreamRisk) {
+    adaptations.push({
+      type: 'upstream_risk',
+      sourceId: behavioralIntel.upstreamRisk.sourceId,
+      targetId: behavioralIntel.upstreamRisk.targetId,
+      reason: behavioralIntel.upstreamRisk.intervention,
+      severity: behavioralIntel.upstreamRisk.severity,
+    })
+  }
+
+  // ── Feedback confidence adjustment noted ──────────────────────────────────
+  if (behavioralIntel?.hasFeedbackSignal) {
+    adaptations.push({
+      type: 'feedback_calibrated',
+      reason: 'Domain scores adjusted based on your accuracy feedback. The engine is self-correcting.',
+      modifiers: behavioralIntel.feedbackModifiers,
+    })
+  }
+
+  const adaptationsList = adaptations  // kept for backward compat reference below
 
   // ── Adaptive load reduction ────────────────────────────────────────────────
   // If the pattern profile shows Evening consistently weak (<35% completion),
@@ -1416,6 +1473,7 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
     adaptations,
     resetModeActive,
     escalationActive,
+    behavioralIntel,
     weakestDomain: domainById(weak),
     previousStatus,
     primedDomain: primedDomainId ? domainById(primedDomainId) : null,
