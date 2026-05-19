@@ -37,14 +37,16 @@ export async function getSession() {
 
 export function collectLocalState() {
   const keys = {
-    onboarding:      'q_onboarding',
-    checked:         'q_checked',
-    notes:           'q_notes',
-    ratings:         'q_ratings',
-    metrics:         'q_metrics',
-    triggers:        'q_triggers',
-    day_status:      'q_day_status',
-    frequency_state: 'q_frequency_state',
+    onboarding:       'q_onboarding',
+    checked:          'q_checked',
+    notes:            'q_notes',
+    ratings:          'q_ratings',
+    metrics:          'q_metrics',
+    triggers:         'q_triggers',
+    day_status:       'q_day_status',
+    frequency_state:  'q_frequency_state',
+    practice_ratings: 'q_practice_ratings',
+    pattern_profile:  'q_pattern_profile',
   }
   const state = {}
   Object.entries(keys).forEach(([field, lsKey]) => {
@@ -81,14 +83,16 @@ export async function loadCloudState(userId) {
 export function applyCloudStateToLocal(state) {
   if (!state) return
   const keyMap = {
-    onboarding:      'q_onboarding',
-    checked:         'q_checked',
-    notes:           'q_notes',
-    ratings:         'q_ratings',
-    metrics:         'q_metrics',
-    triggers:        'q_triggers',
-    day_status:      'q_day_status',
-    frequency_state: 'q_frequency_state',
+    onboarding:       'q_onboarding',
+    checked:          'q_checked',
+    notes:            'q_notes',
+    ratings:          'q_ratings',
+    metrics:          'q_metrics',
+    triggers:         'q_triggers',
+    day_status:       'q_day_status',
+    frequency_state:  'q_frequency_state',
+    practice_ratings: 'q_practice_ratings',
+    pattern_profile:  'q_pattern_profile',
   }
   Object.entries(keyMap).forEach(([field, lsKey]) => {
     if (state[field] !== undefined) {

@@ -974,6 +974,7 @@ export default function App() {
   const isMobile = useWindowWidth() < 768
   const [showDrawer, setShowDrawer] = useState(false)
   const [authReady, setAuthReady] = useState(false)
+  const [cloudRestoring, setCloudRestoring] = useState(false) // true while fetching cloud data on fresh tab
   useDayRollover() // detect midnight rollover
 
   // ─── Safe localStorage helpers ────────────────────────────────────────────
@@ -1054,11 +1055,43 @@ export default function App() {
   useEffect(() => {
     let mounted = true
 
+    // ── Cloud restore helper ───────────────────────────────────────────────
+    // Called whenever we have a session but no local onboarding data.
+    // Fetches from Supabase and restores to localStorage so the user
+    // never sees the onboarding screen on a magic-link tab.
+    const restoreFromCloud = async (userId) => {
+      try {
+        setCloudRestoring(true)
+        const cloudData = await loadCloudState(userId)
+        if (cloudData && mounted) {
+          applyCloudStateToLocal(cloudData)
+          // Force React to re-read the restored localStorage values
+          // by triggering a storage event that useLS hooks can pick up
+          window.dispatchEvent(new Event('storage'))
+        }
+      } catch (e) {
+        console.warn('Cloud restore failed:', e)
+      } finally {
+        if (mounted) setCloudRestoring(false)
+      }
+    }
+
     getSession()
-      .then((currentSession) => {
+      .then(async (currentSession) => {
         if (!mounted) return
         setSession(currentSession)
-        setAuthReady(true)
+
+        // If we have a session but no local onboarding, try to restore from cloud
+        if (currentSession?.user?.id) {
+          const localOnboarding = (() => {
+            try { return JSON.parse(localStorage.getItem('q_onboarding') || 'null') } catch { return null }
+          })()
+          if (!localOnboarding?.completedAt) {
+            await restoreFromCloud(currentSession.user.id)
+          }
+        }
+
+        if (mounted) setAuthReady(true)
       })
       .catch(() => {
         if (!mounted) return
@@ -1066,9 +1099,22 @@ export default function App() {
         setAuthReady(true)
       })
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      if (!mounted) return
       setSession(nextSession)
-      if (!authReady) setAuthReady(true)
+
+      // Magic link opens a fresh tab — nextSession arrives but localStorage is empty
+      // Restore cloud data before showing anything
+      if (nextSession?.user?.id && _event === 'SIGNED_IN') {
+        const localOnboarding = (() => {
+          try { return JSON.parse(localStorage.getItem('q_onboarding') || 'null') } catch { return null }
+        })()
+        if (!localOnboarding?.completedAt) {
+          await restoreFromCloud(nextSession.user.id)
+        }
+      }
+
+      if (!authReady && mounted) setAuthReady(true)
     })
 
     return () => {
@@ -1272,6 +1318,27 @@ export default function App() {
 
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
   const card = { background:'#fff', borderRadius:14, border:bdr, padding:'16px 18px', marginBottom:14 }
+
+  // Gate: show loading spinner while restoring cloud data on magic-link tab
+  if (cloudRestoring) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#F7F6F3',
+        gap: 16,
+      }}>
+        <div style={{ fontSize: 28, color: '#7F77DD' }}>✦</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18' }}>Restoring your progress</div>
+        <div style={{ fontSize: 13, color: '#888', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
+          Syncing your data from the cloud — this takes just a moment.
+        </div>
+      </div>
+    )
+  }
 
   // Gate: show onboarding if not completed
   // Guard: require both profile and valid domain scores before rendering the app.
