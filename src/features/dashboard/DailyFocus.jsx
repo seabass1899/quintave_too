@@ -5,6 +5,7 @@ import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, ge
 import { getDailyCoachMessage, getPatternBreakMessage, getTomorrowCoachMessage } from '../coach/coachEngine'
 import { DailyCoachCard, PatternBreakCoachCard, TomorrowCoachLine } from '../coach/DailyCoachCard'
 import AdaptiveReasonCard from '../intelligence/AdaptiveReasonCard'
+import { savePracticeRating, getPracticeRating } from '../intelligence/behavioralIntelligenceEngine'
 import { trackEvent } from '../../app/utils/analytics'
 import PhaseReadCards from '../../components/PhaseReadCards'
 
@@ -1213,6 +1214,55 @@ function TomorrowPredictionMini({ pred, onOpenProgress, isMobile, tomorrowCoachM
 // ─── Adaptive Intelligence Badge — Sprint 5 ──────────────────────────────────
 // Reads plan.adaptations[] for specific, earned adaptation messages.
 // Each message is practice-specific and explains exactly what the engine changed.
+// ── Signal Quality Rating ────────────────────────────────────────────────────
+// 3-button micro-rating that appears after a practice is checked.
+// Stores 'landed' | 'neutral' | 'forced' to weight momentum calculations.
+function PracticeQualityRating({ practiceKey, dateKey, isMobile }) {
+  const [selected, setSelected] = React.useState(() => {
+    try { return getPracticeRating(practiceKey, dateKey) } catch { return 'unrated' }
+  })
+  const [dismissed, setDismissed] = React.useState(selected !== 'unrated')
+
+  if (dismissed && selected !== 'unrated') return (
+    <span style={{ fontSize: 10, color: '#aaa', fontStyle: 'italic', marginLeft: 4 }}>
+      {selected === 'landed' ? '✓ Landed' : selected === 'neutral' ? '· Neutral' : '· Forced'}
+    </span>
+  )
+
+  const options = [
+    { key: 'landed',  label: 'Landed',  color: '#1D9E75', bg: '#E1F5EE' },
+    { key: 'neutral', label: 'Neutral', color: '#378ADD', bg: '#E6F1FB' },
+    { key: 'forced',  label: 'Forced',  color: '#BA7517', bg: '#FAEEDA' },
+  ]
+
+  return (
+    <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 10, color: '#888', fontWeight: 700 }}>How did it land?</span>
+      {options.map(opt => (
+        <button
+          key={opt.key}
+          onClick={() => {
+            setSelected(opt.key)
+            setDismissed(true)
+            try { savePracticeRating(practiceKey, opt.key) } catch {}
+          }}
+          style={{
+            background: selected === opt.key ? opt.bg : '#F4F3F0',
+            color: selected === opt.key ? opt.color : '#888',
+            border: `1px solid ${selected === opt.key ? opt.color + '60' : 'rgba(0,0,0,0.08)'}`,
+            borderRadius: 99,
+            padding: isMobile ? '2px 7px' : '2px 9px',
+            fontSize: 10,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+        >{opt.label}</button>
+      ))}
+    </div>
+  )
+}
+
 function AdaptiveIntelligenceBadge({ plan, isMobile }) {
   const [expanded, setExpanded] = React.useState(false)
   const adaptations = plan?.adaptations || []
@@ -1827,6 +1877,13 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
               suppressSystemContext={true}
             />
             {item.isDone && <div style={{ fontSize: 12, color: '#1D9E75', marginTop: 3 }}>✓ {item.identityFeedback}</div>}
+            {item.isDone && (
+              <PracticeQualityRating
+                practiceKey={item.key}
+                dateKey={today}
+                isMobile={isMobile}
+              />
+            )}
           </div>
           {item.hasTimer && (
             <button onClick={onBreathwork}
