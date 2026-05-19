@@ -127,11 +127,23 @@ export default function Onboarding({ onComplete }) {
   const totalQuestions = allQuestions.length
   const currentQ = questionIdx >= 0 && questionIdx < totalQuestions ? allQuestions[questionIdx] : null
 
-  // Compute domain average scores (1-10)
+  // Compute domain scores with enhanced weighting:
+  // Q1 = typical baseline (weight 0.4) — "How is this domain for you generally?"
+  // Q2 = current state (weight 0.35) — "How is it right now, this week?"
+  // Q3 = behavioral context (weight 0.25) — "When this area suffers, what happens?"
   const domainAvg = (id) => {
     const s = scores[id]
-    return Math.round((s[0] + s[1] + s[2]) / 3)
+    return Math.round(s[0] * 0.4 + s[1] * 0.35 + s[2] * 0.25)
   }
+
+  // Baseline score = what the engine uses as the long-term reference
+  const domainBaseline = (id) => {
+    const s = scores[id]
+    return Math.round((s[0] * 0.6 + s[2] * 0.4))  // typical + behavioral
+  }
+
+  // Starting score = Day 1 coherence state (current week)
+  const domainStarting = (id) => scores[id][1]
 
   const allDomainResults = DOMAINS.map(d => ({ ...d, score: domainAvg(d.id) }))
   const sorted = [...allDomainResults].sort((a, b) => a.score - b.score)
@@ -180,11 +192,44 @@ export default function Onboarding({ onComplete }) {
 
   const handleComplete = (mode) => {
     const flatScores = {}
-    DOMAINS.forEach(d => { flatScores[d.id] = domainAvg(d.id) })
+    const baselineScores = {}
+    const startingScores = {}
+    DOMAINS.forEach(d => {
+      flatScores[d.id] = domainAvg(d.id)
+      baselineScores[d.id] = domainBaseline(d.id)
+      startingScores[d.id] = domainStarting(d.id)
+    })
+
+    // Enhanced detailed scores: store all three dimensions per domain
+    const enhancedDetailedScores = {}
+    DOMAINS.forEach(d => {
+      enhancedDetailedScores[d.id] = {
+        typical:    scores[d.id][0],
+        current:    scores[d.id][1],
+        behavioral: scores[d.id][2],
+        weighted:   flatScores[d.id],
+      }
+    })
+
+    // Gap analysis: domains where current is meaningfully below typical
+    const gapAnalysis = DOMAINS
+      .map(d => ({
+        domainId: d.id,
+        name: d.name,
+        typical: scores[d.id][0],
+        current: scores[d.id][1],
+        gap: scores[d.id][0] - scores[d.id][1],
+      }))
+      .filter(g => g.gap >= 2)
+      .sort((a, b) => b.gap - a.gap)
+
     onComplete({
       userName,
       scores: flatScores,
-      detailedScores: scores,
+      baselineScores,
+      startingScores,
+      detailedScores: enhancedDetailedScores,
+      gapAnalysis,
       weakestDomain: weakest.id,
       strongestDomain: strongest.id,
       overallScore,
@@ -234,14 +279,14 @@ export default function Onboarding({ onComplete }) {
 
           <div style={{ background: '#1a1a18', borderRadius: 14, padding: '18px 24px', marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: '#C0BEBA', lineHeight: 1.75 }}>
-              We will begin with a <strong style={{ color: '#fff' }}>coherence baseline assessment</strong> — 15 questions, three per frequency body, approaching each dimension from three distinct angles. This produces a significantly more accurate signature than a single snapshot. Takes about 5–7 minutes.
+              We will begin with a <strong style={{ color: '#fff' }}>coherence baseline assessment</strong> — 15 questions, three per frequency body. Each body is measured across three dimensions: your typical baseline, your current state this week, and your behavioral patterns under pressure. This separates who you are from where you are right now — producing a significantly more accurate starting point. Takes about 5–7 minutes.
             </div>
           </div>
 
           <button onClick={advance} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: '#1a1a18', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em', marginBottom: 10 }}>
             Begin my coherence baseline →
           </button>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>15 questions · 5–7 minutes · stored only on your device · never shown again</div>
+          <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>15 questions · 3 dimensions per body · 5–7 minutes · stored only on your device</div>
         </div>
       </div>
     )
@@ -339,6 +384,12 @@ export default function Onboarding({ onComplete }) {
                 {domain.name} · {q.angle}
               </div>
               <div style={{ fontSize: 11, color: '#888' }}>Question {domainQIdx + 1} of 3 for this body</div>
+            </div>
+            {/* Dimension label — tells the user what this question is measuring */}
+            <div style={{ fontSize: 10, color: '#aaa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
+              {domainQIdx === 0 ? '⬤ Typical baseline — how this area is for you generally'
+                : domainQIdx === 1 ? '⬤ Current state — how it is right now, this week'
+                : '⬤ Behavioral context — what happens when this area suffers'}
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', lineHeight: 1.65, marginBottom: 24 }}>
               {q.q}
