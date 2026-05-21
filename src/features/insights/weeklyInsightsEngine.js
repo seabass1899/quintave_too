@@ -47,7 +47,20 @@ function getRecentDays(checked, date, count) {
 function buildWeeklySummary(checked, dayStatus, date) {
   let locked = 0, missed = 0, open = 0
   const days7 = []
-  for (let i = 0; i < 7; i++) {
+
+  // ── Window: last 7 days excluding today (i=1..7) + today if already locked ──
+  // Starting at i=0 (today) caused instability — the count changed throughout
+  // the day depending on whether today was locked yet, making the weekly number
+  // appear to go backward. The correct approach: look at the last 7 completed
+  // days (yesterday through 7 days ago), then add today only if it's locked.
+  const todayKey = getPreviousDateKey(date, 0)
+  const todayStatus = dayStatus?.[todayKey]?.status || 'open'
+  if (todayStatus === 'locked') {
+    locked++
+    days7.push({ key: todayKey, status: 'locked', checks: checked[todayKey] || {} })
+  }
+
+  for (let i = 1; i <= 7; i++) {
     const key = getPreviousDateKey(date, i)
     const status = dayStatus?.[key]?.status || 'open'
     if (status === 'locked') locked++
@@ -437,8 +450,11 @@ function buildRiskPrediction(checked, dayStatus, date) {
   }
 
   // Risk D: Declining week-over-week
+  // Use i=1..7 to match the corrected weekly summary window
   let thisWeekLocked = 0, lastWeekLocked = 0
-  for (let i = 0; i < 7; i++) {
+  const todayLocked = dayStatus?.[getPreviousDateKey(date, 0)]?.status === 'locked' ? 1 : 0
+  thisWeekLocked += todayLocked
+  for (let i = 1; i <= 7; i++) {
     if (dayStatus?.[getPreviousDateKey(date, i)]?.status === 'locked') thisWeekLocked++
     if (dayStatus?.[getPreviousDateKey(date, i + 7)]?.status === 'locked') lastWeekLocked++
   }
