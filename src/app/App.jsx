@@ -24,7 +24,7 @@ import AnalyticsTab from '../features/analytics/AnalyticsTab'
 import FrequencyLayer from '../features/frequency/FrequencyLayer'
 import AuthBox from '../features/auth/AuthBox'
 import SyncControls from '../features/sync/SyncControls'
-import { supabase, getSession, loadCloudState, applyCloudStateToLocal } from './supabaseClient'
+import { supabase, getSession } from './supabaseClient'
 import { silentSync } from './services/syncService'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
@@ -125,6 +125,40 @@ function useDayRollover() {
       const today = new Date().toDateString()
       if (today !== lastDay.current) {
         lastDay.current = today
+
+        // ── Finalize yesterday before reloading ──────────────────────────────
+        // When the day rolls over, yesterday's status may still be undefined
+        // (if the user never completed the minimum and the cutoff never fired).
+        // We write it now so the weekly count is never off by a day.
+        try {
+          const yesterday = new Date()
+          yesterday.setDate(yesterday.getDate() - 1)
+          const yesterdayKey = yesterday.toDateString()
+
+          const dayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}')
+          const yesterdayStatus = dayStatus[yesterdayKey]
+
+          // Only write if yesterday has no status yet (undefined / no entry)
+          if (!yesterdayStatus?.status) {
+            const checked = JSON.parse(localStorage.getItem('q_checked') || '{}')
+            const yesterdayChecks = checked[yesterdayKey] || {}
+            const doneCount = Object.values(yesterdayChecks).filter(Boolean).length
+            const DAILY_MIN = 4
+
+            dayStatus[yesterdayKey] = {
+              status: doneCount >= DAILY_MIN ? 'locked' : 'missed',
+              signal: doneCount * 10, // approximate
+              missedAt: doneCount < DAILY_MIN ? new Date().toISOString() : undefined,
+              lockedAt: doneCount >= DAILY_MIN ? new Date().toISOString() : undefined,
+              completedRequired: doneCount,
+              finalizedByRollover: true,
+            }
+            localStorage.setItem('q_day_status', JSON.stringify(dayStatus))
+          }
+        } catch (e) {
+          console.warn('Rollover finalization failed:', e)
+        }
+
         // Invalidate pattern profile so tomorrow's plan gets fresh weights
         try {
           const cached = localStorage.getItem('q_pattern_profile')
@@ -134,6 +168,7 @@ function useDayRollover() {
             localStorage.setItem('q_pattern_profile', JSON.stringify(p))
           }
         } catch {}
+
         // Force re-render so plan snapshot picks up the new date
         window.location.reload()
       }
@@ -974,8 +1009,46 @@ export default function App() {
   const isMobile = useWindowWidth() < 768
   const [showDrawer, setShowDrawer] = useState(false)
   const [authReady, setAuthReady] = useState(false)
-  const [cloudRestoring, setCloudRestoring] = useState(false) // true while fetching cloud data on fresh tab
   useDayRollover() // detect midnight rollover
+
+  // ── Startup repair: backfill missing day statuses ─────────────────────────
+  // Runs once on mount. If any of the last 14 days has checked data but no
+  // status entry, it's finalized now. This repairs days that slipped through
+  // the rollover without being written (e.g. Fri May 22 bug).
+  React.useEffect(() => {
+    try {
+      const DAILY_MIN = 4
+      const dayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}')
+      const checked   = JSON.parse(localStorage.getItem('q_checked') || '{}')
+      let repaired = false
+
+      for (let i = 1; i <= 14; i++) {
+        const d = new Date()
+        d.setDate(d.getDate() - i)
+        const k = d.toDateString()
+
+        // Only repair if the day has no status but has check data
+        if (!dayStatus[k]?.status && checked[k]) {
+          const doneCount = Object.values(checked[k]).filter(Boolean).length
+          dayStatus[k] = {
+            status: doneCount >= DAILY_MIN ? 'locked' : 'missed',
+            signal: doneCount * 10,
+            completedRequired: doneCount,
+            finalizedByRepair: true,
+            repairedAt: new Date().toISOString(),
+          }
+          repaired = true
+        }
+      }
+
+      if (repaired) {
+        localStorage.setItem('q_day_status', JSON.stringify(dayStatus))
+        console.log('Day status repair: backfilled missing entries')
+      }
+    } catch (e) {
+      console.warn('Day status repair failed:', e)
+    }
+  }, []) // runs once on mount
 
   // ─── Safe localStorage helpers ────────────────────────────────────────────
   // All localStorage reads go through these — never throw, always return fallback
@@ -1052,49 +1125,14 @@ export default function App() {
   }, [testerMode])
 
 
-  // ── Cloud restore — defined at component level so it has access to all setters ──
-  const restoreFromCloud = React.useCallback(async (userId) => {
-    if (!userId) return
-    try {
-      setCloudRestoring(true)
-      const cloudData = await loadCloudState(userId)
-      if (cloudData) {
-        // Write all fields to localStorage
-        applyCloudStateToLocal(cloudData)
-        // Directly update React state — useLS won't re-read localStorage on its own
-        if (cloudData.onboarding?.completedAt) {
-          setOnboardingProfile(cloudData.onboarding)
-        }
-        if (cloudData.checked && Object.keys(cloudData.checked).length > 0) {
-          setChecked(cloudData.checked)
-        }
-      }
-    } catch (e) {
-      console.warn('Cloud restore failed:', e)
-    } finally {
-      setCloudRestoring(false)
-    }
-  }, []) // eslint-disable-line
-
   useEffect(() => {
     let mounted = true
 
     getSession()
-      .then(async (currentSession) => {
+      .then((currentSession) => {
         if (!mounted) return
         setSession(currentSession)
-
-        // If we have a session but no local onboarding, try to restore from cloud
-        if (currentSession?.user?.id) {
-          const localOnboarding = (() => {
-            try { return JSON.parse(localStorage.getItem('q_onboarding') || 'null') } catch { return null }
-          })()
-          if (!localOnboarding?.completedAt) {
-            await restoreFromCloud(currentSession.user.id)
-          }
-        }
-
-        if (mounted) setAuthReady(true)
+        setAuthReady(true)
       })
       .catch(() => {
         if (!mounted) return
@@ -1102,29 +1140,16 @@ export default function App() {
         setAuthReady(true)
       })
 
-    const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      if (!mounted) return
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
-
-      // Magic link opens a fresh tab — nextSession arrives but localStorage is empty
-      // Restore cloud data before showing anything
-      if (nextSession?.user?.id && _event === 'SIGNED_IN') {
-        const localOnboarding = (() => {
-          try { return JSON.parse(localStorage.getItem('q_onboarding') || 'null') } catch { return null }
-        })()
-        if (!localOnboarding?.completedAt) {
-          await restoreFromCloud(nextSession.user.id)
-        }
-      }
-
-      if (!authReady && mounted) setAuthReady(true)
+      if (!authReady) setAuthReady(true)
     })
 
     return () => {
       mounted = false
       data?.subscription?.unsubscribe?.()
     }
-  }, [restoreFromCloud])
+  }, [])
 
   const today = tk()
   const todayChecks = checked[today] || {}
@@ -1321,27 +1346,6 @@ export default function App() {
 
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
   const card = { background:'#fff', borderRadius:14, border:bdr, padding:'16px 18px', marginBottom:14 }
-
-  // Gate: show loading spinner while restoring cloud data on magic-link tab
-  if (cloudRestoring) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#F7F6F3',
-        gap: 16,
-      }}>
-        <div style={{ fontSize: 28, color: '#7F77DD' }}>✦</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18' }}>Restoring your progress</div>
-        <div style={{ fontSize: 13, color: '#888', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
-          Syncing your data from the cloud — this takes just a moment.
-        </div>
-      </div>
-    )
-  }
 
   // Gate: show onboarding if not completed
   // Guard: require both profile and valid domain scores before rendering the app.
