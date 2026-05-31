@@ -1012,15 +1012,15 @@ export default function App() {
   useDayRollover() // detect midnight rollover
 
   // ── Startup repair: backfill missing day statuses ─────────────────────────
-  // Runs once on mount. If any of the last 14 days has checked data but no
-  // status entry, it's finalized now. This repairs days that slipped through
-  // the rollover without being written (e.g. Fri May 22 bug).
+  // Runs once on mount. Uses setDayStatus (React state setter from useLS)
+  // so the UI re-renders immediately — no page reload needed.
   React.useEffect(() => {
     try {
       const DAILY_MIN = 4
-      const dayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}')
-      const checked   = JSON.parse(localStorage.getItem('q_checked') || '{}')
+      const currentDayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}')
+      const currentChecked   = JSON.parse(localStorage.getItem('q_checked') || '{}')
       let repaired = false
+      const repairedStatus = { ...currentDayStatus }
 
       for (let i = 1; i <= 14; i++) {
         const d = new Date()
@@ -1028,9 +1028,9 @@ export default function App() {
         const k = d.toDateString()
 
         // Only repair if the day has no status but has check data
-        if (!dayStatus[k]?.status && checked[k]) {
-          const doneCount = Object.values(checked[k]).filter(Boolean).length
-          dayStatus[k] = {
+        if (!repairedStatus[k]?.status && currentChecked[k]) {
+          const doneCount = Object.values(currentChecked[k]).filter(Boolean).length
+          repairedStatus[k] = {
             status: doneCount >= DAILY_MIN ? 'locked' : 'missed',
             signal: doneCount * 10,
             completedRequired: doneCount,
@@ -1038,12 +1038,14 @@ export default function App() {
             repairedAt: new Date().toISOString(),
           }
           repaired = true
+          console.log('Day status repair:', k, repairedStatus[k].status, doneCount + ' done')
         }
       }
 
       if (repaired) {
-        localStorage.setItem('q_day_status', JSON.stringify(dayStatus))
-        console.log('Day status repair: backfilled missing entries')
+        // setDayStatus writes to localStorage AND triggers React re-render immediately
+        setDayStatus(repairedStatus)
+        console.log('Day status repair complete')
       }
     } catch (e) {
       console.warn('Day status repair failed:', e)
@@ -1087,6 +1089,8 @@ export default function App() {
   const [evening,   setEvening]   = useLS('q_evening', {})
   const [weekAdj,   setWeekAdj]   = useLS('q_weekadj', {})
   const [triggers,  setTriggers]  = useLS('q_triggers', {})
+  // dayStatus now tracked in React state so repairs trigger re-renders
+  const [dayStatus, setDayStatus] = useLS('q_day_status', {})
 
   const [onboardingProfile, setOnboardingProfile] = useLS('q_onboarding', null)
   const [earnedMilestones, setEarnedMilestones] = useLS('q_milestones', [])
@@ -1922,19 +1926,19 @@ export default function App() {
           <div>
             <WeeklyIntelligenceReport
               checked={checked || {}}
-              dayStatus={safeLS('q_day_status', {})}
+              dayStatus={dayStatus}
               domainScores={domainScores || {}}
             />
             <div style={{ marginTop: 24 }}>
               <PredictiveIntelligencePanel
                 checked={checked || {}}
-                dayStatus={safeLS('q_day_status', {})}
+                dayStatus={dayStatus}
                 domainScores={domainScores || {}}
               />
             </div>
             <AnalyticsIntelligenceLayer
               checked={checked || {}}
-              dayStatus={safeLS('q_day_status', {})}
+              dayStatus={dayStatus}
               domainScores={domainScores || {}}
             />
           </div>
@@ -1968,7 +1972,7 @@ export default function App() {
           onboardingProfile={onboardingProfile}
           earnedMilestones={earnedMilestones || []}
           domainScores={domainScores || {}}
-          dayStatus={safeLS('q_day_status', {})}
+          dayStatus={dayStatus}
         />}
 
         {tab === 'programs' && <Programs checked={checked} domainScores={domainScores} onboardingProfile={onboardingProfile}/>}
