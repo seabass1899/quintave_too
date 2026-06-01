@@ -344,3 +344,165 @@ export function getTomorrowCoachMessage(plan, dayStatus, date = new Date()) {
   }
   return `The day is still open. One practice changes tomorrow's starting coherence.`
 }
+
+// ─── Causal Narrative Coach ───────────────────────────────────────────────────
+
+/**
+ * getCausalNarrativeMessage()
+ *
+ * Generates a multi-day causal narrative that explains WHY the plan
+ * looks the way it does — connecting past behavioral patterns to
+ * present decisions. This is the "the system understands me" moment.
+ *
+ * Returns: { headline, narrative, implication, timeframe, confidence } | null
+ *
+ * Only fires when there is enough signal to be specific and accurate.
+ * Never generates generic statements — if the data isn't there, returns null.
+ */
+export function getCausalNarrativeMessage(plan, patternProfile, checked = {}, dayStatus = {}, date = new Date()) {
+  if (!plan || !patternProfile) return null
+
+  const bi          = plan?.behavioralIntel
+  const adaptations = plan?.adaptations || []
+  const decision    = plan?.decision
+  const bodyNames   = { d1: 'Source', d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
+  const bodyDesc    = {
+    d1: 'your reference field',
+    d2: 'your physical foundation',
+    d3: 'your emotional processing',
+    d4: 'your cognitive direction',
+    d5: 'your behavioral patterns',
+  }
+
+  // ── Narrative 1: Upstream domain causing downstream drift ────────────────
+  // "Form has been low for 4 days → Field is now drifting as a result"
+  const upstreamRisk = bi?.domainRisks?.find(r => r.severity === 'high' || r.severity === 'moderate')
+  if (upstreamRisk && upstreamRisk.daysLow >= 2) {
+    const sourceName = bodyNames[upstreamRisk.sourceId] || 'an upstream body'
+    const targetName = bodyNames[upstreamRisk.targetId] || 'a downstream body'
+    const sourceDesc = bodyDesc[upstreamRisk.sourceId] || ''
+    const daysText   = upstreamRisk.daysLow === 1 ? 'yesterday' : `${upstreamRisk.daysLow} days`
+
+    return {
+      headline: `${sourceName} has been low for ${daysText} — ${targetName} is responding.`,
+      narrative: `${upstreamRisk.mechanism} This is not two separate problems — it is one pattern with two visible effects.`,
+      implication: `The engine is prioritizing ${sourceName} (${sourceDesc}) because correcting ${targetName} directly will not hold while its upstream source remains depleted.`,
+      timeframe: `Expect ${targetName} to stabilize within ${upstreamRisk.lag + 1}–${upstreamRisk.lag + 3} days of consistent ${sourceName} practice.`,
+      confidence: upstreamRisk.riskScore / 100,
+      type: 'upstream_cascade',
+      primaryBody: upstreamRisk.sourceId,
+    }
+  }
+
+  // ── Narrative 2: Sustained avoidance creating systemic drag ─────────────
+  // "Emotional Log has been skipped 5 of 7 assignments → Field is carrying charge"
+  const strongAvoidance = patternProfile?.avoidance?.filter(a => a.severity === 'strong') || []
+  if (strongAvoidance.length >= 1) {
+    const top = strongAvoidance[0]
+    const domainName = bodyNames[top.domainId] || 'a frequency body'
+    const skipPct    = Math.round((1 - top.rate) * 100)
+    const skipCount  = top.skipped || 0
+
+    if (skipCount >= 3) {
+      return {
+        headline: `${top.name} has been consistently avoided — ${domainName} is running without it.`,
+        narrative: `${top.name} has been skipped ${skipPct}% of the time it was assigned. Over ${skipCount} skips, ${domainName} has been operating without this correction. The signal gap is accumulating.`,
+        implication: `The engine has already reduced the frequency of ${top.name} and substituted a lower-friction alternative. If avoidance continues, ${domainName} practices will be restructured around what you will actually do.`,
+        timeframe: `Three consistent completions of the substitute practice will begin restoring ${domainName} signal.`,
+        confidence: Math.min(0.92, 0.65 + skipCount * 0.03),
+        type: 'sustained_avoidance',
+        primaryBody: top.domainId,
+      }
+    }
+  }
+
+  // ── Narrative 3: Recovery arc — explaining the shape of the decline ──────
+  // "This is not random — the pattern shows friction accumulation over 8 days"
+  const arc = bi?.recoveryArc
+  if (arc?.type === 'gradual_fade' && arc.fadePct >= 20) {
+    const primary = decision?.primaryBlockerId
+    const primaryName = bodyNames[primary] || 'the system'
+
+    return {
+      headline: `Completion has been declining gradually — not suddenly.`,
+      narrative: `Over the past week, practice completion dropped by ~${arc.fadePct}% without any outright missed days. This is the signature of friction accumulation — the plan became subtly harder than available energy over time, not all at once.`,
+      implication: `This pattern is different from external disruption. It responds to load reduction and substitution — not motivation. The engine has already adjusted: ${primaryName} practices are now lower-friction than last week.`,
+      timeframe: `Friction-based declines typically reverse within 5–7 days when load is reduced. The engine has made that adjustment automatically.`,
+      confidence: 0.78,
+      type: 'gradual_fade_narrative',
+      primaryBody: primary,
+    }
+  }
+
+  if (arc?.type === 'sudden_drop' && arc.peakStreak >= 3) {
+    return {
+      headline: `A strong aligned period was interrupted — the system remembers it.`,
+      narrative: `You had ${arc.peakStreak} consecutive aligned days before the stop. That pattern is stored in the behavioral engine. The interruption reads as external disruption, not pattern collapse — the baseline was real.`,
+      implication: `Re-entry from a genuine disruption is faster than building from zero because the behavioral memory is intact. The engine is treating this as reconnection, not restart.`,
+      timeframe: `Expect to return to your previous completion rate within 3–5 aligned days. The momentum is easier to restore than it was to build.`,
+      confidence: 0.75,
+      type: 'sudden_drop_narrative',
+      primaryBody: decision?.primaryBlockerId,
+    }
+  }
+
+  // ── Narrative 4: Co-completion pattern driving today's plan ─────────────
+  // "Breathwork and Morning Directive are completed together 78% of the time"
+  const topPair = patternProfile?.pairs?.[0]
+  if (topPair && topPair.coRate >= 0.70) {
+    const [nameA, nameB] = topPair.names || []
+    if (nameA && nameB) {
+      return {
+        headline: `${nameA} and ${nameB} work together — the engine is building on that.`,
+        narrative: `These two practices are completed together ${Math.round(topPair.coRate * 100)}% of the time in your history. The engine detected this behavioral law and has structured today's plan to preserve the pair.`,
+        implication: `When these two practices appear together, completion of both is significantly more likely than either alone. Separating them across phases would reduce the probability of both getting done.`,
+        timeframe: null,
+        confidence: Math.min(0.90, topPair.coRate),
+        type: 'copair_narrative',
+        primaryBody: null,
+      }
+    }
+  }
+
+  // ── Narrative 5: Phase performance driving timing decisions ─────────────
+  // "Morning is your 90% window — the engine routes critical practices there"
+  const phasePerf = patternProfile?.phasePerformance || []
+  const bestPhase = phasePerf.sort((a, b) => (b.rate || 0) - (a.rate || 0))[0]
+  const worstPhase = phasePerf.sort((a, b) => (a.rate || 0) - (b.rate || 0))[0]
+
+  if (bestPhase && worstPhase && bestPhase.phase !== worstPhase.phase) {
+    const gap = ((bestPhase.rate || 0) - (worstPhase.rate || 0)) * 100
+    if (gap >= 30) {
+      const primaryBody = decision?.primaryBlockerId
+      const primaryName = bodyNames[primaryBody] || 'critical'
+
+      return {
+        headline: `${bestPhase.label || bestPhase.phase} is your strongest window — the engine routes accordingly.`,
+        narrative: `${bestPhase.label || bestPhase.phase} completion runs at ${Math.round((bestPhase.rate || 0) * 100)}% vs ${Math.round((worstPhase.rate || 0) * 100)}% in ${worstPhase.label || worstPhase.phase} — a ${Math.round(gap)}-point gap. This is a consistent behavioral pattern, not random variation.`,
+        implication: `The engine places ${primaryName} practices in ${bestPhase.label || bestPhase.phase} because that is when your completion probability is highest. ${worstPhase.label || worstPhase.phase} receives lower-friction or optional work.`,
+        timeframe: null,
+        confidence: Math.min(0.88, 0.60 + gap / 100),
+        type: 'phase_routing_narrative',
+        primaryBody,
+      }
+    }
+  }
+
+  // ── Narrative 6: Momentum compounding explanation ────────────────────────
+  // "You are in a compounding phase — here is what the data shows"
+  const streak = plan?.streak?.current || 0
+  const topMomentum = patternProfile?.momentum?.[0]
+  if (streak >= 5 && topMomentum) {
+    return {
+      headline: `${streak} aligned days — the signal is compounding structurally.`,
+      narrative: `${topMomentum.name} has a ${Math.round(Math.min(100, (topMomentum.rate || 0.8) * 100))}% completion rate in your history and is actively reinforcing today's plan. At ${streak} days, consistency is transitioning from effort into behavioral identity.`,
+      implication: `The engine is holding the current structure rather than increasing complexity. Compounding phases are disrupted more easily by adding practices than by maintaining them. Stability is the strategy.`,
+      timeframe: `At 7+ aligned days the engine may introduce one depth practice if velocity holds. Until then: repeat what is working.`,
+      confidence: Math.min(0.92, 0.70 + streak * 0.02),
+      type: 'momentum_compounding',
+      primaryBody: topMomentum.domainId,
+    }
+  }
+
+  return null
+}
