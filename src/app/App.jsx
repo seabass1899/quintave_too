@@ -1064,14 +1064,28 @@ export default function App() {
       let repaired = false
       const repairedStatus = { ...currentDayStatus }
 
-      for (let i = 1; i <= 14; i++) {
+      for (let i = 1; i <= 21; i++) {
         const d = new Date()
         d.setDate(d.getDate() - i)
         const k = d.toDateString()
 
-        // Only repair if the day has no status but has check data
-        if (!repairedStatus[k]?.status && currentChecked[k]) {
-          const doneCount = Object.values(currentChecked[k]).filter(Boolean).length
+        // Repair conditions:
+        // 1. Day has check data but no status (original bug)
+        // 2. Day has done >= DAILY_MIN but status is not 'locked' (active with enough done)
+        // 3. Day has status 'active' and it's in the past (should be locked or missed)
+        const doneCount = currentChecked[k]
+          ? Object.values(currentChecked[k]).filter(Boolean).length
+          : 0
+        const currentStatus = repairedStatus[k]?.status
+        const needsRepair = (
+          (!currentStatus && doneCount > 0) ||
+          (currentStatus === 'active' && doneCount >= DAILY_MIN) ||
+          (!currentStatus && !currentChecked[k]) // missing with no data → missed
+        )
+        // Don't overwrite already-correct statuses
+        const alreadyCorrect = currentStatus === 'locked' || currentStatus === 'missed'
+
+        if (needsRepair && !alreadyCorrect) {
           repairedStatus[k] = {
             status: doneCount >= DAILY_MIN ? 'locked' : 'missed',
             signal: doneCount * 10,
@@ -1080,7 +1094,7 @@ export default function App() {
             repairedAt: new Date().toISOString(),
           }
           repaired = true
-          console.log('Day status repair:', k, repairedStatus[k].status, doneCount + ' done')
+          console.log('Day status repair:', k, '→', repairedStatus[k].status, '(' + doneCount + ' done)')
         }
       }
 
