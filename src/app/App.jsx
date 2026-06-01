@@ -1011,46 +1011,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false)
   useDayRollover() // detect midnight rollover
 
-  // ── Startup repair: backfill missing day statuses ─────────────────────────
-  // Runs once on mount. Uses setDayStatus (React state setter from useLS)
-  // so the UI re-renders immediately — no page reload needed.
-  React.useEffect(() => {
-    try {
-      const DAILY_MIN = 4
-      const currentDayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}')
-      const currentChecked   = JSON.parse(localStorage.getItem('q_checked') || '{}')
-      let repaired = false
-      const repairedStatus = { ...currentDayStatus }
 
-      for (let i = 1; i <= 14; i++) {
-        const d = new Date()
-        d.setDate(d.getDate() - i)
-        const k = d.toDateString()
-
-        // Only repair if the day has no status but has check data
-        if (!repairedStatus[k]?.status && currentChecked[k]) {
-          const doneCount = Object.values(currentChecked[k]).filter(Boolean).length
-          repairedStatus[k] = {
-            status: doneCount >= DAILY_MIN ? 'locked' : 'missed',
-            signal: doneCount * 10,
-            completedRequired: doneCount,
-            finalizedByRepair: true,
-            repairedAt: new Date().toISOString(),
-          }
-          repaired = true
-          console.log('Day status repair:', k, repairedStatus[k].status, doneCount + ' done')
-        }
-      }
-
-      if (repaired) {
-        // setDayStatus writes to localStorage AND triggers React re-render immediately
-        setDayStatus(repairedStatus)
-        console.log('Day status repair complete')
-      }
-    } catch (e) {
-      console.warn('Day status repair failed:', e)
-    }
-  }, []) // runs once on mount
 
   // ─── Safe localStorage helpers ────────────────────────────────────────────
   // All localStorage reads go through these — never throw, always return fallback
@@ -1091,6 +1052,47 @@ export default function App() {
   const [triggers,  setTriggers]  = useLS('q_triggers', {})
   // dayStatus now tracked in React state so repairs trigger re-renders
   const [dayStatus, setDayStatus] = useLS('q_day_status', {})
+
+  // ── Startup repair: backfill missing day statuses ─────────────────────────
+  // Runs once on mount. Uses setDayStatus (React state setter from useLS)
+  // so the UI re-renders immediately — no page reload needed.
+  React.useEffect(() => {
+    try {
+      const DAILY_MIN = 4
+      const currentDayStatus = JSON.parse(localStorage.getItem('q_day_status') || '{}')
+      const currentChecked   = JSON.parse(localStorage.getItem('q_checked') || '{}')
+      let repaired = false
+      const repairedStatus = { ...currentDayStatus }
+
+      for (let i = 1; i <= 14; i++) {
+        const d = new Date()
+        d.setDate(d.getDate() - i)
+        const k = d.toDateString()
+
+        // Only repair if the day has no status but has check data
+        if (!repairedStatus[k]?.status && currentChecked[k]) {
+          const doneCount = Object.values(currentChecked[k]).filter(Boolean).length
+          repairedStatus[k] = {
+            status: doneCount >= DAILY_MIN ? 'locked' : 'missed',
+            signal: doneCount * 10,
+            completedRequired: doneCount,
+            finalizedByRepair: true,
+            repairedAt: new Date().toISOString(),
+          }
+          repaired = true
+          console.log('Day status repair:', k, repairedStatus[k].status, doneCount + ' done')
+        }
+      }
+
+      if (repaired) {
+        // setDayStatus writes to localStorage AND triggers React re-render immediately
+        setDayStatus(repairedStatus)
+        console.log('Day status repair complete')
+      }
+    } catch (e) {
+      console.warn('Day status repair failed:', e)
+    }
+  }, []) // runs once on mount
 
   const [onboardingProfile, setOnboardingProfile] = useLS('q_onboarding', null)
   const [earnedMilestones, setEarnedMilestones] = useLS('q_milestones', [])
