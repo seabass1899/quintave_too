@@ -5,7 +5,7 @@ import { calculateCoherenceState } from '../frequency/coherenceStateModel'
 import { calculateCoherenceTrajectory } from '../frequency/coherenceTrajectoryModel'
 import { calculateCoherenceMemory } from '../frequency/coherenceMemoryModel'
 import { calculateCoherencePhase } from '../frequency/coherencePhaseModel'
-import { getBehavioralIntelligence, applyConfidenceModifiers, getDomainConfidenceModifiers } from '../intelligence/behavioralIntelligenceEngine'
+import { getBehavioralIntelligence, applyConfidenceModifiers, getDomainConfidenceModifiers, getPhaseRoutingRecommendations } from '../intelligence/behavioralIntelligenceEngine'
 
 export const PHASES = [
   { id: 'morning', label: 'Morning', role: 'Initialize', required: 2, proceedMinimum: 1, unlockHour: 0 },
@@ -856,7 +856,7 @@ function buildFrozenPhaseItems(phase, planSnapshot, dayUsed = new Set()) {
   return uniqueByKey(items)
 }
 
-function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null, checked = {}, dayUsed = new Set(), decision = null) {
+function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null, date = new Date(), planSnapshot = null, checked = {}, dayUsed = new Set(), decision = null, phaseOverrides = {}) {
   const frozen = buildFrozenPhaseItems(phase, planSnapshot, dayUsed)
   if (frozen) return frozen
 
@@ -871,6 +871,13 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   const items = []
   const used = new Set()
   const combinedUsed = () => new Set([...used, ...dayUsed])
+
+  // ── Phase routing injection ───────────────────────────────────────────────
+  // Domains routed to this phase by behavioral intelligence get pulled in
+  // via their MORNING_ADAPTIVE_POOLS as an additional practice slot.
+  const routedDomainsForThisPhase = Object.entries(phaseOverrides)
+    .filter(([, toPhase]) => toPhase === phase)
+    .map(([domainId]) => domainId)
 
   const push = (pick, priority, why) => {
     const item = pick ? findPractice(...pick) : null
@@ -937,7 +944,7 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
   }
 
   if (phase === 'midday') {
-    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot, checked, new Set(dayUsed), decision)
+    const morningPool = buildPhaseItems('morning', domainScores, todayChecks, primedDomainId, date, planSnapshot, checked, new Set(dayUsed), decision, phaseOverrides)
     const morningDone = morningPool.filter(i => !!todayChecks[i.key]).length
     let primaryCandidates = [['d2', 'Breathwork'], ['d4', 'Thought Audit'], ['d5', 'Pattern Interrupt']]
     let reason = 'Midday nervous-system correction'
@@ -981,10 +988,31 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
     pushSmart([['d3', 'Gratitude + Reframe'], ['d3', 'Emotional Log'], ['d5', 'Dream Log']], 'Optional', 'Shift the final emotional tone', 'optional', 'd3')
   }
 
+  // ── Apply routed domain practices ─────────────────────────────────────────
+  // If any domains have been behaviorally routed to this phase, inject their
+  // highest-priority practice as an additional 'Adaptive' slot.
+  // This only fires when: domain is struggling AND this phase has better
+  // completion rates (30%+ improvement threshold from getPhaseRoutingRecommendations).
+  if (routedDomainsForThisPhase.length > 0 && items.length < 3) {
+    routedDomainsForThisPhase.forEach(domainId => {
+      // Skip if this domain already has a practice in this phase
+      const alreadyPresent = items.some(i => (i.phaseDomainId || i.domain?.id) === domainId)
+      if (alreadyPresent) return
+
+      const routedPool = MORNING_ADAPTIVE_POOLS[domainId] || []
+      const domainNames = { d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
+      pushSmart(
+        routedPool,
+        'Adaptive',
+        `${domainNames[domainId] || domainId} routed here — completion rate is higher in this window`,
+        'adaptive',
+        domainId
+      )
+    })
+  }
+
   return uniqueByKey(items).filter(Boolean)
 }
-
-export function createTodayPlanSnapshot(plan, date = new Date()) {
   const dateKey = getDateKey(date)
   return {
     version: TODAY_PLAN_VERSION,
@@ -1194,6 +1222,20 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   const currentPhase = getCurrentPhase(date)
   const phases = {}
 
+  // ── Phase Routing ──────────────────────────────────────────────────────────
+  // Build a phaseOverrides map from behavioral intelligence recommendations.
+  // When a struggling domain's practices complete much better in a different
+  // phase, route that domain's critical practice there instead.
+  // Format: { domainId: 'morning' | 'midday' | 'evening' }
+  let phaseOverrides = {}
+  try {
+    const phasePerformance = _cachedAdaptiveProfile?.phasePerformance || []
+    const routingRecs = getPhaseRoutingRecommendations(effectiveDomainScores, phasePerformance, checked, date)
+    routingRecs.forEach(rec => {
+      phaseOverrides[rec.domainId] = rec.toPhase
+    })
+  } catch { phaseOverrides = {} }
+
   const dayUsed = new Set()
   const adaptations = []  // Sprint 5+9+10: log of adaptive changes made to today's plan
 
@@ -1344,8 +1386,25 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
       .map(a => a.key)
   )
 
+  // Log phase routing adaptations before building phases
+  Object.entries(phaseOverrides).forEach(([domainId, toPhase]) => {
+    const DOMAIN_DEFAULT_PHASES = { d2: 'morning', d3: 'evening', d4: 'morning', d5: 'midday' }
+    const fromPhase = DOMAIN_DEFAULT_PHASES[domainId] || 'morning'
+    if (fromPhase !== toPhase) {
+      const domainNames = { d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
+      adaptations.push({
+        type: 'phase_routed',
+        domainId,
+        domainName: domainNames[domainId] || domainId,
+        fromPhase,
+        toPhase,
+        reason: `${domainNames[domainId] || domainId} practices moved to ${toPhase} — completion rate is significantly higher in that window.`,
+      })
+    }
+  })
+
   PHASES.forEach(p => {
-    let items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed, decision)
+    let items = buildPhaseItems(p.id, domainScores, todayChecks, primedDomainId, date, isValidPlanSnapshot(planSnapshot, date) ? planSnapshot : null, checked, dayUsed, decision, phaseOverrides)
 
     // ── Sprint 9: Apply substitution for strongly-avoided practices ──────────
     items = items.map(item => {
