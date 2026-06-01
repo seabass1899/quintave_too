@@ -2,8 +2,8 @@ import React, { useMemo, useState, useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
 import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile, predictTomorrow } from '../intelligence/patternLearningModel'
-import { getDailyCoachMessage, getPatternBreakMessage, getTomorrowCoachMessage } from '../coach/coachEngine'
-import { DailyCoachCard, PatternBreakCoachCard, TomorrowCoachLine } from '../coach/DailyCoachCard'
+import { getDailyCoachMessage, getPatternBreakMessage, getTomorrowCoachMessage, getCausalNarrativeMessage } from '../coach/coachEngine'
+import { DailyCoachCard, PatternBreakCoachCard, TomorrowCoachLine, CausalNarrativeCard } from '../coach/DailyCoachCard'
 import AdaptiveReasonCard from '../intelligence/AdaptiveReasonCard'
 import { savePracticeRating, getPracticeRating } from '../intelligence/behavioralIntelligenceEngine'
 import { trackEvent } from '../../app/utils/analytics'
@@ -1455,6 +1455,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     try { return getTomorrowCoachMessage(plan, dayStatus) } catch { return null }
   }, [plan?.completionState?.pct, plan?.streak?.current])
 
+
   const requestedPhaseId = selectedPhase || selectedPhaseOverride || plan.currentPhase
   const activePhaseId = getResolvedPhaseId(plan, requestedPhaseId)
   const activePhase = plan.phases[activePhaseId]
@@ -1559,6 +1560,11 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     } catch { return null }
   }, [])
 
+  // Causal narrative — multi-day explanation of why the plan looks like it does
+  const causalNarrative = React.useMemo(() => {
+    try { return getCausalNarrativeMessage(plan, patternProfile, checked, dayStatus) } catch { return null }
+  }, [plan?.decision?.primaryBlockerId, plan?.behavioralIntel?.domainRisks?.length, patternProfile?.avoidance?.length, plan?.streak?.current])
+
   // Tomorrow prediction — computed once, shown in DayLockedIn area
   const tomorrowPred = React.useMemo(() => {
     try { return predictTomorrow(checked, dayStatus, domainScores) } catch { return null }
@@ -1615,6 +1621,7 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     <AdaptiveIntelligenceBadge plan={plan} isMobile={isMobile} />
     <PatternBreakCoachCard message={patternBreakMessage} />
     <DailyCoachCard message={coachMessage} isMobile={isMobile} />
+    <CausalNarrativeCard message={causalNarrative} isMobile={isMobile} />
       {showOnboarding && (
         <div style={{
           background: 'linear-gradient(135deg, #F4F6FB, #FCFBF8)',
