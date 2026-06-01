@@ -1013,6 +1013,8 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
 
   return uniqueByKey(items).filter(Boolean)
 }
+
+export function createTodayPlanSnapshot(plan, date = new Date()) {
   const dateKey = getDateKey(date)
   return {
     version: TODAY_PLAN_VERSION,
