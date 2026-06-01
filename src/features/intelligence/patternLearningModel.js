@@ -80,16 +80,23 @@ function getRecentChecked(checked = {}, date = new Date(), daysBack = OBSERVATIO
 
 function getAssignedKeys(date = new Date(), daysBack = OBSERVATION_WINDOW_DAYS) {
   const plans = safeRead('q_today_plan', {})
+  const checked = safeRead('q_checked', {})
   const result = {}
   for (let i = 0; i < daysBack; i++) {
     const key = getPreviousDateKey(date, i)
     const plan = plans?.[key]
-    if (!plan?.phases) continue
-    const keys = []
-    Object.values(plan.phases).forEach(phase => {
-      ;(phase?.items || []).forEach(item => { if (item?.key) keys.push(item.key) })
-    })
-    result[key] = keys
+    if (plan?.phases) {
+      // Use plan snapshot if available — most accurate
+      const keys = []
+      Object.values(plan.phases).forEach(phase => {
+        ;(phase?.items || []).forEach(item => { if (item?.key) keys.push(item.key) })
+      })
+      result[key] = keys
+    } else if (checked[key] && Object.keys(checked[key]).length > 0) {
+      // Fallback: treat all checked keys as assigned for days without a plan snapshot.
+      // This recovers pattern detection when q_today_plan has been cleared.
+      result[key] = Object.keys(checked[key])
+    }
   }
   return result
 }
@@ -460,7 +467,10 @@ export function analyzePatterns(checked = {}, dayStatus = {}, date = new Date())
   const profile = {
     generatedAt: new Date().toISOString(),
     observationDays: OBSERVATION_WINDOW_DAYS,
-    hasEnoughData: Object.values(practiceStats).some(s => s.assigned >= MIN_ASSIGNMENTS_FOR_SIGNAL),
+    hasEnoughData: Object.values(practiceStats).some(s =>
+      s.assigned >= MIN_ASSIGNMENTS_FOR_SIGNAL ||
+      s.completed >= MIN_ASSIGNMENTS_FOR_SIGNAL  // also sufficient if completed (library path)
+    ),
     avoidance,
     momentum,
     pairs,
