@@ -24,7 +24,7 @@ import AnalyticsTab from '../features/analytics/AnalyticsTab'
 import FrequencyLayer from '../features/frequency/FrequencyLayer'
 import AuthBox from '../features/auth/AuthBox'
 import SyncControls from '../features/sync/SyncControls'
-import { supabase, getSession } from './supabaseClient'
+import { supabase, getSession, loadCloudState, applyCloudStateToLocal, syncLocalStateToCloud } from './supabaseClient'
 import { silentSync } from './services/syncService'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
@@ -1009,6 +1009,7 @@ export default function App() {
   const isMobile = useWindowWidth() < 768
   const [showDrawer, setShowDrawer] = useState(false)
   const [authReady, setAuthReady] = useState(false)
+  const [cloudRestoring, setCloudRestoring] = useState(false)
   useDayRollover() // detect midnight rollover
 
 
@@ -1110,6 +1111,35 @@ export default function App() {
 
   const [onboardingProfile, setOnboardingProfile] = useLS('q_onboarding', null)
   const [earnedMilestones, setEarnedMilestones] = useLS('q_milestones', [])
+
+  // ── Cloud restore — defined at component level so it has access to all setters ──
+  // Called when a magic link lands on a fresh tab with no local data.
+  // Directly updates React state so UI re-renders without a page reload.
+  const restoreFromCloud = React.useCallback(async (userId) => {
+    if (!userId || !supabase) return
+    try {
+      setCloudRestoring(true)
+      const cloudData = await loadCloudState(userId)
+      if (cloudData) {
+        // Write all fields to localStorage first
+        applyCloudStateToLocal(cloudData)
+        // Directly update React state — useLS won't re-read localStorage on its own
+        if (cloudData.onboarding?.completedAt) {
+          setOnboardingProfile(cloudData.onboarding)
+        }
+        if (cloudData.checked && Object.keys(cloudData.checked).length > 0) {
+          setChecked(cloudData.checked)
+        }
+        if (cloudData.day_status && Object.keys(cloudData.day_status).length > 0) {
+          setDayStatus(cloudData.day_status)
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud restore failed:', e)
+    } finally {
+      setCloudRestoring(false)
+    }
+  }, []) // eslint-disable-line
   const [showBreathwork, setShowBreathwork] = useState(false)
   const [showWeekly,     setShowWeekly]     = useState(false)
   const [showNotifs,     setShowNotifs]     = useState(false)
@@ -1148,11 +1178,25 @@ export default function App() {
   useEffect(() => {
     let mounted = true
 
+    // Helper: check if local onboarding is valid
+    const hasLocalOnboarding = () => {
+      try {
+        const o = JSON.parse(localStorage.getItem('q_onboarding') || 'null')
+        return !!(o?.completedAt && o?.scores && Object.keys(o.scores).length > 0)
+      } catch { return false }
+    }
+
     getSession()
-      .then((currentSession) => {
+      .then(async (currentSession) => {
         if (!mounted) return
         setSession(currentSession)
-        setAuthReady(true)
+
+        // On initial load with a session but no local data — restore from cloud
+        if (currentSession?.user?.id && !hasLocalOnboarding()) {
+          await restoreFromCloud(currentSession.user.id)
+        }
+
+        if (mounted) setAuthReady(true)
       })
       .catch(() => {
         if (!mounted) return
@@ -1160,16 +1204,28 @@ export default function App() {
         setAuthReady(true)
       })
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      if (!mounted) return
       setSession(nextSession)
-      if (!authReady) setAuthReady(true)
+
+      // Magic link click fires SIGNED_IN on a fresh tab — restore cloud data
+      if (_event === 'SIGNED_IN' && nextSession?.user?.id && !hasLocalOnboarding()) {
+        await restoreFromCloud(nextSession.user.id)
+      }
+
+      // Auto-sync on sign-in when user has local data
+      if (_event === 'SIGNED_IN' && nextSession?.user?.id && hasLocalOnboarding()) {
+        try { await syncLocalStateToCloud(nextSession.user.id) } catch {}
+      }
+
+      if (mounted && !authReady) setAuthReady(true)
     })
 
     return () => {
       mounted = false
       data?.subscription?.unsubscribe?.()
     }
-  }, [])
+  }, [restoreFromCloud])
 
   const today = tk()
   const todayChecks = checked[today] || {}
@@ -1377,6 +1433,31 @@ export default function App() {
     typeof onboardingProfile.scores === 'object' &&
     Object.keys(onboardingProfile.scores).length > 0
 
+  // Show loading screen while restoring cloud data after magic link click
+  if (cloudRestoring) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#F7F6F3',
+        gap: 16,
+        padding: 24,
+      }}>
+        <div style={{ fontSize: 32, color: '#7F77DD' }}>✦</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1a18' }}>
+          Restoring your progress
+        </div>
+        <div style={{ fontSize: 13, color: '#888', textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
+          Syncing your data from the cloud. This takes just a moment.
+        </div>
+      </div>
+    )
+  }
+
+  // Show onboarding only when not restoring AND no valid local data
   if (!hasValidOnboarding) {
     return <Onboarding onComplete={(profile) => setOnboardingProfile(profile)} />
   }
