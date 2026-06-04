@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { DOMAINS, COHERENCE_STATES } from '../../data'
-import { signInWithMagicLink } from '../../app/supabaseClient'
+import { signInWithMagicLink, syncLocalStateToCloud, getSession } from '../../app/supabaseClient'
 
 // Inline coherence score — avoids import resolution issues on some mobile browsers
 const getCoherenceScore = (scores) => {
@@ -190,7 +190,7 @@ export default function Onboarding({ onComplete }) {
     setScores(prev => ({ ...prev, [domainId]: prev[domainId].map((s, i) => i === qIdx ? val : s) }))
   }
 
-  const handleComplete = (mode) => {
+  const handleComplete = async (mode) => {
     const flatScores = {}
     const baselineScores = {}
     const startingScores = {}
@@ -237,6 +237,18 @@ export default function Onboarding({ onComplete }) {
       focusMode: mode,
       completedAt: new Date().toISOString(),
     })
+
+    // Immediately sync to cloud if user is already authenticated
+    // (happens when user completed email step before finishing onboarding)
+    try {
+      const session = await getSession()
+      if (session?.user?.id) {
+        // Small delay to ensure localStorage is written by onComplete handler
+        setTimeout(() => {
+          syncLocalStateToCloud(session.user.id).catch(() => {})
+        }, 500)
+      }
+    } catch {}
   }
 
   // ── WELCOME ──────────────────────────────────────────────────────────────────
