@@ -1186,8 +1186,18 @@ export default function App() {
       } catch { return false }
     }
 
+    // Safety timeout — if session check hangs for 6s, unblock the UI anyway
+    // Prevents "Cloud..." stuck state for users with slow/broken Supabase connections
+    const authTimeout = setTimeout(() => {
+      if (mounted && !authReady) {
+        setSession(null)
+        setAuthReady(true)
+      }
+    }, 6000)
+
     getSession()
       .then(async (currentSession) => {
+        clearTimeout(authTimeout)
         if (!mounted) return
         setSession(currentSession)
 
@@ -1199,6 +1209,7 @@ export default function App() {
         if (mounted) setAuthReady(true)
       })
       .catch(() => {
+        clearTimeout(authTimeout)
         if (!mounted) return
         setSession(null)
         setAuthReady(true)
