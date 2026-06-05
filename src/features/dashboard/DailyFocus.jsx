@@ -1642,16 +1642,64 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     }
   }, [safeDomainScores, effectiveChecked, dayStatus, todayPlanSnapshot])
 
-  // If plan generation failed, render a minimal recovery state
+  // If plan generation failed, render a production-quality recovery state
+  // Distinguishes between first-load (brief delay) and genuine failure
+  const [planWaitCount, setPlanWaitCount] = React.useState(0)
+  React.useEffect(() => {
+    if (plan) return
+    const t = setInterval(() => setPlanWaitCount(c => c + 1), 1000)
+    return () => clearInterval(t)
+  }, [plan])
+
   if (!plan) {
+    const isLoading = planWaitCount < 4
     return (
-      <div style={{ padding: 32, textAlign: 'center' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Loading your alignment...</div>
-        <div style={{ fontSize: 14, color: '#888', marginBottom: 20 }}>If this persists, try refreshing the page.</div>
-        <button onClick={() => window.location.reload()}
-          style={{ padding: '10px 20px', borderRadius: 10, background: '#1a1a18', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
-          Refresh
-        </button>
+      <div style={{
+        padding: 40,
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        minHeight: '60vh',
+        justifyContent: 'center',
+      }}>
+        <div style={{ fontSize: 28, marginBottom: 16, opacity: isLoading ? 0.4 : 1 }}>
+          {isLoading ? '◈' : '⚠'}
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1a18', marginBottom: 8 }}>
+          {isLoading ? 'Building your alignment plan...' : 'Something went wrong'}
+        </div>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 24, maxWidth: 280, lineHeight: 1.6 }}>
+          {isLoading
+            ? 'This usually takes just a moment.'
+            : 'The plan could not be generated. This can happen after a data sync or browser update. A refresh usually fixes it.'}
+        </div>
+        {!isLoading && (
+          <>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '12px 28px', borderRadius: 99, background: '#1a1a18',
+                color: '#fff', border: 'none', cursor: 'pointer',
+                fontSize: 14, fontWeight: 700, marginBottom: 12,
+              }}>
+              Refresh page
+            </button>
+            <button
+              onClick={() => {
+                // Clear plan cache and reload — fixes stale snapshot issues
+                try { localStorage.removeItem('q_today_plan') } catch {}
+                window.location.reload()
+              }}
+              style={{
+                padding: '10px 20px', borderRadius: 99, background: 'transparent',
+                color: '#888', border: '0.5px solid rgba(0,0,0,0.12)',
+                cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              }}>
+              Clear cache and reload
+            </button>
+          </>
+        )}
       </div>
     )
   }
