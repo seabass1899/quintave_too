@@ -12,6 +12,8 @@ import CoherenceSignature from '../features/signature/CoherenceSignature'
 import { DOMAINS, PRACTICES, COHERENCE_STATES, getCoherenceState, getCoherenceScore as _getCoherenceScore } from '../data'
 import ProgressTab from '../features/progress/ProgressTab'
 import WeeklyIntelligenceReport from '../features/insights/WeeklyIntelligenceReport'
+import PremiumGate from '../features/monetization/PremiumGate'
+import { useSubscription } from './hooks/useSubscription'
 import PredictiveIntelligencePanel from '../features/insights/PredictiveIntelligencePanel'
 import AnalyticsIntelligenceLayer from '../features/insights/AnalyticsIntelligenceLayer'
 import DailyFocus from '../features/dashboard/DailyFocus'
@@ -1011,6 +1013,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false)
   const [cloudRestoring, setCloudRestoring] = useState(false)
   useDayRollover() // detect midnight rollover
+  const { isPremium } = useSubscription(session)
 
 
 
@@ -1547,6 +1550,18 @@ export default function App() {
           sigScores[d.id] = practiceScore > 0 ? practiceScore : baselineScore
         })
         const sigCoherence = getCoherenceScore(sigScores)
+        if (!isPremium) {
+          return (
+            <PremiumGate
+              feature="signature"
+              isPremium={false}
+              session={session}
+              onShowAuth={() => { setShowSignature(false); setShowAuth(true) }}
+            >
+              <div />
+            </PremiumGate>
+          )
+        }
         return (
           <CoherenceSignature
             userName={onboardingProfile?.userName?.trim().split(' ')[0] || ''}
@@ -2016,40 +2031,56 @@ export default function App() {
         </>}
 
         {/* ── ANALYTICS — COHERENCE FRAMEWORK ── */}
-        {tab === 'analytics' && <AnalyticsTab
-          checked={checked || {}}
-          onboardingProfile={onboardingProfile}
-          domainScores={domainScores || {}}
-          dailyPct={dailyPct || 0}
-          streakCount={streakCount || 0}
-          triggerRate={triggerRate || 0}
-          setShowSignature={setShowSignature}
-          setOnboardingProfile={setOnboardingProfile}
-          exportNotes={exportNotes}
-          exportCSV={exportCSV}
-          exportBackup={exportBackup}/>}
+        {tab === 'analytics' && (
+          <PremiumGate
+            feature="analytics"
+            isPremium={isPremium}
+            session={session}
+            onShowAuth={() => setShowAuth(true)}
+          >
+            <AnalyticsTab
+              checked={checked || {}}
+              onboardingProfile={onboardingProfile}
+              domainScores={domainScores || {}}
+              dailyPct={dailyPct || 0}
+              streakCount={streakCount || 0}
+              triggerRate={triggerRate || 0}
+              setShowSignature={setShowSignature}
+              setOnboardingProfile={setOnboardingProfile}
+              exportNotes={exportNotes}
+              exportCSV={exportCSV}
+              exportBackup={exportBackup}/>
+          </PremiumGate>
+        )}
 
 
         {tab === 'insights' && (
-          <div>
-            <WeeklyIntelligenceReport
-              checked={checked || {}}
-              dayStatus={dayStatus}
-              domainScores={domainScores || {}}
-            />
-            <div style={{ marginTop: 24 }}>
-              <PredictiveIntelligencePanel
+          <PremiumGate
+            feature="insights"
+            isPremium={isPremium}
+            session={session}
+            onShowAuth={() => setShowAuth(true)}
+          >
+            <div>
+              <WeeklyIntelligenceReport
+                checked={checked || {}}
+                dayStatus={dayStatus}
+                domainScores={domainScores || {}}
+              />
+              <div style={{ marginTop: 24 }}>
+                <PredictiveIntelligencePanel
+                  checked={checked || {}}
+                  dayStatus={dayStatus}
+                  domainScores={domainScores || {}}
+                />
+              </div>
+              <AnalyticsIntelligenceLayer
                 checked={checked || {}}
                 dayStatus={dayStatus}
                 domainScores={domainScores || {}}
               />
             </div>
-            <AnalyticsIntelligenceLayer
-              checked={checked || {}}
-              dayStatus={dayStatus}
-              domainScores={domainScores || {}}
-            />
-          </div>
+          </PremiumGate>
         )}
 
         {(tab === 'frequency') && <FrequencyLayer
