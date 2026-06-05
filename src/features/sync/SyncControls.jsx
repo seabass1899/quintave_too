@@ -26,8 +26,18 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   const [message, setMessage]   = useState('')
   const [cloudState, setCloudState] = useState(null) // holds loaded state pending confirmation
   const [syncLabel, setSyncLabel]   = useState(getLastSyncLabel())
+  // Local ready state — unblocks after 5s even if authReady prop never arrives
+  const [localReady, setLocalReady] = useState(false)
 
   const user = session?.user
+
+  // Unblock after 5s regardless of authReady prop — prevents permanent stuck state
+  useState(() => {
+    const t = setTimeout(() => setLocalReady(true), 5000)
+    return () => clearTimeout(t)
+  })
+
+  const isReady = authReady || localReady
 
   // Auto-sync on mount when signed in — silent background push
   useEffect(() => {
@@ -128,7 +138,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   }
 
   // ── Render: not ready ──
-  if (!authReady) {
+  if (!isReady) {
     return (
       <button disabled style={ghostBtn}>Cloud…</button>
     )
