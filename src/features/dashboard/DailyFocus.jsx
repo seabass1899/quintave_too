@@ -9,6 +9,220 @@ import { savePracticeRating, getPracticeRating } from '../intelligence/behaviora
 import { trackEvent } from '../../app/utils/analytics'
 import PhaseReadCards from '../../components/PhaseReadCards'
 
+// ── Day 1 Experience ──────────────────────────────────────────────────────────
+
+const DOMAIN_NAMES_D1 = { d1: 'Source', d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
+const DOMAIN_COLORS_D1 = { d1: '#7F77DD', d2: '#1D9E75', d3: '#BA7517', d4: '#378ADD', d5: '#E24B4A' }
+
+/**
+ * Detects how many total days a user has completed at least one practice.
+ * Used to determine if this is a Day 1 / early user experience.
+ */
+function getActiveDayCount(checked = {}) {
+  return Object.values(checked).filter(day =>
+    Object.values(day || {}).some(Boolean)
+  ).length
+}
+
+/**
+ * Gets total completed practices across all time.
+ */
+function getTotalCompleted(checked = {}) {
+  return Object.values(checked).reduce((total, day) =>
+    total + Object.values(day || {}).filter(Boolean).length, 0
+  )
+}
+
+/**
+ * Day 1 Welcome Card — shown to brand new users before any practices.
+ * Explains what the app does, what to do first, and what to expect.
+ */
+function Day1WelcomeCard({ userName, primaryDomain, isMobile }) {
+  const [dismissed, setDismissed] = React.useState(() => {
+    try { return localStorage.getItem('q_day1_dismissed') === 'true' } catch { return false }
+  })
+
+  if (dismissed) return null
+
+  const domainName = DOMAIN_NAMES_D1[primaryDomain] || 'your primary body'
+  const domainColor = DOMAIN_COLORS_D1[primaryDomain] || '#7F77DD'
+  const firstName = userName?.trim().split(' ')[0] || 'there'
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #1a1a18 0%, #2a2822 100%)',
+      borderRadius: 16,
+      padding: isMobile ? '20px 18px' : '24px 24px',
+      marginBottom: 16,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Subtle background glow */}
+      <div style={{
+        position: 'absolute', top: -40, right: -40,
+        width: 160, height: 160,
+        background: `${domainColor}20`,
+        borderRadius: '50%',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Header */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+          ✦ Welcome to Quintave
+        </div>
+        <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 900, color: '#fff', lineHeight: 1.3, marginBottom: 8 }}>
+          Good to have you here, {firstName}.
+        </div>
+        <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.6 }}>
+          Your coherence assessment showed <span style={{ color: domainColor, fontWeight: 700 }}>{domainName}</span> as your primary alignment point today. The practices below are selected specifically for your current state.
+        </div>
+      </div>
+
+      {/* What to do */}
+      <div style={{
+        background: 'rgba(255,255,255,0.06)',
+        borderRadius: 10,
+        padding: '12px 14px',
+        marginBottom: 14,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: domainColor, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
+          Start here
+        </div>
+        <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.55 }}>
+          Complete your <strong style={{ color: '#fff' }}>Morning practices</strong> first. That single action sets the signal for the entire day. You only need 2 practices to meet today's minimum.
+        </div>
+      </div>
+
+      {/* What builds over time */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        {[
+          { day: 'Day 3', label: 'Your first weekly pattern report unlocks' },
+          { day: 'Day 7', label: 'The AI adapts your plan based on your behavior' },
+          { day: 'Day 14', label: 'Full behavioral intelligence — the system knows you' },
+        ].map(item => (
+          <div key={item.day} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{
+              background: `${domainColor}20`,
+              color: domainColor,
+              borderRadius: 99,
+              padding: '2px 8px',
+              fontSize: 10,
+              fontWeight: 800,
+              flexShrink: 0,
+            }}>{item.day}</span>
+            <span style={{ fontSize: 12, color: '#888' }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Dismiss */}
+      <button
+        onClick={() => {
+          try { localStorage.setItem('q_day1_dismissed', 'true') } catch {}
+          setDismissed(true)
+        }}
+        style={{
+          background: domainColor,
+          color: '#fff',
+          border: 'none',
+          borderRadius: 99,
+          padding: '9px 20px',
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: 'pointer',
+          width: '100%',
+        }}
+      >
+        Got it — show me my practices
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Early user baseline indicator — Day X of 7 progress bar.
+ * Shows during the first 7 days to set expectations.
+ */
+function BaselineProgressBar({ activeDayCount, isMobile }) {
+  const target = 7
+  const pct = Math.min(100, Math.round((activeDayCount / target) * 100))
+  const remaining = Math.max(0, target - activeDayCount)
+
+  if (activeDayCount === 0 || activeDayCount >= target) return null
+
+  return (
+    <div style={{
+      background: '#F8F7F4',
+      border: '0.5px solid rgba(0,0,0,0.08)',
+      borderRadius: 10,
+      padding: isMobile ? '10px 14px' : '11px 16px',
+      marginBottom: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 10, color: '#7F77DD', fontWeight: 900 }}>◈</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#3C3489' }}>
+            Building your baseline
+          </span>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>
+          Day {activeDayCount} of {target}
+        </span>
+      </div>
+      <div style={{ background: '#E8E6FC', borderRadius: 99, height: 4, marginBottom: 7 }}>
+        <div style={{
+          width: `${pct}%`,
+          height: 4,
+          background: '#7F77DD',
+          borderRadius: 99,
+          transition: 'width 0.4s ease',
+        }} />
+      </div>
+      <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5 }}>
+        {remaining === 1
+          ? 'One more aligned day unlocks your full intelligence profile.'
+          : `${remaining} more aligned days — then the AI begins adapting to your specific patterns.`}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Empty state for intelligence sections when user has no data yet.
+ */
+function IntelligenceComingSoon({ title, description, unlockDay, isMobile }) {
+  return (
+    <div style={{
+      background: '#F8F7F4',
+      border: '0.5px dashed rgba(0,0,0,0.12)',
+      borderRadius: 12,
+      padding: isMobile ? '16px 14px' : '18px 18px',
+      textAlign: 'center',
+      marginBottom: 12,
+    }}>
+      <div style={{ fontSize: 20, marginBottom: 10, opacity: 0.3 }}>◈</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#555', marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 12, color: '#888', lineHeight: 1.55, marginBottom: 10, maxWidth: 260, margin: '0 auto 10px' }}>
+        {description}
+      </div>
+      {unlockDay && (
+        <span style={{
+          background: '#F3F1FF',
+          color: '#7F77DD',
+          border: '0.5px solid #7F77DD30',
+          borderRadius: 99,
+          padding: '3px 10px',
+          fontSize: 10,
+          fontWeight: 800,
+        }}>
+          Unlocks Day {unlockDay}
+        </span>
+      )}
+    </div>
+  )
+}
+
 const STRATEGY_LABELS = {
   recovery_first: 'Recovery and stabilization',
   stabilize_blocker: 'Stabilize the weakest frequency body',
@@ -1351,7 +1565,7 @@ function PatternBreakNotice({ plan }) {
   )
 }
 
-export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false, onOpenProgress = null }) {
+export default function DailyFocus({ checked = {}, setChecked, domainScores = {}, onBreathwork, selectedPhaseOverride = null, onPhaseSelect = null, isMobileProp = false, onOpenProgress = null, onboardingProfile = null }) {
   const today = getDateKey(new Date())
   const [selectedPhase, setSelectedPhase] = useState(selectedPhaseOverride)
   const [lastFeedback, setLastFeedback] = useState(null)
@@ -1443,6 +1657,19 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   }
 
   // Coach messages — must be declared before any JSX that references them
+  // ── Day 1 / Early User Detection ──────────────────────────────────────────
+  const activeDayCount = React.useMemo(() => getActiveDayCount(checked), [checked])
+  const totalCompleted = React.useMemo(() => getTotalCompleted(checked), [checked])
+  const isDay1 = activeDayCount === 0 && totalCompleted === 0
+  const isEarlyUser = activeDayCount < 7
+  // Weakest domain from onboarding scores — used for Day 1 welcome card
+  const primaryOnboardingDomain = React.useMemo(() => {
+    const scores = onboardingProfile?.scores || {}
+    const entries = Object.entries(scores).filter(([id]) => id !== 'd1')
+    if (!entries.length) return 'd4'
+    return entries.sort(([,a],[,b]) => a - b)[0][0]
+  }, [onboardingProfile])
+
   const coachMessage = React.useMemo(() => {
     try { return getDailyCoachMessage(plan, dayStatus, domainScores) } catch { return null }
   }, [plan?.currentPhase, plan?.streak?.current, plan?.adaptations?.length])
@@ -1619,6 +1846,16 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
     )}
 
     <AdaptiveIntelligenceBadge plan={plan} isMobile={isMobile} />
+    {isDay1 && (
+      <Day1WelcomeCard
+        userName={onboardingProfile?.userName}
+        primaryDomain={primaryOnboardingDomain}
+        isMobile={isMobile}
+      />
+    )}
+    {!isDay1 && isEarlyUser && (
+      <BaselineProgressBar activeDayCount={activeDayCount} isMobile={isMobile} />
+    )}
     <PatternBreakCoachCard message={patternBreakMessage} />
     <DailyCoachCard message={coachMessage} isMobile={isMobile} />
     <CausalNarrativeCard message={causalNarrative} isMobile={isMobile} />
@@ -1818,8 +2055,9 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
         </div>
       )}
 
-      {activePhase.items.map(item => {
+      {activePhase.items.map((item, itemIndex) => {
         const isExpanded = expandedPractice === item.key
+        const isFirstPractice = isDay1 && itemIndex === 0 && !item.isDone
         return (
         <div className="practice-row" key={`${activePhase.id}-${item.key}`} style={{
           display: 'flex',
@@ -1828,8 +2066,27 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
           padding: isMobile ? (item.priority === 'Critical' ? '6px 0' : '4px 0') : (item.priority === 'Critical' ? '13px 0' : '11px 0'),
           borderBottom: bdr,
           background: item.priority === 'Critical' && !item.isDone ? 'linear-gradient(90deg, rgba(216,90,48,0.055), transparent 60%)' : 'transparent',
-          borderRadius: item.priority === 'Critical' ? 10 : 0
+          borderRadius: item.priority === 'Critical' ? 10 : 0,
+          outline: isFirstPractice ? '2px solid #7F77DD' : 'none',
+          outlineOffset: isFirstPractice ? 6 : 0,
+          position: 'relative',
         }}>
+          {isFirstPractice && (
+            <div style={{
+              position: 'absolute',
+              top: -20,
+              left: 0,
+              fontSize: 10,
+              fontWeight: 800,
+              color: '#7F77DD',
+              background: '#F3F1FF',
+              padding: '2px 8px',
+              borderRadius: 99,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              zIndex: 1,
+            }}>◈ Start here</div>
+          )}
           <button className="practice-check tap-target" onClick={() => handleCheck(item)} disabled={isMissedToday}
             title={isMissedToday ? 'This day is closed as missed. Resume alignment tomorrow.' : item.isDone ? 'Mark incomplete' : 'Mark complete'}
             style={{
