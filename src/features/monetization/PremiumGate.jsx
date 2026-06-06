@@ -12,8 +12,8 @@ import ReactDOM from 'react-dom'
 
 // ── Stripe checkout URL — replace with your actual Stripe URL ─────────────────
 // Monthly: $9.99 | Annual: $79 (update after Stripe setup)
-const STRIPE_MONTHLY_URL = 'https://buy.stripe.com/REPLACE_WITH_YOUR_MONTHLY_URL'
-const STRIPE_ANNUAL_URL  = 'https://buy.stripe.com/REPLACE_WITH_YOUR_ANNUAL_URL'
+const STRIPE_MONTHLY_URL = 'https://buy.stripe.com/14AdR1by3ctf6730mhgUM06'
+const STRIPE_ANNUAL_URL  = 'https://buy.stripe.com/4gM9ALgSndxjdzv1qlgUM05'
 
 // ── Feature definitions for each gated section ───────────────────────────────
 const GATE_CONTENT = {
