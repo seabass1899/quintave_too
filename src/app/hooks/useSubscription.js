@@ -2,26 +2,40 @@
  * useSubscription.js
  * src/app/hooks/useSubscription.js
  *
- * Reads subscription status from Supabase user_state.
- * Returns isPremium flag and upgrade helper.
+ * Reads subscription status from the server-only `subscriptions` table.
  *
- * During beta: all users get premium access (isPremium = true).
- * Flip BETA_FREE_PREMIUM to false when ready to enforce the gate.
+ * SECURITY: entitlements are NEVER writable from the client. The `subscriptions`
+ * table has RLS that allows the owner to SELECT their row only — there is no
+ * write policy for the authenticated/anon roles. Only the Stripe webhook
+ * (service-role key) writes it. The old client-side `grantPremium` helper has
+ * been removed for this reason; do not re-add it.
+ *
+ * BETA_FREE_PREMIUM is a BUILD-TIME global override (not user-controllable).
+ * Leave it false in production.
  */
 
 import { useState, useEffect } from 'react'
-import { supabase, loadCloudState } from '../supabaseClient'
+import { supabase } from '../supabaseClient'
 
-// ── Set to false when ready to enforce premium gate ──────────────────────────
+// ── Build-time override. Keep false in production. ───────────────────────────
 const BETA_FREE_PREMIUM = false
 
+function deriveAccess(row) {
+  const tier = row?.tier || 'free'
+  const status = row?.status || 'active'
+  const isPremium = (tier === 'premium' || tier === 'trial') && status !== 'canceled'
+  return { tier, isPremium }
+}
+
 export function useSubscription(session) {
-  const [isPremium,  setIsPremium]  = useState(BETA_FREE_PREMIUM)
-  const [isLoading,  setIsLoading]  = useState(false)
-  const [tier,       setTier]       = useState(BETA_FREE_PREMIUM ? 'premium' : 'free')
+  const [isPremium, setIsPremium] = useState(BETA_FREE_PREMIUM)
+  const [isLoading, setIsLoading] = useState(false)
+  const [tier, setTier]           = useState(BETA_FREE_PREMIUM ? 'premium' : 'free')
 
   useEffect(() => {
-    // During beta — everyone is premium
+    let cancelled = false
+
+    // Build-time beta override — everyone is premium.
     if (BETA_FREE_PREMIUM) {
       setIsPremium(true)
       setTier('premium')
@@ -37,31 +51,37 @@ export function useSubscription(session) {
     }
 
     setIsLoading(true)
-    loadCloudState(session.user.id)
-      .then(data => {
-        const sub = data?.subscription || 'free'
-        setTier(sub)
-        setIsPremium(sub === 'premium' || sub === 'trial')
+    supabase
+      .from('subscriptions')
+      .select('tier,status')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          // On any error, default to free — never accidentally grant premium.
+          setTier('free')
+          setIsPremium(false)
+          return
+        }
+        const { tier, isPremium } = deriveAccess(data)
+        setTier(tier)
+        setIsPremium(isPremium)
       })
       .catch(() => {
-        // On error default to free — never accidentally grant premium
+        if (cancelled) return
         setTier('free')
         setIsPremium(false)
       })
-      .finally(() => setIsLoading(false))
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => { cancelled = true }
   }, [session?.user?.id])
 
   return { isPremium, isLoading, tier }
 }
 
-/**
- * Grant premium access to a user — called after successful payment.
- * In production this should be handled server-side via Stripe webhook.
- */
-export async function grantPremium(userId) {
-  if (!supabase || !userId) return { error: 'No connection' }
-  const { error } = await supabase
-    .from('user_state')
-    .upsert({ user_id: userId, subscription: 'premium' }, { onConflict: 'user_id' })
-  return { error }
-}
+// NOTE: `grantPremium` was intentionally removed. Entitlements are granted only
+// by the Stripe webhook (service-role) writing to the `subscriptions` table.
