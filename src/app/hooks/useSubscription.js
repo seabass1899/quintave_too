@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react'
 import { supabase, loadCloudState } from '../supabaseClient'
 
 // ── Set to false when ready to enforce premium gate ──────────────────────────
-const BETA_FREE_PREMIUM = true
+const BETA_FREE_PREMIUM = false
 
 export function useSubscription(session) {
   const [isPremium,  setIsPremium]  = useState(BETA_FREE_PREMIUM)
