@@ -1,87 +1,132 @@
 import { useState } from 'react'
-import { signInWithMagicLink } from '../../app/supabaseClient'
+import { sendSignInCode, verifySignInCode } from '../../app/supabaseClient'
 
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
-export default function AuthBox({ onSkip }) {
+export default function AuthBox({ onSkip, onSignedIn }) {
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [step, setStep] = useState('email')   // 'email' | 'code'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [resent, setResent] = useState(false)
 
-  async function signIn() {
+  async function sendCode() {
     if (!email.trim() || !email.includes('@')) {
       setError('Please enter a valid email address.')
       return
     }
-
     setLoading(true)
     setError(null)
-
-    const { error } = await signInWithMagicLink(email.trim())
-
+    const { error } = await sendSignInCode(email.trim())
     setLoading(false)
     if (error) setError(error.message)
-    else setSent(true)
+    else setStep('code')
   }
 
-  const shell = {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 99999,
-    minHeight: '100vh',
-    background: '#F4F3F0',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    overflowY: 'auto'
+  async function resendCode() {
+    setError(null)
+    const { error } = await sendSignInCode(email.trim())
+    if (error) setError(error.message)
+    else { setResent(true); setTimeout(() => setResent(false), 4000) }
   }
 
-  if (sent) {
+  async function verify() {
+    const clean = code.replace(/\s/g, '')
+    if (clean.length < 6) {
+      setError('Enter the 6-digit code from your email.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    const { data, error } = await verifySignInCode(email.trim(), clean)
+    setLoading(false)
+    if (error) {
+      setError(error.message || 'That code is invalid or expired. Try again.')
+      return
+    }
+    // Session is now established in THIS browser.
+    if (onSignedIn) onSignedIn(data?.session ?? null)
+  }
+
+  // ── Step 2: enter the code ──────────────────────────────────────────────────
+  if (step === 'code') {
     return (
-      <div style={shell}>
-        <div style={{ maxWidth:440, width:'100%', textAlign:'center' }}>
-          <div style={{ fontSize:48, marginBottom:20 }}>✦</div>
-          <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.02em', marginBottom:12 }}>Check your email</div>
-          <div style={{ fontSize:14, color:'#5F5E5A', lineHeight:1.7, marginBottom:24 }}>
-            We sent a magic link to <strong>{email}</strong>.<br/>
-            Click the link to sign in and sync your data across devices.
+      <div style={{ minHeight:'100vh', background:'#F4F3F0', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+        <div style={{ maxWidth:440, width:'100%' }}>
+          <div style={{ textAlign:'center', marginBottom:28 }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>✦</div>
+            <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.02em', marginBottom:8 }}>Enter your code</div>
+            <div style={{ fontSize:14, color:'#5F5E5A', lineHeight:1.7 }}>
+              We sent a 6-digit code to <strong>{email}</strong>.<br/>
+              Enter it below to sign in.
+            </div>
           </div>
-          <div style={{ background:'#EEEDFE', borderRadius:12, padding:'14px 18px', marginBottom:24, fontSize:13, color:'#3C3489', lineHeight:1.6 }}>
-            No password needed. After signing in, return to Quintave and use Cloud Sync from the top bar.
-          </div>
-          {onSkip && (
-            <button onClick={onSkip}
-              style={{ fontSize:13, color:'#888', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
-              Continue without signing in
+
+          <div style={{ background:'#fff', borderRadius:16, border:bdr, padding:'28px', marginBottom:16 }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+              onKeyDown={e => e.key === 'Enter' && verify()}
+              placeholder="123456"
+              autoFocus
+              style={{ width:'100%', fontSize:24, letterSpacing:'0.4em', textAlign:'center', padding:'14px', borderRadius:10, border: error ? '1.5px solid #E24B4A' : bdr, background:'#F7F6F3', fontFamily:'inherit', outline:'none', marginBottom:12, boxSizing:'border-box' }}
+            />
+
+            {error && <div style={{ fontSize:12, color:'#E24B4A', marginBottom:10 }}>{error}</div>}
+
+            <button
+              onClick={verify}
+              disabled={loading}
+              style={{ width:'100%', padding:'13px', borderRadius:10, border:'none', background: loading ? '#888' : '#1a1a18', color:'#fff', fontSize:14, fontWeight:600, cursor: loading ? 'default' : 'pointer', marginBottom:14 }}>
+              {loading ? 'Verifying...' : 'Verify & sign in'}
             </button>
-          )}
+
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12 }}>
+              <button onClick={() => { setStep('email'); setCode(''); setError(null) }}
+                style={{ color:'#888', background:'none', border:'none', cursor:'pointer' }}>
+                ← Use a different email
+              </button>
+              <button onClick={resendCode}
+                style={{ color:'#3C3489', background:'none', border:'none', cursor:'pointer', fontWeight:500 }}>
+                {resent ? 'Code sent ✓' : 'Resend code'}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ background:'#EEEDFE', borderRadius:12, padding:'12px 16px', fontSize:12, color:'#3C3489', lineHeight:1.6, textAlign:'center' }}>
+            Tip: the code works in this browser even if you opened the email somewhere else.
+          </div>
         </div>
       </div>
     )
   }
 
+  // ── Step 1: enter email ───────────────────────────────────────────────────────
   return (
-    <div style={shell}>
+    <div style={{ minHeight:'100vh', background:'#F4F3F0', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
       <div style={{ maxWidth:440, width:'100%' }}>
+
         <div style={{ textAlign:'center', marginBottom:32 }}>
           <div style={{ fontSize:48, marginBottom:12 }}>✦</div>
           <div style={{ fontSize:26, fontWeight:700, letterSpacing:'-0.03em', marginBottom:6 }}>Quintave</div>
-          <div style={{ fontSize:14, color:'#888' }}>Five frequency bodies. One daily alignment.</div>
+          <div style={{ fontSize:14, color:'#888' }}>Five frequency bodies. One daily tuning practice.</div>
         </div>
 
         <div style={{ background:'#fff', borderRadius:16, border:bdr, padding:'28px', marginBottom:16 }}>
           <div style={{ fontSize:16, fontWeight:600, marginBottom:6 }}>Sync your data</div>
           <div style={{ fontSize:13, color:'#5F5E5A', lineHeight:1.6, marginBottom:20 }}>
-            Enter your email to back up your progress and access your alignment data across devices.
+            Enter your email to access your coherence data across all your devices. We'll send you a 6-digit sign-in code — no password needed.
           </div>
 
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && signIn()}
+            onKeyDown={e => e.key === 'Enter' && sendCode()}
             placeholder="your@email.com"
             style={{ width:'100%', fontSize:14, padding:'12px 14px', borderRadius:10, border: error ? '1.5px solid #E24B4A' : bdr, background:'#F7F6F3', fontFamily:'inherit', outline:'none', marginBottom:10, boxSizing:'border-box' }}
           />
@@ -89,19 +134,19 @@ export default function AuthBox({ onSkip }) {
           {error && <div style={{ fontSize:12, color:'#E24B4A', marginBottom:10 }}>{error}</div>}
 
           <button
-            onClick={signIn}
+            onClick={sendCode}
             disabled={loading}
             style={{ width:'100%', padding:'13px', borderRadius:10, border:'none', background: loading ? '#888' : '#1a1a18', color:'#fff', fontSize:14, fontWeight:600, cursor: loading ? 'default' : 'pointer' }}>
-            {loading ? 'Sending...' : 'Send magic link'}
+            {loading ? 'Sending...' : 'Send sign-in code'}
           </button>
         </div>
 
         <div style={{ background:'#fff', borderRadius:16, border:bdr, padding:'20px 24px', marginBottom:16 }}>
           <div style={{ fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.07em', color:'#888', marginBottom:14 }}>Why sign in?</div>
           {[
-            ['◈', 'Sync across devices', 'Your alignment history is available on every device.'],
-            ['✦', 'Protect your progress', 'Your local state can be backed up to your Supabase project.'],
-            ['∿', 'Restore when needed', 'Load a cloud backup if local browser data is cleared.'],
+            ['◈', 'Sync across devices', 'Your practices available on every device'],
+            ['✦', 'Never lose your data', 'Your coherence history is safely backed up'],
+            ['∿', 'Pick up where you left off', 'Switch from phone to laptop seamlessly'],
           ].map(([icon, title, desc], i) => (
             <div key={i} style={{ display:'flex', gap:12, marginBottom: i < 2 ? 14 : 0 }}>
               <div style={{ fontSize:18, flexShrink:0, width:28, textAlign:'center' }}>{icon}</div>
@@ -120,7 +165,7 @@ export default function AuthBox({ onSkip }) {
               Continue without signing in →
             </button>
             <div style={{ fontSize:11, color:'#aaa', marginTop:6 }}>
-              Your data stays local. You can sign in later from Cloud Sync.
+              Your data stays local only. You can sign in later from Settings.
             </div>
           </div>
         )}
