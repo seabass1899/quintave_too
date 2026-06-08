@@ -10,10 +10,14 @@
 import React, { useState } from 'react'
 import ReactDOM from 'react-dom'
 
-// ── Stripe checkout URL — replace with your actual Stripe URL ─────────────────
-// Monthly: $9.99 | Annual: $79 (update after Stripe setup)
-const STRIPE_MONTHLY_URL = 'https://buy.stripe.com/14AdR1by3ctf6730mhgUM06'
-const STRIPE_ANNUAL_URL  = 'https://buy.stripe.com/4gM9ALgSndxjdzv1qlgUM05'
+// ── Stripe checkout URLs (Payment Links) ─────────────────────────────────────
+// Set per environment via Vite env vars so test/live is a config change, not a
+// code edit. Local: .env.local · Production: Vercel → Settings → Environment
+// Variables. Payment Link URLs are not secret, so VITE_ exposure is fine.
+//   VITE_STRIPE_MONTHLY_URL=https://buy.stripe.com/test_...   (monthly $9.99)
+//   VITE_STRIPE_ANNUAL_URL=https://buy.stripe.com/test_...    (annual $79)
+const STRIPE_MONTHLY_URL = import.meta.env.VITE_STRIPE_MONTHLY_URL || ''
+const STRIPE_ANNUAL_URL  = import.meta.env.VITE_STRIPE_ANNUAL_URL || ''
 
 // ── Feature definitions for each gated section ───────────────────────────────
 const GATE_CONTENT = {
@@ -57,12 +61,36 @@ const GATE_CONTENT = {
 
 // ── Upgrade Modal ─────────────────────────────────────────────────────────────
 
-function UpgradeModal({ onClose }) {
+function UpgradeModal({ onClose, session }) {
   const [billing, setBilling] = useState('annual')
 
   const handleUpgrade = () => {
-    const url = billing === 'annual' ? STRIPE_ANNUAL_URL : STRIPE_MONTHLY_URL
-    window.open(url, '_blank')
+    const base = billing === 'annual' ? STRIPE_ANNUAL_URL : STRIPE_MONTHLY_URL
+    const uid = session?.user?.id
+    const email = session?.user?.email
+
+    if (!base) {
+      console.error('Stripe checkout URL is not configured (VITE_STRIPE_*_URL).')
+      alert('Checkout is temporarily unavailable. Please try again later.')
+      return
+    }
+
+    // The webhook maps the payment back to a user via client_reference_id.
+    // Without it, checkout.session.completed cannot be attributed and premium
+    // is never granted — so never open an unattributable checkout.
+    if (!uid) {
+      alert('Please sign in before upgrading.')
+      onClose?.()
+      return
+    }
+
+    const params = new URLSearchParams({ client_reference_id: uid })
+    if (email) params.set('prefilled_email', email)
+    window.open(`${base}?${params.toString()}`, '_blank')
+
+    // Tell useSubscription to start polling — the webhook grants premium a beat
+    // later, so this lets the gate unlock without a manual page reload.
+    window.dispatchEvent(new Event('quintave:checkout-started'))
   }
 
   const modal = (
@@ -333,7 +361,7 @@ export default function PremiumGate({ feature, isPremium, session, onShowAuth, c
         </div>
       </div>
 
-      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+      {showUpgrade && <UpgradeModal session={session} onClose={() => setShowUpgrade(false)} />}
     </>
   )
 }
