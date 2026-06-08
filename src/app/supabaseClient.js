@@ -15,7 +15,12 @@ export const supabase =
           detectSessionInUrl: true,
           persistSession: true,
           autoRefreshToken: true,
-          flowType: 'pkce',
+          // Implicit flow (not PKCE): PKCE needs the same browser that
+          // requested the link to also open it (it stores a code verifier
+          // locally). Magic links opened from an email client / different
+          // browser break PKCE. Implicit flow returns the token directly and
+          // works regardless of which browser opens the link.
+          flowType: 'implicit',
         },
       })
     : null
