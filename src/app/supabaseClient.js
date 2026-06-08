@@ -10,16 +10,11 @@ export const supabase =
   supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
-          // Required for magic links: read the token Supabase appends to the
-          // redirect URL and exchange it for a session on load.
+          // Read any token present in the URL (kept for backward compatibility
+          // with old magic links). With OTP-code sign-in this is rarely used.
           detectSessionInUrl: true,
           persistSession: true,
           autoRefreshToken: true,
-          // Implicit flow (not PKCE): PKCE needs the same browser that
-          // requested the link to also open it (it stores a code verifier
-          // locally). Magic links opened from an email client / different
-          // browser break PKCE. Implicit flow returns the token directly and
-          // works regardless of which browser opens the link.
           flowType: 'implicit',
         },
       })
@@ -27,15 +22,37 @@ export const supabase =
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
-export async function signInWithMagicLink(email) {
+/**
+ * Send a 6-digit sign-in code (and/or magic link) to the user's email.
+ * The user types the code back into the app in the SAME browser/tab, which
+ * sidesteps the cross-browser problem magic links have.
+ */
+export async function sendSignInCode(email) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
+      shouldCreateUser: true,
       emailRedirectTo: window.location.origin,
-    }
+    },
   })
   return { error }
 }
+
+/**
+ * Verify the 6-digit code the user typed. On success this establishes the
+ * session in THIS browser immediately — no redirect, no cross-browser issue.
+ */
+export async function verifySignInCode(email, token) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token: token.trim(),
+    type: 'email',
+  })
+  return { data, error }
+}
+
+// Back-compat alias so existing imports of signInWithMagicLink keep working.
+export const signInWithMagicLink = sendSignInCode
 
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
