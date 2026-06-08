@@ -1526,7 +1526,12 @@ export default function App() {
         }
       `}</style>
 
-      {showAuth && <AuthBox onSkip={() => setShowAuth(false)} />}
+      {showAuth && (
+  <AuthBox
+    onSkip={() => setShowAuth(false)}
+    onSignedIn={() => setShowAuth(false)}
+  />
+)}
       {showNoise && <NoiseAudit onClose={() => setShowNoise(false)}/>}
       {showPractitioner && (
         <div style={{ position:'fixed', inset:0, zIndex:700, overflowY:'auto' }}>
