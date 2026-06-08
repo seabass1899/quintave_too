@@ -1219,8 +1219,9 @@ export default function App() {
       })
 
     const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      if (!mounted) return
-      setSession(nextSession)
+  if (!mounted) return
+  setSession(nextSession)
+  if (nextSession) setShowAuth(false)   // ← add this line
 
       // Magic link click fires SIGNED_IN on a fresh tab — restore cloud data
       if (_event === 'SIGNED_IN' && nextSession?.user?.id && !hasLocalOnboarding()) {
