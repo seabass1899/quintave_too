@@ -8,7 +8,16 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase =
   supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          // Required for magic links: read the token Supabase appends to the
+          // redirect URL and exchange it for a session on load.
+          detectSessionInUrl: true,
+          persistSession: true,
+          autoRefreshToken: true,
+          flowType: 'pkce',
+        },
+      })
     : null
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
