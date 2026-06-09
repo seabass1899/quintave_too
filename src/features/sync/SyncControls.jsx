@@ -1,15 +1,14 @@
 /**
- * SyncControls.jsx — Sprint 6 hardened version
+ * SyncControls.jsx — hardened
  *
- * Changes from Sprint 4:
- * - window.confirm replaced with inline confirmation UI
- * - Last-synced timestamp displayed
- * - Auto-sync on mount when session is active
- * - Clearer status states (idle / syncing / success / error / confirming)
- * - applyCloudStateToLocal now receives confirmed=true flag
+ * Fixes:
+ *  - useState(fn) misuse replaced with a proper useEffect for the ready timer.
+ *  - handleSync always resets out of 'syncing' (success OR error), so the
+ *    "Saving…" label can never get stuck.
+ *  - A hard watchdog forces the button back to idle if a sync somehow hangs.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { signOut } from '../../app/supabaseClient'
 import {
   syncLocalStateToCloud,
@@ -21,25 +20,26 @@ import {
 const bdr = '0.5px solid rgba(0,0,0,0.08)'
 
 export default function SyncControls({ session, authReady, onShowAuth }) {
-  const [open, setOpen]         = useState(false)
-  const [status, setStatus]     = useState('idle') // idle | syncing | success | error | confirming
-  const [message, setMessage]   = useState('')
-  const [cloudState, setCloudState] = useState(null) // holds loaded state pending confirmation
+  const [open, setOpen]             = useState(false)
+  const [status, setStatus]         = useState('idle') // idle | syncing | success | error | confirming
+  const [message, setMessage]       = useState('')
+  const [cloudState, setCloudState] = useState(null)
   const [syncLabel, setSyncLabel]   = useState(getLastSyncLabel())
-  // Local ready state — unblocks after 5s even if authReady prop never arrives
   const [localReady, setLocalReady] = useState(false)
 
   const user = session?.user
+  const watchdogRef = useRef(null)
 
-  // Unblock after 5s regardless of authReady prop — prevents permanent stuck state
-  useState(() => {
+  // Unblock the "Cloud…" disabled state after 5s even if authReady never arrives.
+  // (This was incorrectly written as useState(fn) before — must be useEffect.)
+  useEffect(() => {
     const t = setTimeout(() => setLocalReady(true), 5000)
     return () => clearTimeout(t)
-  })
+  }, [])
 
   const isReady = authReady || localReady
 
-  // Auto-sync on mount when signed in — silent background push
+  // Auto-sync on mount when signed in — silent background push.
   useEffect(() => {
     if (!user?.id) return
     const doSilentSync = async () => {
@@ -50,30 +50,47 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
         // Silent — auto-sync failures don't surface to UI
       }
     }
-    // Delay 3s so app finishes loading first
     const timer = setTimeout(doSilentSync, 3000)
     return () => clearTimeout(timer)
   }, [user?.id])
 
-  // Update sync label every minute
   useEffect(() => {
     const timer = setInterval(() => setSyncLabel(getLastSyncLabel()), 60_000)
     return () => clearInterval(timer)
   }, [])
 
+  // Clear any pending watchdog on unmount.
+  useEffect(() => () => clearTimeout(watchdogRef.current), [])
+
+  function resetSoon() {
+    setTimeout(() => { setStatus('idle'); setMessage('') }, 3000)
+  }
+
   async function handleSync() {
     if (!user?.id) { onShowAuth?.(); return }
     setStatus('syncing')
     setMessage('')
+
+    // Watchdog: if the sync hasn't settled in 15s, stop showing "Saving…".
+    clearTimeout(watchdogRef.current)
+    watchdogRef.current = setTimeout(() => {
+      setStatus('error')
+      setMessage('Sync is taking too long — please try again.')
+      resetSoon()
+    }, 15000)
+
     try {
       await syncLocalStateToCloud(user.id)
+      clearTimeout(watchdogRef.current)
       setSyncLabel(getLastSyncLabel())
       setStatus('success')
       setMessage('Progress saved to cloud ✓')
-      setTimeout(() => { setStatus('idle'); setMessage('') }, 3000)
+      resetSoon()
     } catch (e) {
+      clearTimeout(watchdogRef.current)
       setStatus('error')
       setMessage(e?.message || 'Sync failed — check connection')
+      resetSoon()
     }
   }
 
@@ -88,7 +105,6 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
         setMessage('No cloud backup found')
         return
       }
-      // Instead of window.confirm — show inline confirmation UI
       setCloudState(state)
       setStatus('confirming')
       const syncedAt = state.updated_at
@@ -98,6 +114,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     } catch (e) {
       setStatus('error')
       setMessage(e?.message || 'Load failed — check connection')
+      resetSoon()
     }
   }
 
@@ -112,6 +129,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     } else {
       setStatus('error')
       setMessage('Restore failed — no data applied')
+      resetSoon()
     }
   }
 
@@ -124,7 +142,6 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   async function handleSignOut() {
     setStatus('syncing')
     try {
-      // Push one final sync before signing out
       if (user?.id) {
         try { await syncLocalStateToCloud(user.id) } catch {}
       }
@@ -134,14 +151,13 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     } catch (e) {
       setStatus('error')
       setMessage(e?.message || 'Sign out failed')
+      resetSoon()
     }
   }
 
   // ── Render: not ready ──
   if (!isReady) {
-    return (
-      <button disabled style={ghostBtn}>Cloud…</button>
-    )
+    return <button disabled style={ghostBtn}>Cloud…</button>
   }
 
   // ── Render: not signed in ──
@@ -156,10 +172,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   // ── Render: signed in ──
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        style={cloudBtn}
-      >
+      <button onClick={() => setOpen(v => !v)} style={cloudBtn}>
         ☁ {status === 'syncing' ? '…' : status === 'success' ? '✓' : 'Synced'}
       </button>
 
@@ -170,7 +183,6 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
           borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
           padding: 14,
         }}>
-          {/* Header */}
           <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', fontWeight: 800, marginBottom: 4 }}>
             Cloud sync
           </div>
@@ -181,50 +193,30 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
             {syncLabel}
           </div>
 
-          {/* Confirmation UI — replaces window.confirm */}
           {status === 'confirming' ? (
             <div style={{ background: '#FAEEDA', border: '1px solid #BA751730', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
               <div style={{ fontSize: 12, color: '#633806', lineHeight: 1.5, marginBottom: 10 }}>
                 ⚠ {message}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleCancelLoad} style={cancelBtn}>
-                  Cancel
-                </button>
-                <button onClick={handleConfirmLoad} style={confirmBtn}>
-                  Restore backup
-                </button>
+                <button onClick={handleCancelLoad} style={cancelBtn}>Cancel</button>
+                <button onClick={handleConfirmLoad} style={confirmBtn}>Restore backup</button>
               </div>
             </div>
           ) : (
             <>
-              <button
-                onClick={handleSync}
-                disabled={status === 'syncing'}
-                style={primaryBtn}
-              >
+              <button onClick={handleSync} disabled={status === 'syncing'} style={primaryBtn}>
                 {status === 'syncing' ? 'Saving…' : '↑ Save to cloud'}
               </button>
-
-              <button
-                onClick={handleLoadRequest}
-                disabled={status === 'syncing'}
-                style={secondaryBtn}
-              >
+              <button onClick={handleLoadRequest} disabled={status === 'syncing'} style={secondaryBtn}>
                 ↓ Load cloud backup
               </button>
-
-              <button
-                onClick={handleSignOut}
-                disabled={status === 'syncing'}
-                style={dangerBtn}
-              >
+              <button onClick={handleSignOut} disabled={status === 'syncing'} style={dangerBtn}>
                 Sign out
               </button>
             </>
           )}
 
-          {/* Status message */}
           {message && status !== 'confirming' && (
             <div style={{
               marginTop: 8, fontSize: 12, lineHeight: 1.45,
@@ -246,37 +238,31 @@ const ghostBtn = {
   background: '#fff', color: '#888', fontSize: 11,
   whiteSpace: 'nowrap', flexShrink: 0, cursor: 'not-allowed',
 }
-
 const cloudBtn = {
   padding: '5px 10px', borderRadius: 7, border: bdr,
   background: '#EEEDFE', color: '#3C3489', fontSize: 11,
   cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
 }
-
 const primaryBtn = {
   width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none',
   background: '#1a1a18', color: '#fff', fontSize: 12, fontWeight: 800,
   cursor: 'pointer', marginBottom: 8, textAlign: 'center',
 }
-
 const secondaryBtn = {
   width: '100%', padding: '9px 10px', borderRadius: 8, border: bdr,
   background: '#fff', color: '#1a1a18', fontSize: 12, fontWeight: 700,
   cursor: 'pointer', marginBottom: 8, textAlign: 'center',
 }
-
 const dangerBtn = {
   width: '100%', padding: '9px 10px', borderRadius: 8, border: bdr,
   background: '#fff', color: '#A32D2D', fontSize: 12, fontWeight: 700,
   cursor: 'pointer', marginBottom: 0, textAlign: 'center',
 }
-
 const cancelBtn = {
   flex: 1, padding: '8px', borderRadius: 8, border: bdr,
   background: '#fff', color: '#555', fontSize: 12,
   fontWeight: 700, cursor: 'pointer',
 }
-
 const confirmBtn = {
   flex: 2, padding: '8px', borderRadius: 8, border: 'none',
   background: '#1a1a18', color: '#fff', fontSize: 12,
