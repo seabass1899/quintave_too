@@ -10,13 +10,17 @@ export const supabase =
   supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
-          // Read any token present in the URL (kept for backward compatibility
-          // with old magic links). With OTP-code sign-in this is rarely used.
-          detectSessionInUrl: true,
           persistSession: true,
           autoRefreshToken: true,
-          flowType: 'implicit',
+          // OTP-code sign-in does not rely on a URL token, so URL detection is
+          // off — leaving it on (with implicit flow) was causing the client to
+          // queue queries behind an internal auth/session step and hang.
+          detectSessionInUrl: false,
         },
+        // We don't use Supabase Realtime. Disabling it removes a websocket the
+        // client otherwise keeps alive, which can interfere with request flow.
+        realtime: { params: { eventsPerSecond: 0 } },
+        global: { headers: { 'x-client-info': 'quintave-web' } },
       })
     : null
 
