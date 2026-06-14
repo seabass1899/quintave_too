@@ -1,10 +1,13 @@
 /**
- * useSubscription.js  (TEMPORARY DEBUG BUILD)
+ * useSubscription.js
  * src/app/hooks/useSubscription.js
  *
- * Same logic as before, plus console.log instrumentation so we can see at
- * runtime: when the fetch runs, what userId it sees, and what the query returns.
- * Remove the [SUB] logs once the issue is found.
+ * Reads subscription status from the server-only `subscriptions` table.
+ * Entitlements are written only by the Stripe webhook (service-role); the client
+ * can read its own row but never write it.
+ *
+ * Re-checks after checkout (poll) and when the user returns to the tab, so
+ * premium unlocks without a manual reload.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -31,29 +34,19 @@ export function useSubscription(session) {
   const pollingRef = useRef(false)
 
   const fetchSub = useCallback(async () => {
-    console.log('[SUB] fetchSub called. userId =', userId, '| supabase =', !!supabase)
     if (BETA_FREE_PREMIUM) { setIsPremium(true); setTier('premium'); return true }
-    if (!userId || !supabase) {
-      console.log('[SUB] no userId or no supabase → setting free')
-      setIsPremium(false); setTier('free'); return false
-    }
+    if (!userId || !supabase) { setIsPremium(false); setTier('free'); return false }
     try {
       const { data, error } = await supabase
         .from('subscriptions')
         .select('tier,status')
         .eq('user_id', userId)
         .maybeSingle()
-      console.log('[SUB] query result → data:', data, '| error:', error)
-      if (error) {
-        console.log('[SUB] query error → setting free:', error.message)
-        setTier('free'); setIsPremium(false); return false
-      }
+      if (error) { setTier('free'); setIsPremium(false); return false }
       const d = deriveAccess(data)
-      console.log('[SUB] derived →', d)
       setTier(d.tier); setIsPremium(d.isPremium)
       return d.isPremium
-    } catch (e) {
-      console.log('[SUB] exception → setting free:', e?.message)
+    } catch {
       setTier('free'); setIsPremium(false); return false
     }
   }, [userId])
@@ -61,7 +54,6 @@ export function useSubscription(session) {
   useEffect(() => {
     if (BETA_FREE_PREMIUM) { setIsLoading(false); return }
     let cancelled = false
-    console.log('[SUB] initial-load effect. userId =', userId)
     setIsLoading(true)
     fetchSub().finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
@@ -96,12 +88,6 @@ export function useSubscription(session) {
       window.removeEventListener('quintave:checkout-started', onCheckoutStarted)
     }
   }, [userId, poll])
-
-  // Expose for manual console testing: window.__checkSub()
-  useEffect(() => {
-    window.__checkSub = fetchSub
-    window.__subState = () => ({ isPremium: isPremiumRef.current, userId })
-  }, [fetchSub, userId])
 
   return { isPremium, isLoading, tier, refresh: fetchSub }
 }
