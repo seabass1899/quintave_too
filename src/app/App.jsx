@@ -1189,11 +1189,12 @@ export default function App() {
       } catch { return false }
     }
 
-    // Safety timeout — if session check hangs for 6s, unblock the UI anyway
-    // Prevents "Cloud..." stuck state for users with slow/broken Supabase connections
+    // Safety timeout — if session check hangs for 6s, unblock the UI anyway.
+    // Do NOT setSession(null) here: that was wiping a session that was merely
+    // slow to load. Just mark auth "ready" so the UI stops waiting; if a real
+    // session resolves afterward, onAuthStateChange/getSession will set it.
     const authTimeout = setTimeout(() => {
       if (mounted && !authReady) {
-        setSession(null)
         setAuthReady(true)
       }
     }, 6000)
@@ -1219,11 +1220,23 @@ export default function App() {
       })
 
     const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-  if (!mounted) return
-  setSession(nextSession)
-  if (nextSession) setShowAuth(false)   // ← add this line
+      if (!mounted) return
 
-      // Magic link click fires SIGNED_IN on a fresh tab — restore cloud data
+      // Only clear the session on an explicit sign-out. Other events
+      // (INITIAL_SESSION, TOKEN_REFRESHED, etc.) can arrive with a null
+      // session during load races — blindly setting null here was wiping a
+      // valid session and resetting premium to free.
+      if (_event === 'SIGNED_OUT') {
+        setSession(null)
+        return
+      }
+
+      if (nextSession) {
+        setSession(nextSession)
+        setShowAuth(false)
+      }
+
+      // Magic link / OTP sign-in fires SIGNED_IN on a fresh tab — restore cloud data
       if (_event === 'SIGNED_IN' && nextSession?.user?.id && !hasLocalOnboarding()) {
         await restoreFromCloud(nextSession.user.id)
       }
