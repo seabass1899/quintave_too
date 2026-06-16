@@ -1025,14 +1025,31 @@ export function createTodayPlanSnapshot(plan, date = new Date()) {
     decision: plan?.decision || null,
     phases: Object.fromEntries(
       Object.entries(plan?.phases || {}).map(([phaseId, phase]) => [phaseId, {
-        items: (phase.items || []).map(item => ({
-          key: item.key,
-          priority: item.priority,
-          why: item.why,
-        }))
+        // Store ONLY item.key. The `why` and `priority` fields are regenerated
+        // live by generateTodayPlan for today's plan, and no historical reader
+        // ever reads them from a stored snapshot — they only match on item.key.
+        // Storing them per-item per-day bloated each snapshot to ~16KB.
+        items: (phase.items || []).map(item => ({ key: item.key }))
       }])
     )
   }
+}
+
+/**
+ * Keep only the last `keepDays` of a date-keyed object (keys are toDateString()).
+ * Used to cap unbounded growth of q_today_plan. No reader looks back past 30 days,
+ * so 35 is a safe ceiling. Rebuilds the valid key set the same way readers do
+ * (getDateKey/getPreviousDateKey) rather than parsing the strings.
+ */
+export function pruneByRecentDays(obj, keepDays = 35, date = new Date()) {
+  if (!obj || typeof obj !== 'object') return obj
+  const valid = new Set([getDateKey(date)])
+  for (let i = 1; i <= keepDays; i++) valid.add(getPreviousDateKey(date, i))
+  const out = {}
+  for (const k of Object.keys(obj)) {
+    if (valid.has(k)) out[k] = obj[k]
+  }
+  return out
 }
 
 function isValidPlanSnapshot(snapshot, date = new Date()) {
