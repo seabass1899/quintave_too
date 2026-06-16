@@ -1162,6 +1162,20 @@ export default function App() {
   })
   const rippleTimer  = useRef(null)
   const milestoneTimer = useRef(null)
+  // Debounce timer for background sync — collapses rapid check-ins (and other
+  // edits) into a single cloud write ~1.5s after the user stops interacting,
+  // instead of firing one upsert per tap. Prevents overlapping syncs from
+  // queuing on the user_state row lock and tripping the "taking too long" watchdog.
+  const syncDebounceTimer = useRef(null)
+  const scheduleSync = React.useCallback(() => {
+    if (!session?.user?.id) return
+    clearTimeout(syncDebounceTimer.current)
+    syncDebounceTimer.current = setTimeout(() => {
+      silentSync(session.user.id)
+    }, 1500)
+  }, [session?.user?.id])
+  // Clear the pending debounce on unmount
+  React.useEffect(() => () => clearTimeout(syncDebounceTimer.current), [])
 
   useEffect(() => { trackAppOpen() }, [])
 
@@ -1356,10 +1370,10 @@ export default function App() {
     const wasChecked = !!todayChecks[pk]
     const newChecked = { ...checked, [today]: { ...(checked[today]||{}), [pk]: !wasChecked }}
     setChecked(newChecked)
-    // Sprint 6: silent background sync after every practice check-in
-    if (session?.user?.id) {
-      setTimeout(() => silentSync(session.user.id), 800)
-    }
+    // Background sync, debounced — collapses rapid check-ins into one cloud
+    // write after the user stops tapping (see scheduleSync). Replaces the old
+    // per-tap setTimeout that fired an independent sync on every checkbox.
+    scheduleSync()
     // Mark today as an active day in the streak calendar
     if (!wasChecked) {
       setWeekDays(prev => ({ ...prev, [today]: true }))
