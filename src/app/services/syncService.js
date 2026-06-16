@@ -12,6 +12,7 @@
 // on pull (explicit restore). Empty state is never pushed (guards against wipes).
 
 import { supabase, trackCloudEvent } from '../supabaseClient'
+import { pruneByRecentDays } from '../../features/today/todayEngine'
 
 const APP_VERSION = '1.1.0'
 const LAST_SYNC_KEY = 'q_last_sync'
