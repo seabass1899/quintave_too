@@ -69,72 +69,12 @@ export async function getSession() {
 }
 
 // ── State sync helpers ────────────────────────────────────────────────────────
-
-export function collectLocalState() {
-  const keys = {
-    onboarding:       'q_onboarding',
-    checked:          'q_checked',
-    notes:            'q_notes',
-    ratings:          'q_ratings',
-    metrics:          'q_metrics',
-    triggers:         'q_triggers',
-    day_status:       'q_day_status',
-    frequency_state:  'q_frequency_state',
-    practice_ratings: 'q_practice_ratings',
-    pattern_profile:  'q_pattern_profile',
-  }
-  const state = {}
-  Object.entries(keys).forEach(([field, lsKey]) => {
-    try {
-      const val = localStorage.getItem(lsKey)
-      if (val) state[field] = JSON.parse(val)
-    } catch {}
-  })
-  return state
-}
-
-export async function syncLocalStateToCloud(userId) {
-  const state = collectLocalState()
-  const { error } = await supabase
-    .from('user_state')
-    .upsert({
-      user_id: userId,
-      ...state,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' })
-  if (error) throw error
-}
-
-export async function loadCloudState(userId) {
-  const { data, error } = await supabase
-    .from('user_state')
-    .select('*')
-    .eq('user_id', userId)
-    .single()
-  if (error && error.code !== 'PGRST116') throw error
-  return data
-}
-
-export function applyCloudStateToLocal(state) {
-  if (!state) return
-  const keyMap = {
-    onboarding:       'q_onboarding',
-    checked:          'q_checked',
-    notes:            'q_notes',
-    ratings:          'q_ratings',
-    metrics:          'q_metrics',
-    triggers:         'q_triggers',
-    day_status:       'q_day_status',
-    frequency_state:  'q_frequency_state',
-    practice_ratings: 'q_practice_ratings',
-    pattern_profile:  'q_pattern_profile',
-  }
-  Object.entries(keyMap).forEach(([field, lsKey]) => {
-    if (state[field] !== undefined) {
-      try { localStorage.setItem(lsKey, JSON.stringify(state[field])) } catch {}
-    }
-  })
-}
+// NOTE: cloud sync now lives ENTIRELY in src/app/services/syncService.js
+// (single source of truth). The duplicate collectLocalState /
+// syncLocalStateToCloud / loadCloudState / applyCloudStateToLocal that used to
+// live here were removed — they wrote a different key set than syncService and
+// the two engines were overwriting each other's data. Import sync functions
+// from './services/syncService' instead.
 
 export async function saveFeedback(userId, message, context = {}) {
   const { error } = await supabase.from('feedback').insert({
