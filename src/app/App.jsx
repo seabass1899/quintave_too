@@ -26,8 +26,8 @@ import AnalyticsTab from '../features/analytics/AnalyticsTab'
 import FrequencyLayer from '../features/frequency/FrequencyLayer'
 import AuthBox from '../features/auth/AuthBox'
 import SyncControls from '../features/sync/SyncControls'
-import { supabase, getSession, loadCloudState, applyCloudStateToLocal, syncLocalStateToCloud } from './supabaseClient'
-import { silentSync } from './services/syncService'
+import { supabase, getSession } from './supabaseClient'
+import { silentSync, loadCloudState, applyCloudStateToLocal, syncLocalStateToCloud } from './services/syncService'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
 
@@ -1124,8 +1124,9 @@ export default function App() {
       setCloudRestoring(true)
       const cloudData = await loadCloudState(userId)
       if (cloudData) {
-        // Write all fields to localStorage first
-        applyCloudStateToLocal(cloudData)
+        // Write all fields to localStorage first. This is the fresh-device
+        // auto-restore path (no local data to overwrite), so confirmed=true.
+        applyCloudStateToLocal(cloudData, true)
         // Directly update React state — useLS won't re-read localStorage on its own
         if (cloudData.onboarding?.completedAt) {
           setOnboardingProfile(cloudData.onboarding)
