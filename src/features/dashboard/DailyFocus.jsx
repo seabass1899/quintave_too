@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom'
-import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION } from '../today/todayEngine'
+import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION, pruneByRecentDays } from '../today/todayEngine'
 import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile, predictTomorrow } from '../intelligence/patternLearningModel'
 import { getDailyCoachMessage, getPatternBreakMessage, getTomorrowCoachMessage, getCausalNarrativeMessage } from '../coach/coachEngine'
 import { DailyCoachCard, PatternBreakCoachCard, TomorrowCoachLine, CausalNarrativeCard } from '../coach/DailyCoachCard'
@@ -1621,10 +1621,11 @@ export default function DailyFocus({ checked = {}, setChecked, domainScores = {}
   useEffect(() => {
     const existing = todayPlans?.[today]
     if (existing?.version === TODAY_PLAN_VERSION && existing?.dateKey === today) return
-    setTodayPlans(prev => ({
-      ...(prev || {}),
-      [today]: createTodayPlanSnapshot(basePlan, new Date())
-    }))
+    setTodayPlans(prev => {
+      const next = { ...(prev || {}), [today]: createTodayPlanSnapshot(basePlan, new Date()) }
+      // Cap history so the plan store can't grow without bound (no reader looks past 30 days).
+      return pruneByRecentDays(next, 35, new Date())
+    })
   }, [today, todayPlans, basePlan, setTodayPlans])
 
   const plan = useMemo(() => {
