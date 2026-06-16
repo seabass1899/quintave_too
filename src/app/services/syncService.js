@@ -1,16 +1,61 @@
-// ─── syncService.js — sync local state to Supabase ───────────────────────────
+// ─── syncService.js — SINGLE source of truth for cloud sync ──────────────────
 //
-// Sprint 6: Complete sync audit and hardening
-//   - q_pattern_profile now included (behavioral learning data)
-//   - window.confirm removed — replaced with inline UI confirmation flag
-//   - Last-sync timestamp tracked in localStorage
-//   - Merge strategy: cloud wins on load, local wins on push
-//   - Single source of truth — supabaseClient.js collectLocalState removed
+// C1 fix: this is now the ONLY sync implementation. The duplicate functions in
+// supabaseClient.js have been removed; App.jsx imports everything from here.
+//
+// C2 fix: every durable localStorage key is synced. Keys that have their own
+// column in `user_state` are written there (backward-compatible); everything
+// else is bundled into the `extras` jsonb column so no future schema change is
+// needed when a new key is added.
+//
+// Strategy: local wins on push (the user's device is authoritative); cloud wins
+// on pull (explicit restore). Empty state is never pushed (guards against wipes).
 
 import { supabase, trackCloudEvent } from '../supabaseClient'
 
-const APP_VERSION = '1.0.0'
+const APP_VERSION = '1.1.0'
 const LAST_SYNC_KEY = 'q_last_sync'
+
+// Keys that map to dedicated columns on user_state (must exist in the table).
+// field name (column) -> localStorage key
+const COLUMN_KEYS = {
+  onboarding:      'q_onboarding',
+  checked:         'q_checked',
+  day_status:      'q_day_status',
+  metrics:         'q_metrics',
+  notes:           'q_notes',
+  ratings:         'q_ratings',
+  triggers:        'q_triggers',
+  frequency_state: 'q_frequency_state',
+  pattern_profile: 'q_pattern_profile',
+  directive:       'q_directive',
+  evening:         'q_evening',
+}
+
+// All OTHER durable keys — bundled into the `extras` jsonb column.
+// (Previously these were synced by NEITHER engine → lost on device switch.)
+const EXTRA_KEYS = [
+  'q_practice_ratings',
+  'q_exec',
+  'q_weekadj',
+  'q_week',
+  'q_milestones',
+  'q_weekly_review',
+  'q_active_program',
+  'q_program_history',
+  'q_noise_audits',
+  'q_today_plan',
+  'q_onboarding_history',
+  'q_midday_directive',
+  'q_midday_thought',
+  'q_notifs',
+  'q_day',
+]
+
+// Device-local / ephemeral keys that should NOT sync (intentionally excluded):
+//   q_tester_mode, q_session_id, q_version, q_last_sync, q_sync_prompt_dismissed,
+//   q_ftue_complete, q_selector_seed, q_tester_diagnostics, q_last_open_date,
+//   q_first_alignment_tracked_*, q_events, q_beta_feedback, q_feedback
 
 // ─── Safe helpers ─────────────────────────────────────────────────────────────
 
@@ -30,41 +75,43 @@ function safeSet(key, value) {
 // ─── State collection ─────────────────────────────────────────────────────────
 
 /**
- * Collect all local state that should be synced to cloud.
- * Includes q_pattern_profile so behavioral learning survives device switches.
+ * Collect all durable local state. Column-backed keys become top-level fields;
+ * everything else is gathered under `extras`.
  */
 export function collectLocalState() {
-  return {
-    onboarding:      safeParse('q_onboarding', null),
-    checked:         safeParse('q_checked', {}),
-    day_status:      safeParse('q_day_status', {}),
-    metrics:         safeParse('q_metrics', {}),
-    notes:           safeParse('q_notes', {}),
-    ratings:         safeParse('q_ratings', {}),
-    triggers:        safeParse('q_triggers', {}),
-    frequency_state: safeParse('q_frequency_state', {}),
-    // Sprint 6: behavioral learning data — critical for adaptive intelligence
-    pattern_profile: safeParse('q_pattern_profile', null),
-    directive:       safeParse('q_directive', {}),
-    evening:         safeParse('q_evening', {}),
+  const state = {}
+
+  // Column-backed fields
+  for (const [field, lsKey] of Object.entries(COLUMN_KEYS)) {
+    const raw = localStorage.getItem(lsKey)
+    if (raw != null) {
+      try { state[field] = JSON.parse(raw) } catch {}
+    }
   }
+
+  // Everything else → extras bundle
+  const extras = {}
+  for (const lsKey of EXTRA_KEYS) {
+    const raw = localStorage.getItem(lsKey)
+    if (raw != null) {
+      try { extras[lsKey] = JSON.parse(raw) } catch {}
+    }
+  }
+  state.extras = extras
+
+  return state
 }
 
 // ─── Push: local → cloud ──────────────────────────────────────────────────────
 
-/**
- * Push local state to cloud.
- * Strategy: local always wins on push (user's device is authoritative).
- * Never overwrites cloud with empty/null values.
- */
 export async function syncLocalStateToCloud(userId) {
   if (!supabase) throw new Error('Supabase not configured')
   if (!userId)   throw new Error('No user session')
 
   const state = collectLocalState()
 
-  // Don't push empty state — guard against wiping cloud data
-  const hasData = state.onboarding !== null ||
+  // Don't push empty state — guard against wiping cloud data.
+  const hasData = state.onboarding != null ||
     Object.keys(state.checked || {}).length > 0
 
   if (!hasData) {
@@ -85,18 +132,12 @@ export async function syncLocalStateToCloud(userId) {
 
   if (error) throw error
 
-  // Record last sync time locally
   safeSet(LAST_SYNC_KEY, new Date().toISOString())
-
   try { await trackCloudEvent(userId, 'sync_to_cloud', { version: APP_VERSION }) } catch {}
 }
 
 // ─── Pull: cloud → local ──────────────────────────────────────────────────────
 
-/**
- * Load cloud state for a user.
- * Returns null if no cloud backup exists.
- */
 export async function loadCloudState(userId) {
   if (!supabase) throw new Error('Supabase not configured')
   if (!userId)   throw new Error('No user session')
@@ -112,52 +153,37 @@ export async function loadCloudState(userId) {
 }
 
 /**
- * Apply cloud state to localStorage.
- * Strategy: cloud wins on pull (restoring from backup).
- *
- * IMPORTANT: window.confirm removed — caller must handle confirmation UI.
- * Pass confirmed=true only after user explicitly confirms the overwrite.
+ * Apply cloud state to localStorage. Cloud wins on pull.
+ * Requires confirmed=true (caller owns the confirmation UI).
+ * Restores both column-backed fields AND the extras bundle.
  */
 export function applyCloudStateToLocal(state, confirmed = false) {
   if (!state) return { applied: false, reason: 'no_data' }
   if (!confirmed) return { applied: false, reason: 'not_confirmed' }
 
-  const keyMap = {
-    onboarding:      'q_onboarding',
-    checked:         'q_checked',
-    day_status:      'q_day_status',
-    metrics:         'q_metrics',
-    notes:           'q_notes',
-    ratings:         'q_ratings',
-    triggers:        'q_triggers',
-    frequency_state: 'q_frequency_state',
-    pattern_profile: 'q_pattern_profile',  // Sprint 6: restore behavioral learning
-    directive:       'q_directive',
-    evening:         'q_evening',
+  let applied = 0
+
+  // Column-backed fields
+  for (const [field, lsKey] of Object.entries(COLUMN_KEYS)) {
+    if (state[field] !== undefined && state[field] !== null) {
+      try { localStorage.setItem(lsKey, JSON.stringify(state[field])); applied++ } catch {}
+    }
   }
 
-  let applied = 0
-  Object.entries(keyMap).forEach(([field, lsKey]) => {
-    if (state[field] !== undefined && state[field] !== null) {
-      try {
-        localStorage.setItem(lsKey, JSON.stringify(state[field]))
-        applied++
-      } catch {}
+  // Extras bundle
+  const extras = state.extras && typeof state.extras === 'object' ? state.extras : {}
+  for (const lsKey of EXTRA_KEYS) {
+    if (extras[lsKey] !== undefined && extras[lsKey] !== null) {
+      try { localStorage.setItem(lsKey, JSON.stringify(extras[lsKey])); applied++ } catch {}
     }
-  })
+  }
 
-  // Record that we loaded from cloud
   safeSet(LAST_SYNC_KEY, state.updated_at || new Date().toISOString())
-
   return { applied: true, fieldsRestored: applied }
 }
 
 // ─── Auto-sync helper ─────────────────────────────────────────────────────────
 
-/**
- * Silent background sync — call after practice check-ins.
- * Fails silently; never interrupts the user.
- */
 export async function silentSync(userId) {
   if (!userId || !supabase) return
   try {
