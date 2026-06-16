@@ -134,7 +134,10 @@ export async function syncLocalStateToCloud(userId) {
   if (error) throw error
 
   safeSet(LAST_SYNC_KEY, new Date().toISOString())
-  try { await trackCloudEvent(userId, 'sync_to_cloud', { version: APP_VERSION }) } catch {}
+  // Fire-and-forget telemetry — must never block or hang the user's save.
+  // (The Supabase client can leave this promise pending even when the HTTP write
+  //  succeeds; awaiting it made a successful save appear to "time out".)
+  Promise.resolve(trackCloudEvent(userId, 'sync_to_cloud', { version: APP_VERSION })).catch(() => {})
 }
 
 // ─── Pull: cloud → local ──────────────────────────────────────────────────────
