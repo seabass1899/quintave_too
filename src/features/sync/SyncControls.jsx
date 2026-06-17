@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { signOut } from '../../app/supabaseClient'
+import { signOut, supabase } from '../../app/supabaseClient'
 import {
   syncLocalStateToCloud,
   loadCloudState,
@@ -44,7 +44,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     if (!user?.id) return
     const doSilentSync = async () => {
       try {
-        await syncLocalStateToCloud(user.id)
+        await syncLocalStateToCloud(uid)
         setSyncLabel(getLastSyncLabel())
       } catch {
         // Silent — auto-sync failures don't surface to UI
@@ -67,7 +67,19 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   }
 
   async function handleSync() {
-    if (!user?.id) { onShowAuth?.(); return }
+    // Resolve the user id from the prop first; if the session prop hasn't
+    // propagated yet (a known race — the auth token can be present in storage
+    // while React state is briefly null), fall back to the live session so a
+    // click never silently no-ops.
+    let uid = user?.id
+    if (!uid && supabase) {
+      try {
+        const { data } = await supabase.auth.getSession()
+        uid = data?.session?.user?.id || null
+      } catch { /* ignore — handled below */ }
+    }
+    if (!uid) { onShowAuth?.(); return }
+
     setStatus('syncing')
     setMessage('')
 
@@ -80,7 +92,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     }, 15000)
 
     try {
-      await syncLocalStateToCloud(user.id)
+      await syncLocalStateToCloud(uid)
       clearTimeout(watchdogRef.current)
       setSyncLabel(getLastSyncLabel())
       setStatus('success')
