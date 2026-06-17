@@ -31,6 +31,7 @@ import { silentSync, loadCloudState, applyCloudStateToLocal, syncLocalStateToClo
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
 import AccountSettings from '../features/account/AccountSettings'
+import LegalPage from '../features/legal/LegalPages'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -1003,7 +1004,7 @@ function MobileTuningFocus({ tip, domainId }) {
   )
 }
 
-export default function App() {
+function AppMain() {
   const [tab, setTab] = useState('today')
   const [session, setSession] = useState(null)
   const [testerMode, setTesterMode] = useState(() => {
@@ -2165,6 +2166,28 @@ export default function App() {
       )}
 
       <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} isMobile={isMobile} doneToday={doneToday} totalCount={totalCount} betaVisible={doneToday >= 2} />
+
+      <footer style={{ textAlign: 'center', padding: '32px 16px 24px', fontSize: 11, color: '#aaa' }}>
+        <a href="/privacy" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Privacy</a>
+        <span style={{ color: '#ddd' }}>·</span>
+        <a href="/terms" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Terms</a>
+      </footer>
     </div>
   )
+}
+
+// Route wrapper: decide between the main app and standalone legal pages.
+// Has NO hooks itself, so the early returns don't violate the Rules of Hooks.
+export default function App() {
+  if (typeof window !== 'undefined') {
+    const path = (window.location.pathname || '').toLowerCase()
+    const hash = (window.location.hash || '').toLowerCase()
+    if (path === '/privacy' || path === '/privacy/' || hash === '#privacy') {
+      return <LegalPage which="privacy" />
+    }
+    if (path === '/terms' || path === '/terms/' || hash === '#terms') {
+      return <LegalPage which="terms" />
+    }
+  }
+  return <AppMain />
 }
