@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabaseClient'
+import { withTimeout, restSelect } from '../services/supabaseRest'
 
 const BETA_FREE_PREMIUM = false
 
@@ -36,19 +37,39 @@ export function useSubscription(session) {
   const fetchSub = useCallback(async () => {
     if (BETA_FREE_PREMIUM) { setIsPremium(true); setTier('premium'); return true }
     if (!userId || !supabase) { setIsPremium(false); setTier('free'); return false }
+
+    // Read the subscription row, but don't let a wedged Supabase client hang the
+    // read (it can queue the query and never dispatch it). Race the client call
+    // against a 6s timeout; on timeout/error, fall back to a direct REST fetch.
+    let row = null
     try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('tier,status')
-        .eq('user_id', userId)
-        .maybeSingle()
-      if (error) { setTier('free'); setIsPremium(false); return false }
-      const d = deriveAccess(data)
-      setTier(d.tier); setIsPremium(d.isPremium)
-      return d.isPremium
+      const { data, error } = await withTimeout(
+        supabase
+          .from('subscriptions')
+          .select('tier,status')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        6000,
+        'subscription read timeout',
+      )
+      if (error) throw error
+      row = data
     } catch {
-      setTier('free'); setIsPremium(false); return false
+      // Fallback: direct REST. If this also fails, treat as free (fail-closed).
+      try {
+        const rows = await restSelect(
+          'subscriptions',
+          `user_id=eq.${encodeURIComponent(userId)}&select=tier,status`,
+        )
+        row = rows[0] || null
+      } catch {
+        setTier('free'); setIsPremium(false); return false
+      }
     }
+
+    const d = deriveAccess(row)
+    setTier(d.tier); setIsPremium(d.isPremium)
+    return d.isPremium
   }, [userId])
 
   useEffect(() => {
