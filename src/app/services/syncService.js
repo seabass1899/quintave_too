@@ -93,11 +93,16 @@ export function collectLocalState() {
   // Everything else → extras bundle
   const extras = {}
   for (const lsKey of EXTRA_KEYS) {
-    const raw = localStorage.getItem(lsKey)
-    if (raw != null) {
-      try { extras[lsKey] = JSON.parse(raw) } catch {}
-    }
+  const raw = localStorage.getItem(lsKey)
+  if (raw != null) {
+    try {
+      const parsed = JSON.parse(raw)
+      extras[lsKey] = lsKey === 'q_today_plan'
+        ? pruneByRecentDays(parsed, 35)
+        : parsed
+    } catch {}
   }
+}
   state.extras = extras
 
   return state
