@@ -110,6 +110,23 @@ export function collectLocalState() {
 
 // ─── Push: local → cloud ──────────────────────────────────────────────────────
 
+// Read the access token straight from localStorage where supabase-js persists it.
+// This is synchronous and cannot be blocked by a wedged client (unlike
+// supabase.auth.getSession(), which routes through the same stuck layer).
+function readAccessTokenFromStorage() {
+  try {
+    // Project ref is the subdomain of the Supabase URL: https://<ref>.supabase.co
+    const ref = (SUPABASE_URL || '').match(/https?:\/\/([^.]+)\./)?.[1]
+    if (!ref) return null
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed?.access_token || parsed?.currentSession?.access_token || null
+  } catch {
+    return null
+  }
+}
+
 // Race a promise against a timeout. If it doesn't settle in `ms`, reject.
 function withTimeout(promise, ms, label) {
   return new Promise((resolve, reject) => {
@@ -124,13 +141,9 @@ function withTimeout(promise, ms, label) {
 // Direct REST upsert — bypasses the Supabase JS client entirely. Used as a
 // fallback when the client wedges (queues a query and never dispatches it).
 async function rawUpsertUserState(userId, row) {
-  // Get a fresh access token. getSession reads from storage and is reliable
-  // even when the query layer is wedged; still guard it with a timeout.
-  let token = SUPABASE_ANON_KEY
-  try {
-    const { data } = await withTimeout(supabase.auth.getSession(), 4000, 'getSession timeout')
-    token = data?.session?.access_token || SUPABASE_ANON_KEY
-  } catch { /* fall back to anon key; RLS may still allow via the row's user_id */ }
+  // Token straight from storage — instant, unwedgeable. Falls back to anon
+  // (which RLS will 401, surfacing a clear error rather than a silent bad write).
+  const token = readAccessTokenFromStorage() || SUPABASE_ANON_KEY
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/user_state?on_conflict=user_id`, {
     method: 'POST',
@@ -194,11 +207,7 @@ export async function syncLocalStateToCloud(userId) {
 // ─── Pull: cloud → local ──────────────────────────────────────────────────────
 
 async function rawSelectUserState(userId) {
-  let token = SUPABASE_ANON_KEY
-  try {
-    const { data } = await withTimeout(supabase.auth.getSession(), 4000, 'getSession timeout')
-    token = data?.session?.access_token || SUPABASE_ANON_KEY
-  } catch { /* fall back to anon key */ }
+  const token = readAccessTokenFromStorage() || SUPABASE_ANON_KEY
 
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/user_state?user_id=eq.${encodeURIComponent(userId)}&select=*`,
