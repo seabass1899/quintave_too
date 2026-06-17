@@ -11,7 +11,7 @@
 // Strategy: local wins on push (the user's device is authoritative); cloud wins
 // on pull (explicit restore). Empty state is never pushed (guards against wipes).
 
-import { supabase, trackCloudEvent } from '../supabaseClient'
+import { supabase, trackCloudEvent, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabaseClient'
 import { pruneByRecentDays } from '../../features/today/todayEngine'
 
 const APP_VERSION = '1.1.0'
@@ -110,8 +110,46 @@ export function collectLocalState() {
 
 // ─── Push: local → cloud ──────────────────────────────────────────────────────
 
+// Race a promise against a timeout. If it doesn't settle in `ms`, reject.
+function withTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(label || 'timeout')), ms)
+    promise.then(
+      v => { clearTimeout(t); resolve(v) },
+      e => { clearTimeout(t); reject(e) },
+    )
+  })
+}
+
+// Direct REST upsert — bypasses the Supabase JS client entirely. Used as a
+// fallback when the client wedges (queues a query and never dispatches it).
+async function rawUpsertUserState(userId, row) {
+  // Get a fresh access token. getSession reads from storage and is reliable
+  // even when the query layer is wedged; still guard it with a timeout.
+  let token = SUPABASE_ANON_KEY
+  try {
+    const { data } = await withTimeout(supabase.auth.getSession(), 4000, 'getSession timeout')
+    token = data?.session?.access_token || SUPABASE_ANON_KEY
+  } catch { /* fall back to anon key; RLS may still allow via the row's user_id */ }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/user_state?on_conflict=user_id`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify(row),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Cloud save failed (${res.status}) ${text}`.trim())
+  }
+}
+
 export async function syncLocalStateToCloud(userId) {
-  if (!supabase) throw new Error('Supabase not configured')
+  if (!supabase && !SUPABASE_URL) throw new Error('Supabase not configured')
   if (!userId)   throw new Error('No user session')
 
   const state = collectLocalState()
@@ -124,41 +162,72 @@ export async function syncLocalStateToCloud(userId) {
     throw new Error('No local data to sync — complete onboarding first')
   }
 
-  const { error } = await supabase
-    .from('user_state')
-    .upsert({
-      user_id: userId,
-      ...state,
-      updated_at: new Date().toISOString(),
-      app_version: APP_VERSION,
-      device: navigator.userAgent?.slice(0, 200) || 'unknown',
-    }, {
-      onConflict: 'user_id',
-    })
+  const row = {
+    user_id: userId,
+    ...state,
+    updated_at: new Date().toISOString(),
+    app_version: APP_VERSION,
+    device: navigator.userAgent?.slice(0, 200) || 'unknown',
+  }
 
-  if (error) throw error
+  // Try the JS client first, but don't let it hang the save. The client can
+  // queue a query behind an internal auth refresh and never dispatch it (no
+  // network request, promise never resolves). If it doesn't settle quickly,
+  // fall back to a direct REST fetch, which we know dispatches reliably.
+  try {
+    const { error } = await withTimeout(
+      supabase.from('user_state').upsert(row, { onConflict: 'user_id' }),
+      8000,
+      'client upsert timeout',
+    )
+    if (error) throw error
+  } catch (e) {
+    // Client wedged or errored — fall back to raw REST.
+    await rawUpsertUserState(userId, row)
+  }
 
   safeSet(LAST_SYNC_KEY, new Date().toISOString())
   // Fire-and-forget telemetry — must never block or hang the user's save.
-  // (The Supabase client can leave this promise pending even when the HTTP write
-  //  succeeds; awaiting it made a successful save appear to "time out".)
   Promise.resolve(trackCloudEvent(userId, 'sync_to_cloud', { version: APP_VERSION })).catch(() => {})
 }
 
 // ─── Pull: cloud → local ──────────────────────────────────────────────────────
 
+async function rawSelectUserState(userId) {
+  let token = SUPABASE_ANON_KEY
+  try {
+    const { data } = await withTimeout(supabase.auth.getSession(), 4000, 'getSession timeout')
+    token = data?.session?.access_token || SUPABASE_ANON_KEY
+  } catch { /* fall back to anon key */ }
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/user_state?user_id=eq.${encodeURIComponent(userId)}&select=*`,
+    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } },
+  )
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Cloud load failed (${res.status}) ${text}`.trim())
+  }
+  const rows = await res.json()
+  return Array.isArray(rows) ? (rows[0] || null) : null
+}
+
 export async function loadCloudState(userId) {
-  if (!supabase) throw new Error('Supabase not configured')
+  if (!supabase && !SUPABASE_URL) throw new Error('Supabase not configured')
   if (!userId)   throw new Error('No user session')
 
-  const { data, error } = await supabase
-    .from('user_state')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (error) throw error
-  return data
+  // Same wedge-protection as the write path.
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('user_state').select('*').eq('user_id', userId).maybeSingle(),
+      8000,
+      'client select timeout',
+    )
+    if (error) throw error
+    return data
+  } catch (e) {
+    return await rawSelectUserState(userId)
+  }
 }
 
 /**
