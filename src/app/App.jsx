@@ -30,7 +30,7 @@ import { supabase, getSession } from './supabaseClient'
 import { silentSync, loadCloudState, applyCloudStateToLocal, syncLocalStateToCloud } from './services/syncService'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
-import LegalPage from '../features/legal/LegalPages'
+import AccountSettings from '../features/account/AccountSettings'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -1003,7 +1003,7 @@ function MobileTuningFocus({ tip, domainId }) {
   )
 }
 
-function AppMain() {
+export default function App() {
   const [tab, setTab] = useState('today')
   const [session, setSession] = useState(null)
   const [testerMode, setTesterMode] = useState(() => {
@@ -1148,6 +1148,7 @@ function AppMain() {
   const [showBreathwork, setShowBreathwork] = useState(false)
   const [showWeekly,     setShowWeekly]     = useState(false)
   const [showNotifs,     setShowNotifs]     = useState(false)
+  const [showAccount,    setShowAccount]    = useState(false)
   const [ripple,         setRipple]         = useState(null)
   const [milestone,      setMilestone]      = useState(null)
   const [openDomain,     setOpenDomain]     = useState(null)
@@ -1636,6 +1637,7 @@ function AppMain() {
       {showBreathwork && <BreathworkTimer onClose={() => setShowBreathwork(false)}/>}
       {showWeekly && <WeeklyReview onClose={() => setShowWeekly(false)} checked={checked}/>}
       {showNotifs && <NotificationSettings onClose={() => setShowNotifs(false)}/>}
+      {showAccount && <AccountSettings session={session} isPremium={isPremium} onClose={() => setShowAccount(false)}/>}
 
       {weeklyDue && (
         <div style={{ background: '#4A3FB5', color: '#fff', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
@@ -1714,6 +1716,7 @@ function AppMain() {
                     { label:'◈ Coach View', fn:() => setShowPractitioner(true) },
                     { label:'Review', fn:() => setShowWeekly(true) },
                     { label:'Reminders', fn:() => setShowNotifs(true) },
+                    { label:'Account', fn:() => setShowAccount(true) },
                     { label:'Save data', fn:exportBackup },
                     { label:'Export Beta', fn:exportBetaData },
                     { label:'Clear today', fn:() => { if(window.confirm("Clear today's practice?")) setChecked({...checked,[today]:{}}) } },
@@ -1767,6 +1770,7 @@ function AppMain() {
               <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
               <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
               <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
+              <button onClick={() => setShowAccount(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Account</button>
               <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
               <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
               <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
@@ -2161,29 +2165,6 @@ function AppMain() {
       )}
 
       <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} isMobile={isMobile} doneToday={doneToday} totalCount={totalCount} betaVisible={doneToday >= 2} />
-
-      <footer style={{ textAlign: 'center', padding: '32px 16px 24px', fontSize: 11, color: '#aaa' }}>
-        <a href="/privacy" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Privacy</a>
-        <span style={{ color: '#ddd' }}>·</span>
-        <a href="/terms" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Terms</a>
-      </footer>
     </div>
   )
-}
-
-
-// Route wrapper: decide between the main app and standalone legal pages.
-// Has NO hooks itself, so the early returns don't violate the Rules of Hooks.
-export default function App() {
-  if (typeof window !== 'undefined') {
-    const path = (window.location.pathname || '').toLowerCase()
-    const hash = (window.location.hash || '').toLowerCase()
-    if (path === '/privacy' || path === '/privacy/' || hash === '#privacy') {
-      return <LegalPage which="privacy" />
-    }
-    if (path === '/terms' || path === '/terms/' || hash === '#terms') {
-      return <LegalPage which="terms" />
-    }
-  }
-  return <AppMain />
 }
