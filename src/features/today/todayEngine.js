@@ -95,6 +95,15 @@ const MORNING_ADAPTIVE_POOLS = {
   ],
 }
 
+// Practices that are morning-specific by design (they initialize the day) and
+// must never be injected into Midday/Evening by phase routing. Routing the
+// *domain* to another phase is fine, but the practice pulled must fit that
+// phase — e.g. route Mind to Midday as 'Thought Audit', never 'Morning Directive'.
+const MORNING_ONLY_PRACTICES = new Set([
+  'Morning Directive',
+  'Sun + Circadian Anchor',
+])
+
 const REQUIRED_MORNING_POOL = [
   ['d4', 'Morning Directive'],
   ['d4', 'Visualization Practice'],
@@ -171,7 +180,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 12
+export const TODAY_PLAN_VERSION = 13
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -1005,7 +1014,11 @@ function buildPhaseItems(phase, domainScores, todayChecks, primedDomainId = null
       const alreadyPresent = items.some(i => (i.phaseDomainId || i.domain?.id) === domainId)
       if (alreadyPresent) return
 
-      const routedPool = MORNING_ADAPTIVE_POOLS[domainId] || []
+      let routedPool = MORNING_ADAPTIVE_POOLS[domainId] || []
+      // Don't inject morning-initialize practices into Midday/Evening.
+      if (phase !== 'morning') {
+        routedPool = routedPool.filter(([, name]) => !MORNING_ONLY_PRACTICES.has(name))
+      }
       const domainNames = { d2: 'Form', d3: 'Field', d4: 'Mind', d5: 'Code' }
       pushSmart(
         routedPool,
