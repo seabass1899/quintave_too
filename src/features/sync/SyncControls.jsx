@@ -74,31 +74,26 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   }
 
   async function handleSync() {
-    // Re-entry guard: if a sync is already running, ignore the click instead of
-    // stacking timers / wedging state. (Don't rely on the disabled attribute —
-    // a stuck status used to make the button unclickable.)
-    if (inFlightRef.current) return
+    console.log('[SAVE] clicked. inFlight=', inFlightRef.current, 'status=', status, 'propUser=', user?.id)
+    if (inFlightRef.current) { console.log('[SAVE] BLOCKED by inFlight guard'); return }
     inFlightRef.current = true
 
-    // Resolve the user id from the prop first; if the session prop hasn't
-    // propagated yet (a known race — the auth token can be present in storage
-    // while React state is briefly null), fall back to the live session so a
-    // click never silently no-ops.
     let uid = user?.id
     if (!uid && supabase) {
       try {
         const { data } = await supabase.auth.getSession()
         uid = data?.session?.user?.id || null
-      } catch { /* ignore — handled below */ }
+        console.log('[SAVE] getSession fallback uid=', uid)
+      } catch (e) { console.log('[SAVE] getSession threw', e) }
     }
-    if (!uid) { inFlightRef.current = false; onShowAuth?.(); return }
+    if (!uid) { console.log('[SAVE] BAIL no uid'); inFlightRef.current = false; onShowAuth?.(); return }
 
+    console.log('[SAVE] proceeding, uid=', uid)
     setStatus('syncing')
     setMessage('')
-
-    // Watchdog: if the sync hasn't settled in 15s, stop showing "Saving…".
     clearTimeout(watchdogRef.current)
     watchdogRef.current = setTimeout(() => {
+      console.log('[SAVE] WATCHDOG fired (15s)')
       inFlightRef.current = false
       setStatus('error')
       setMessage('Sync is taking too long — please try again.')
@@ -106,19 +101,21 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     }, 15000)
 
     try {
+      console.log('[SAVE] calling syncLocalStateToCloud...')
       await syncLocalStateToCloud(uid)
+      console.log('[SAVE] sync RESOLVED ok')
       clearTimeout(watchdogRef.current)
       setSyncLabel(getLastSyncLabel())
       setStatus('success')
       setMessage('Progress saved to cloud ✓')
       resetSoon()
     } catch (e) {
+      console.log('[SAVE] sync THREW', e)
       clearTimeout(watchdogRef.current)
       setStatus('error')
       setMessage(e?.message || 'Sync failed — check connection')
       resetSoon()
     } finally {
-      // ALWAYS release the guard, no matter how we exit, so the next click works.
       inFlightRef.current = false
     }
   }
