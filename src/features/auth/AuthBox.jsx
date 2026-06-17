@@ -139,6 +139,11 @@ export default function AuthBox({ onSkip, onSignedIn }) {
             style={{ width:'100%', padding:'13px', borderRadius:10, border:'none', background: loading ? '#888' : '#1a1a18', color:'#fff', fontSize:14, fontWeight:600, cursor: loading ? 'default' : 'pointer' }}>
             {loading ? 'Sending...' : 'Send sign-in code'}
           </button>
+          <div style={{ fontSize:11, color:'#aaa', textAlign:'center', marginTop:10, lineHeight:1.5 }}>
+            By continuing you agree to our{' '}
+            <a href="/terms" style={{ color:'#888' }}>Terms</a> and{' '}
+            <a href="/privacy" style={{ color:'#888' }}>Privacy Policy</a>.
+          </div>
         </div>
 
         <div style={{ background:'#fff', borderRadius:16, border:bdr, padding:'20px 24px', marginBottom:16 }}>
