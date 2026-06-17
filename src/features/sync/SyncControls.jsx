@@ -210,7 +210,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
           padding: 14,
         }}>
           <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', fontWeight: 800, marginBottom: 4 }}>
-            Cloud sync - Build B2
+            Cloud sync - Build B3
           </div>
           <div style={{ fontSize: 12, color: '#555', marginBottom: 4, wordBreak: 'break-word' }}>
             <strong>{user.email}</strong>
