@@ -29,6 +29,8 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
 
   const user = session?.user
   const watchdogRef = useRef(null)
+  const resetTimerRef = useRef(null)
+  const inFlightRef = useRef(false)   // re-entry guard so repeat clicks can't wedge state
 
   // Unblock the "Cloud…" disabled state after 5s even if authReady never arrives.
   // (This was incorrectly written as useState(fn) before — must be useEffect.)
@@ -41,10 +43,11 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
 
   // Auto-sync on mount when signed in — silent background push.
   useEffect(() => {
-    if (!user?.id) return
+    const id = user?.id
+    if (!id) return
     const doSilentSync = async () => {
       try {
-        await syncLocalStateToCloud(uid)
+        await syncLocalStateToCloud(id)   // FIX: was `uid` (undefined here)
         setSyncLabel(getLastSyncLabel())
       } catch {
         // Silent — auto-sync failures don't surface to UI
@@ -59,14 +62,24 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     return () => clearInterval(timer)
   }, [])
 
-  // Clear any pending watchdog on unmount.
-  useEffect(() => () => clearTimeout(watchdogRef.current), [])
+  // Clear any pending timers on unmount.
+  useEffect(() => () => {
+    clearTimeout(watchdogRef.current)
+    clearTimeout(resetTimerRef.current)
+  }, [])
 
   function resetSoon() {
-    setTimeout(() => { setStatus('idle'); setMessage('') }, 3000)
+    clearTimeout(resetTimerRef.current)
+    resetTimerRef.current = setTimeout(() => { setStatus('idle'); setMessage('') }, 3000)
   }
 
   async function handleSync() {
+    // Re-entry guard: if a sync is already running, ignore the click instead of
+    // stacking timers / wedging state. (Don't rely on the disabled attribute —
+    // a stuck status used to make the button unclickable.)
+    if (inFlightRef.current) return
+    inFlightRef.current = true
+
     // Resolve the user id from the prop first; if the session prop hasn't
     // propagated yet (a known race — the auth token can be present in storage
     // while React state is briefly null), fall back to the live session so a
@@ -78,7 +91,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
         uid = data?.session?.user?.id || null
       } catch { /* ignore — handled below */ }
     }
-    if (!uid) { onShowAuth?.(); return }
+    if (!uid) { inFlightRef.current = false; onShowAuth?.(); return }
 
     setStatus('syncing')
     setMessage('')
@@ -86,6 +99,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     // Watchdog: if the sync hasn't settled in 15s, stop showing "Saving…".
     clearTimeout(watchdogRef.current)
     watchdogRef.current = setTimeout(() => {
+      inFlightRef.current = false
       setStatus('error')
       setMessage('Sync is taking too long — please try again.')
       resetSoon()
@@ -103,6 +117,9 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
       setStatus('error')
       setMessage(e?.message || 'Sync failed — check connection')
       resetSoon()
+    } finally {
+      // ALWAYS release the guard, no matter how we exit, so the next click works.
+      inFlightRef.current = false
     }
   }
 
@@ -196,7 +213,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
           padding: 14,
         }}>
           <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', fontWeight: 800, marginBottom: 4 }}>
-            Cloud sync - Build B1
+            Cloud sync - Build B2
           </div>
           <div style={{ fontSize: 12, color: '#555', marginBottom: 4, wordBreak: 'break-word' }}>
             <strong>{user.email}</strong>
