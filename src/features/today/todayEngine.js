@@ -171,7 +171,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 11
+export const TODAY_PLAN_VERSION = 12
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -844,6 +844,12 @@ function firstAvailablePick(candidates = [], used = new Set()) {
 function buildFrozenPhaseItems(phase, planSnapshot, dayUsed = new Set()) {
   const phaseSnapshot = planSnapshot?.phases?.[phase]
   if (!phaseSnapshot?.items?.length) return null
+  // Defensive: if a stored snapshot is missing per-item priority (e.g. an older
+  // slimmed snapshot), don't freeze from it — fall back to fresh generation so
+  // completion/lock logic has real priorities. Prevents a "0/0 / never unlocks"
+  // regression from silently returning.
+  const missingPriority = phaseSnapshot.items.some(it => !it.priority)
+  if (missingPriority) return null
   const items = phaseSnapshot.items
     .map(saved => labelPractice(findPracticeByKey(saved.key), saved.priority, saved.why))
     .filter(Boolean)
@@ -1025,11 +1031,13 @@ export function createTodayPlanSnapshot(plan, date = new Date()) {
     decision: plan?.decision || null,
     phases: Object.fromEntries(
       Object.entries(plan?.phases || {}).map(([phaseId, phase]) => [phaseId, {
-        // Store ONLY item.key. The `why` and `priority` fields are regenerated
-        // live by generateTodayPlan for today's plan, and no historical reader
-        // ever reads them from a stored snapshot — they only match on item.key.
-        // Storing them per-item per-day bloated each snapshot to ~16KB.
-        items: (phase.items || []).map(item => ({ key: item.key }))
+        // Store key + priority. `priority` is small (one short string) but is
+        // REQUIRED: buildFrozenPhaseItems rebuilds frozen items from the snapshot
+        // and completionFor/lock logic counts items whose priority is
+        // 'Critical' or 'Required'. Dropping it made every frozen item undefined
+        // priority → required count 0 → Midday never unlocked. The real bloat was
+        // the per-item `why` strings and the `decision` object, not `priority`.
+        items: (phase.items || []).map(item => ({ key: item.key, priority: item.priority }))
       }])
     )
   }
