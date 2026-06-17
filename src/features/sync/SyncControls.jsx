@@ -30,7 +30,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   const user = session?.user
   const watchdogRef = useRef(null)
   const resetTimerRef = useRef(null)
-  const inFlightRef = useRef(false)   // re-entry guard so repeat clicks can't wedge state
+  const inFlightRef = useRef(false)
 
   // Unblock the "Cloud…" disabled state after 5s even if authReady never arrives.
   // (This was incorrectly written as useState(fn) before — must be useEffect.)
@@ -43,11 +43,11 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
 
   // Auto-sync on mount when signed in — silent background push.
   useEffect(() => {
+    if (!user?.id) return
     const id = user?.id
-    if (!id) return
     const doSilentSync = async () => {
       try {
-        await syncLocalStateToCloud(id)   // FIX: was `uid` (undefined here)
+        await syncLocalStateToCloud(id)
         setSyncLabel(getLastSyncLabel())
       } catch {
         // Silent — auto-sync failures don't surface to UI
@@ -62,7 +62,6 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
     return () => clearInterval(timer)
   }, [])
 
-  // Clear any pending timers on unmount.
   useEffect(() => () => {
     clearTimeout(watchdogRef.current)
     clearTimeout(resetTimerRef.current)
@@ -74,8 +73,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
   }
 
   async function handleSync() {
-    console.log('[SAVE] clicked. inFlight=', inFlightRef.current, 'status=', status, 'propUser=', user?.id)
-    if (inFlightRef.current) { console.log('[SAVE] BLOCKED by inFlight guard'); return }
+    if (inFlightRef.current) return            // re-entry guard
     inFlightRef.current = true
 
     let uid = user?.id
@@ -83,34 +81,31 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
       try {
         const { data } = await supabase.auth.getSession()
         uid = data?.session?.user?.id || null
-        console.log('[SAVE] getSession fallback uid=', uid)
-      } catch (e) { console.log('[SAVE] getSession threw', e) }
+      } catch { /* handled below */ }
     }
-    if (!uid) { console.log('[SAVE] BAIL no uid'); inFlightRef.current = false; onShowAuth?.(); return }
+    if (!uid) { inFlightRef.current = false; onShowAuth?.(); return }
 
-    console.log('[SAVE] proceeding, uid=', uid)
     setStatus('syncing')
     setMessage('')
+
+    // Watchdog: syncLocalStateToCloud now has its own 8s timeout + REST fallback,
+    // so this is just a UI backstop. 20s gives the fallback time to complete.
     clearTimeout(watchdogRef.current)
     watchdogRef.current = setTimeout(() => {
-      console.log('[SAVE] WATCHDOG fired (15s)')
       inFlightRef.current = false
       setStatus('error')
       setMessage('Sync is taking too long — please try again.')
       resetSoon()
-    }, 15000)
+    }, 20000)
 
     try {
-      console.log('[SAVE] calling syncLocalStateToCloud...')
       await syncLocalStateToCloud(uid)
-      console.log('[SAVE] sync RESOLVED ok')
       clearTimeout(watchdogRef.current)
       setSyncLabel(getLastSyncLabel())
       setStatus('success')
       setMessage('Progress saved to cloud ✓')
       resetSoon()
     } catch (e) {
-      console.log('[SAVE] sync THREW', e)
       clearTimeout(watchdogRef.current)
       setStatus('error')
       setMessage(e?.message || 'Sync failed — check connection')
@@ -210,7 +205,7 @@ export default function SyncControls({ session, authReady, onShowAuth }) {
           padding: 14,
         }}>
           <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#888', fontWeight: 800, marginBottom: 4 }}>
-            Cloud sync - Build B3
+            Cloud sync
           </div>
           <div style={{ fontSize: 12, color: '#555', marginBottom: 4, wordBreak: 'break-word' }}>
             <strong>{user.email}</strong>
