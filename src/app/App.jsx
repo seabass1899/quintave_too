@@ -2264,6 +2264,7 @@ export default function App() {
           onboardingProfile={onboardingProfile}
           earnedMilestones={earnedMilestones || []}
           domainScores={domainScores || {}}
+          coherence={coherence}
           dayStatus={dayStatus}
         />}
 
