@@ -1,10 +1,19 @@
 name: CI
 
 # Runs automatically on every push and pull request to main.
-# Catches the two classes of bug that hit this project in development:
-#   1. Build/compile errors (the Vite build must succeed)
-#   2. Engine logic regressions (the invariant tests must pass)
-# You see a green check or red X right in the GitHub UI — no terminal needed.
+#
+# This runs the engine INVARIANT TESTS only — it does NOT install npm packages
+# or build. Reasons:
+#   • The tests are dependency-free: they import only this repo's own source and
+#     run on plain Node, so no `npm install` is needed.
+#   • `npm install` on the GitHub runner crashes ("Exit handler never called!")
+#     on this dependency tree — an npm-internal bug, unrelated to our code.
+#   • Vercel already runs the real build on every deploy and will block a deploy
+#     that doesn't compile, so the build-check lives there.
+#
+# What this guards: the morning-only practice leak, snapshot round-trip, the
+# substitution-map invariant, and the coherence math — the regressions that bit
+# this project in development. Green check or red X right in the GitHub UI.
 
 on:
   push:
@@ -13,7 +22,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
+  engine-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the code
@@ -24,18 +33,6 @@ jobs:
         with:
           node-version: '22'
 
-      # Install deps with `npm install` (not `npm ci`): this repo's lockfile
-      # drifts (mixed npm/pnpm history), and npm install tolerates that while
-      # ci does not. No npm cache, which can choke on a stale/mixed lockfile.
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      # 1) Build must succeed — the check that catches compile errors that can't
-      #    be verified locally without a network.
-      - name: Build (Vite)
-        run: npm run build
-
-      # 2) Engine invariant tests — guards the morning-only leak, snapshot
-      #    round-trip, and coherence math. Fails the run if any invariant breaks.
-      - name: Run engine tests
-        run: npm test
+      # No install step — the tests need no packages. Run them directly.
+      - name: Run engine invariant tests
+        run: node --experimental-loader ./tests/loader.mjs tests/engine.test.mjs
