@@ -22,14 +22,16 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '22'
 
+      # Install deps. Use `npm ci` when the lockfile is in sync; fall back to
+      # `npm install` otherwise (this repo has had mixed lockfiles). No npm
+      # cache is configured, since a stale/mixed lockfile can break the cache step.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci || npm install
 
-      # 1) Build must succeed — this is the check that would have caught the
-      #    App.jsx compile issues that couldn't be verified locally.
+      # 1) Build must succeed — the check that catches compile errors that can't
+      #    be verified locally without a network.
       - name: Build (Vite)
         run: npm run build
 
