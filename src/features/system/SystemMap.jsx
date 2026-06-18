@@ -88,8 +88,11 @@ function usePulse(interval = 2000) {
 
 // ─── Main SystemMap ───────────────────────────────────────────────────────────
 
-export default function SystemMap({ domainScores, onboardingProfile }) {
+export default function SystemMap({ domainScores, coherenceBodies, onboardingProfile }) {
   const [selected, setSelected] = useState(null)
+  // Prefer accumulated coherence (already blended over time) when available;
+  // fall back to today-based domainScores so the map never breaks.
+  const scores = (coherenceBodies && Object.keys(coherenceBodies).length) ? coherenceBodies : domainScores
   const [hoveredConnection, setHoveredConnection] = useState(null)
   const containerRef = useRef(null)
   const [dims, setDims] = useState({ w: 600, h: 420 })
@@ -119,21 +122,17 @@ export default function SystemMap({ domainScores, onboardingProfile }) {
   // On day 1 (no practices logged), shows onboarding baseline
   // As practices accumulate, practice scores take precedence
   const resonance = (id) => {
-    const practiceScore = domainScores?.[id] || 0
-    // Onboarding baseline: score was 1-10, convert to 0-100
+    const s = scores?.[id]
+    if (Number.isFinite(s)) return Math.max(0, Math.min(100, s)) / 100
+    // Fallback when no score: onboarding baseline (1-10 → 0-100), else neutral.
     const baselineScore = onboardingProfile?.scores?.[id]
       ? (onboardingProfile.scores[id] / 10) * 100
-      : 50 // neutral default if no onboarding
-    // If practice score exists, blend: 70% practice, 30% baseline
-    // If no practices yet (score = 0), use baseline fully
-    const blended = practiceScore > 0
-      ? Math.round(practiceScore * 0.7 + baselineScore * 0.3)
-      : baselineScore
-    return blended / 100
+      : 50
+    return baselineScore / 100
   }
 
   // Whether we are showing baseline or live scores
-  const isBaselineMode = Object.values(domainScores || {}).every(s => s === 0)
+  const isBaselineMode = Object.values(scores || {}).every(s => !s)
 
   // Node radius based on resonance
   const nodeR = (id) => {
@@ -265,7 +264,7 @@ export default function SystemMap({ domainScores, onboardingProfile }) {
                     fill={isActive ? 'rgba(255,255,255,0.8)' : n.color}
                     opacity={dimmed ? 0.3 : 0.8}
                     style={{ userSelect: 'none' }}>
-                    {domainScores?.[n.id] || 0}%
+                    {Math.round(scores?.[n.id] || 0)}
                   </text>
                 </g>
               )
@@ -301,7 +300,7 @@ export default function SystemMap({ domainScores, onboardingProfile }) {
                 <div style={{ fontSize: 20, fontWeight: 700, color: selectedNode.text, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span>{selectedNode.icon}</span> {selectedNode.name}
                   <span style={{ fontSize: 14, fontWeight: 600, color: selectedNode.color }}>
-                    {domainScores?.[selectedNode.id] || 0}%
+                    {Math.round(scores?.[selectedNode.id] || 0)}
                   </span>
                 </div>
               </div>
