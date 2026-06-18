@@ -97,7 +97,7 @@ export default function Onboarding({ onComplete }) {
   // flat question index across all 15 questions
   const [questionIdx, setQuestionIdx] = useState(-1) // -1 = welcome
   const [scores, setScores] = useState({
-    d1: [5, 5, 5], d2: [5, 5, 5], d3: [5, 5, 5], d4: [5, 5, 5], d5: [5, 5, 5],
+    d1: [5, 5, 5, 5, 5], d2: [5, 5, 5, 5, 5], d3: [5, 5, 5, 5, 5], d4: [5, 5, 5, 5, 5], d5: [5, 5, 5, 5, 5],
   })
   const [userName, setUserName] = useState('')
   const [focusMode, setFocusMode] = useState(null)
@@ -128,23 +128,32 @@ export default function Onboarding({ onComplete }) {
   const totalQuestions = allQuestions.length
   const currentQ = questionIdx >= 0 && questionIdx < totalQuestions ? allQuestions[questionIdx] : null
 
-  // Compute domain scores with enhanced weighting:
-  // Q1 = typical baseline (weight 0.4) — "How is this domain for you generally?"
-  // Q2 = current state (weight 0.35) — "How is it right now, this week?"
-  // Q3 = behavioral context (weight 0.25) — "When this area suffers, what happens?"
-  const domainAvg = (id) => {
-    const s = scores[id]
-    return Math.round(s[0] * 0.4 + s[1] * 0.35 + s[2] * 0.25)
+  // Compute domain scores across 5 dimensions per body:
+  //  [0] typical (stable baseline)      [1] current (this week)
+  //  [2] behavioral (under pressure)    [3] depth (remembrance/embodiment/
+  //  honesty/sovereignty/origin)        [4] capacity (return/regulation/
+  //  projection/choice/rewriting — transformation ability)
+  // Depth & capacity are weighted meaningfully — they're the truest signal of
+  // a player's real coherence, not just their current week.
+  const WEIGHTS = [0.22, 0.18, 0.18, 0.22, 0.20]  // sums to 1.0
+  const wavg = (arr, weights) => {
+    if (!Array.isArray(arr) || !arr.length) return 5
+    // Use only as many weights as we have answers; renormalize if mismatched.
+    const w = weights.slice(0, arr.length)
+    const wsum = w.reduce((a, b) => a + b, 0) || 1
+    return arr.reduce((acc, v, i) => acc + v * (w[i] ?? 0), 0) / wsum
   }
+  const domainAvg = (id) => Math.round(wavg(scores[id], WEIGHTS))
 
-  // Baseline score = what the engine uses as the long-term reference
+  // Baseline = long-term reference the engine uses: typical + behavioral + depth.
+  // (Excludes "current week" so a bad week doesn't drag the long-term anchor.)
   const domainBaseline = (id) => {
-    const s = scores[id]
-    return Math.round((s[0] * 0.6 + s[2] * 0.4))  // typical + behavioral
+    const s = scores[id] || []
+    return Math.round(wavg([s[0], s[2], s[3]].filter(v => v != null), [0.4, 0.3, 0.3]))
   }
 
-  // Starting score = Day 1 coherence state (current week)
-  const domainStarting = (id) => scores[id][1]
+  // Starting score = Day 1 coherence state (current week).
+  const domainStarting = (id) => (scores[id]?.[1] ?? 5)
 
   const allDomainResults = DOMAINS.map(d => ({ ...d, score: domainAvg(d.id) }))
   const sorted = [...allDomainResults].sort((a, b) => a.score - b.score)
@@ -201,13 +210,16 @@ export default function Onboarding({ onComplete }) {
       startingScores[d.id] = domainStarting(d.id)
     })
 
-    // Enhanced detailed scores: store all three dimensions per domain
+    // Enhanced detailed scores: store all five dimensions per domain
     const enhancedDetailedScores = {}
     DOMAINS.forEach(d => {
+      const s = scores[d.id] || []
       enhancedDetailedScores[d.id] = {
-        typical:    scores[d.id][0],
-        current:    scores[d.id][1],
-        behavioral: scores[d.id][2],
+        typical:    s[0],
+        current:    s[1],
+        behavioral: s[2],
+        depth:      s[3],   // remembrance / embodiment / honesty / sovereignty / origin
+        capacity:   s[4],   // return / regulation / projection / choice / rewriting
         weighted:   flatScores[d.id],
       }
     })
@@ -396,13 +408,28 @@ export default function Onboarding({ onComplete }) {
               <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: domain.color, background: domain.bg, padding: '3px 8px', borderRadius: 99 }}>
                 {domain.name} · {q.angle}
               </div>
-              <div style={{ fontSize: 11, color: '#888' }}>Question {domainQIdx + 1} of 3 for this body</div>
+              <div style={{ fontSize: 11, color: '#888' }}>Question {domainQIdx + 1} of 5 for this body</div>
             </div>
             {/* Dimension label — tells the user what this question is measuring */}
             <div style={{ fontSize: 10, color: '#aaa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
-              {domainQIdx === 0 ? '⬤ Typical baseline — how this area is for you generally'
-                : domainQIdx === 1 ? '⬤ Current state — how it is right now, this week'
-                : '⬤ Behavioral context — what happens when this area suffers'}
+              {(() => {
+                const DIM_LABELS = {
+                  typical: '⬤ Typical baseline — how this area is for you generally',
+                  current: '⬤ Current state — how it is right now, this week',
+                  behavioral: '⬤ Behavioral context — what happens when this area suffers',
+                  remembrance: '⬤ Depth — how deeply you know yourself here',
+                  practice: '⬤ Capacity — your ability to return and recover',
+                  embodiment: '⬤ Depth — how attuned you are to this body',
+                  regulation: '⬤ Capacity — how well you recover and rebalance',
+                  'emotional honesty': '⬤ Depth — how honestly you meet this body',
+                  'relational charge': '⬤ Capacity — your awareness in the moment',
+                  'belief discernment': '⬤ Depth — your sovereignty over this body',
+                  'choice alignment': '⬤ Capacity — how aligned your actions are',
+                  'root pattern recognition': '⬤ Depth — how clearly you see this body',
+                  'rewriting capacity': '⬤ Capacity — your power to choose differently',
+                }
+                return DIM_LABELS[q.dimension] || '⬤ ' + (q.angle || '')
+              })()}
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', lineHeight: 1.65, marginBottom: 24 }}>
               {q.q}
@@ -417,7 +444,7 @@ export default function Onboarding({ onComplete }) {
           </div>
 
           {/* Interference note — only on last question of each domain */}
-          {domainQIdx === 2 && (
+          {domainQIdx === 4 && (
             <div style={{ background: '#F7F6F3', borderRadius: 10, padding: '12px 16px', marginBottom: 14, borderLeft: '3px solid #D3D1C7' }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#888', marginBottom: 4 }}>When this body is out of resonance</div>
               <div style={{ fontSize: 12, color: '#5F5E5A', lineHeight: 1.6 }}>{domain.interference}</div>
@@ -429,7 +456,7 @@ export default function Onboarding({ onComplete }) {
               <button onClick={back} style={{ padding: '14px', borderRadius: 12, border: bdr, background: '#fff', fontSize: 14, cursor: 'pointer', color: '#5F5E5A' }}>← Back</button>
             )}
             <button onClick={advance} style={{ padding: '14px', borderRadius: 12, border: 'none', background: '#1a1a18', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-              {questionIdx === totalQuestions - 1 ? 'Read my coherence signature →' : domainQIdx === 2 ? `Next frequency body →` : 'Next question →'}
+              {questionIdx === totalQuestions - 1 ? 'Read my coherence signature →' : domainQIdx === 4 ? `Next frequency body →` : 'Next question →'}
             </button>
           </div>
         </div>
