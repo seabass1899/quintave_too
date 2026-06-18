@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useLocalStorage as useLS } from './state/useLocalStorage'
 import Onboarding from '../features/onboarding/Onboarding'
 import { PROTOCOLS } from '../data/protocols'
@@ -30,8 +30,7 @@ import { supabase, getSession } from './supabaseClient'
 import { silentSync, loadCloudState, applyCloudStateToLocal, syncLocalStateToCloud } from './services/syncService'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
-import AccountSettings from '../features/account/AccountSettings'
-import LegalPage from '../features/legal/LegalPages'
+import { computeBodyProgress, overallCoherence, planeFor, planeLabel, justCrossedIntoBlue, needsReassessment } from '../features/frequency/coherenceProgress'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -809,6 +808,74 @@ function Ring({ pct, size = 86 }) {
     </svg>
   )
 }
+
+// Zone palette for the coherence headline.
+const ZONE_STYLE = {
+  'Red Zone':  { color:'#A32D2D', bg:'#FCEBEB', ring:'#D85A30', dot:'#D85A30' },
+  'Blue Zone': { color:'#3C3489', bg:'#EEEDFE', ring:'#7F77DD', dot:'#7F77DD' },
+  'Gray Zone': { color:'#085041', bg:'#E1F5EE', ring:'#1D9E75', dot:'#1D9E75' },
+}
+
+// Trend sparkline over the coherence series (last ~30 points).
+function Sparkline({ series, color = '#7F77DD', w = 150, h = 38 }) {
+  if (!series || series.length < 2) return null
+  const pts = series.slice(-30).map(p => p.overall)
+  const max = 100, min = 0
+  const stepX = w / (pts.length - 1)
+  const path = pts.map((v, i) => {
+    const x = i * stepX
+    const y = h - ((v - min) / (max - min)) * h
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  // Mark the Blue threshold (50) as a faint guide line.
+  const blueY = h - (50 / 100) * h
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display:'block' }}>
+      <line x1="0" y1={blueY} x2={w} y2={blueY} stroke="#D8D6F0" strokeWidth="1" strokeDasharray="3 3"/>
+      <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx={(pts.length-1)*stepX} cy={h - (pts[pts.length-1]/100)*h} r="2.8" fill={color}/>
+    </svg>
+  )
+}
+
+// The coherence headline: plane + zone + overall number + trend.
+function CoherenceHeadline({ coherence, compact }) {
+  if (!coherence?.ready) {
+    return (
+      <div style={{ fontSize:12, color:'#888', lineHeight:1.6 }}>
+        Complete your baseline and practice to begin tracking coherence.
+      </div>
+    )
+  }
+  const z = ZONE_STYLE[coherence.zone] || ZONE_STYLE['Red Zone']
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ position:'relative', flexShrink:0 }}>
+          <Ring pct={coherence.overall} size={compact ? 72 : 86}/>
+        </div>
+        <div style={{ minWidth:0 }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:z.bg, color:z.color, borderRadius:999, padding:'3px 10px', fontSize:11, fontWeight:700 }}>
+            <span style={{ width:7, height:7, borderRadius:99, background:z.dot, display:'inline-block' }}/>
+            {coherence.label.title}
+          </div>
+          <div style={{ fontSize:11, color:'#888', marginTop:5, lineHeight:1.5 }}>{coherence.label.note}</div>
+        </div>
+      </div>
+      {coherence.series?.length >= 2 && (
+        <div>
+          <div style={{ fontSize:10, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:3 }}>Coherence trend</div>
+          <Sparkline series={coherence.series} color={z.ring}/>
+        </div>
+      )}
+      {coherence.crossedBlue && (
+        <div style={{ background:'#EEEDFE', color:'#3C3489', borderRadius:8, padding:'6px 10px', fontSize:11, fontWeight:600 }}>
+          ✦ You crossed into the Blue Zone — Source connection established.
+        </div>
+      )}
+    </div>
+  )
+}
 function FeedbackButton({ dailyPct, streakCount, weakest, isMobile, betaVisible }) {
   // On mobile: hide when the BetaFeedbackLayer is already showing
   if (isMobile && betaVisible) return null
@@ -1004,7 +1071,7 @@ function MobileTuningFocus({ tip, domainId }) {
   )
 }
 
-function AppMain() {
+export default function App() {
   const [tab, setTab] = useState('today')
   const [session, setSession] = useState(null)
   const [testerMode, setTesterMode] = useState(() => {
@@ -1149,7 +1216,6 @@ function AppMain() {
   const [showBreathwork, setShowBreathwork] = useState(false)
   const [showWeekly,     setShowWeekly]     = useState(false)
   const [showNotifs,     setShowNotifs]     = useState(false)
-  const [showAccount,    setShowAccount]    = useState(false)
   const [ripple,         setRipple]         = useState(null)
   const [milestone,      setMilestone]      = useState(null)
   const [openDomain,     setOpenDomain]     = useState(null)
@@ -1313,6 +1379,44 @@ function AppMain() {
 
   const strongest = DOMAINS.reduce((b, d) => domainScores[d.id] >= (b.score||0) ? {...d, score: domainScores[d.id]} : b, {})
   const weakest   = DOMAINS.reduce((b, d) => domainScores[d.id] <= (b.score??100) ? {...d, score: domainScores[d.id]} : b, {})
+
+  // ── Accumulated COHERENCE (display-only — does NOT feed the adaptive engine) ──
+  // Reads full practice history + onboarding baseline to show real progress over
+  // time: headline plane/zone, overall 0–100, five body sub-scores, trend series.
+  const coherence = useMemo(() => {
+    // Baseline: onboarding 1–10 per body → 0–100. Default ~40 (upper red) if none.
+    const baseline = {}
+    for (const d of DOMAINS) {
+      const raw = onboardingProfile?.scores?.[d.id]
+      baseline[d.id] = Number.isFinite(raw) ? Math.round(raw * 10) : 40
+    }
+    // Start date: onboarding completion, else earliest practiced day, else today.
+    let startDate = onboardingProfile?.completedAt ? new Date(onboardingProfile.completedAt) : null
+    if (!startDate) {
+      const days = Object.keys(checked || {}).map(d => new Date(d).getTime()).filter(t => Number.isFinite(t))
+      startDate = days.length ? new Date(Math.min(...days)) : new Date()
+    }
+    try {
+      const { bodies, series } = computeBodyProgress(baseline, checked || {}, startDate, new Date())
+      const snap = overallCoherence(bodies, series.length ? undefined : 0)
+      const last = series[series.length - 1] || { overall: snap.overall, plane: snap.plane, zone: snap.zone }
+      const band = planeFor(last.overall)
+      return {
+        ready: true,
+        bodies,
+        series,
+        overall: last.overall,
+        plane: band.level,
+        zone: band.zone,
+        label: planeLabel(band),
+        crossedBlue: justCrossedIntoBlue(series),
+        needsReassess: needsReassessment(checked || {}, new Date(), 14),
+      }
+    } catch (e) {
+      return { ready: false, bodies: {}, series: [], overall: 0, plane: 3, zone: 'Red Zone', label: planeLabel(planeFor(0)), crossedBlue: false, needsReassess: false }
+    }
+  }, [checked, onboardingProfile])
+
 
   // Coaching tip — based on weakest domain from onboarding or today's scores
   const coachingDomain = onboardingProfile
@@ -1638,7 +1742,6 @@ function AppMain() {
       {showBreathwork && <BreathworkTimer onClose={() => setShowBreathwork(false)}/>}
       {showWeekly && <WeeklyReview onClose={() => setShowWeekly(false)} checked={checked}/>}
       {showNotifs && <NotificationSettings onClose={() => setShowNotifs(false)}/>}
-      {showAccount && <AccountSettings session={session} isPremium={isPremium} onClose={() => setShowAccount(false)}/>}
 
       {weeklyDue && (
         <div style={{ background: '#4A3FB5', color: '#fff', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
@@ -1707,23 +1810,6 @@ function AppMain() {
               </div>
             </div>
 
-            {/* Account — always visible for signed-in users (not tester-gated) */}
-            {session?.user && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Account</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                  <button onClick={() => { setShowNotifs(true); setShowDrawer(false) }}
-                    style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
-                    Reminders
-                  </button>
-                  <button onClick={() => { setShowAccount(true); setShowDrawer(false) }}
-                    style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
-                    Account &amp; subscription
-                  </button>
-                </div>
-              </div>
-            )}
-
             {testerMode && (
               <>
                 <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Tester tools</div>
@@ -1733,6 +1819,7 @@ function AppMain() {
                     { label:'∿ Noise Audit', fn:() => setShowNoise(true) },
                     { label:'◈ Coach View', fn:() => setShowPractitioner(true) },
                     { label:'Review', fn:() => setShowWeekly(true) },
+                    { label:'Reminders', fn:() => setShowNotifs(true) },
                     { label:'Save data', fn:exportBackup },
                     { label:'Export Beta', fn:exportBetaData },
                     { label:'Clear today', fn:() => { if(window.confirm("Clear today's practice?")) setChecked({...checked,[today]:{}}) } },
@@ -1779,16 +1866,13 @@ function AppMain() {
             <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
             {/* SyncControls always visible on desktop — not gated behind tester mode */}
             <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
-            {session?.user && (<>
-              <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
-              <button onClick={() => setShowAccount(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Account</button>
-            </>)}
             {testerMode && (<>
               <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
               <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
               <button onClick={() => setShowPractitioner(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#E6F1FB', color:'#0C447C', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>◈ Coach</button>
               <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
               <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
+              <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
               <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
               <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
               <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
@@ -1881,30 +1965,26 @@ function AppMain() {
 
           <div className="today-grid" style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr auto', gap: isMobile ? 10 : 14, marginBottom:16, alignItems:'stretch' }}>
             {isMobile ? (
-              /* Mobile: slim progress strip — replaces large Ring widget */
-              <div style={{ background:'#fff', border:bdr, borderRadius:12, padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, fontWeight:700, color:'#1a1a18', marginBottom:5 }}>
-                    <span>{doneToday}/{totalCount} practices</span>
-                    <span style={{ color: triggerRate>0?'#1D9E75':'#888', fontWeight:600 }}>{triggerRate}% overrides</span>
+              /* Mobile: coherence headline + slim today strip */
+              <div style={{ background:'#fff', border:bdr, borderRadius:12, padding:'12px 14px', display:'flex', flexDirection:'column', gap:10 }}>
+                <CoherenceHeadline coherence={coherence} compact/>
+                <div style={{ borderTop:'1px solid #EEEDE9', paddingTop:8 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, fontWeight:600, color:'#888', marginBottom:4 }}>
+                    <span>{doneToday} practiced today</span>
+                    <span style={{ color: triggerRate>0?'#1D9E75':'#888' }}>{triggerRate}% overrides</span>
                   </div>
                   <div style={{ height:5, borderRadius:999, background:'#F0EFEC', overflow:'hidden' }}>
                     <div style={{ height:5, borderRadius:999, background:'#7F77DD', width:`${dailyPct}%`, transition:'width 0.4s' }}/>
                   </div>
-                  <div style={{ fontSize:10, color:'#888', marginTop:4 }}>{Math.round(dailyPct)}% complete today</div>
                 </div>
               </div>
             ) : (
-              <div style={{ ...card, marginBottom:0, display:'flex', gap:18, alignItems:'center' }}>
-                <Ring pct={dailyPct}/>
-                <div>
-                  <div style={{ fontSize:10, color:'#888', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:3 }}>Tuning session</div>
-                  <input type="date" defaultValue={new Date().toISOString().slice(0,10)}
-                    style={{ width:140, fontSize:13, color:'#1a1a18', background:'#F7F6F3', border:bdr, borderRadius:7, padding:'6px 9px', fontFamily:'inherit', outline:'none', marginBottom:10 }}/>
-                  <div style={{ display:'flex', gap:18 }}>
-                    <div><div style={{ fontSize:16, fontWeight:700 }}>{doneToday}/{totalCount}</div><div style={{ fontSize:11, color:'#888' }}>Practices tuned</div></div>
-                    <div><div style={{ fontSize:16, fontWeight:700, color: triggerRate>0?'#1D9E75':'#1a1a18' }}>{triggerRate}%</div><div style={{ fontSize:11, color:'#888' }}>Pattern overrides</div></div>
-                  </div>
+              <div style={{ ...card, marginBottom:0, display:'flex', flexDirection:'column', gap:10, minWidth:240 }}>
+                <div style={{ fontSize:10, color:'#888', textTransform:'uppercase', letterSpacing:'0.06em' }}>Your coherence</div>
+                <CoherenceHeadline coherence={coherence}/>
+                <div style={{ borderTop:'1px solid #EEEDE9', paddingTop:8, display:'flex', gap:18 }}>
+                  <div><div style={{ fontSize:14, fontWeight:700 }}>{doneToday}</div><div style={{ fontSize:10, color:'#888' }}>practiced today</div></div>
+                  <div><div style={{ fontSize:14, fontWeight:700, color: triggerRate>0?'#1D9E75':'#1a1a18' }}>{triggerRate}%</div><div style={{ fontSize:10, color:'#888' }}>pattern overrides</div></div>
                 </div>
               </div>
             )}
@@ -1921,20 +2001,25 @@ function AppMain() {
 
             <div style={{ ...card, marginBottom:0, minWidth:190 }}>
               <div style={{ fontSize:14, fontWeight:600, marginBottom:10 }}>⊡ Resonance Pulse</div>
-              {doneToday === 0 ? (
+              {!coherence.ready ? (
                 <div style={{ fontSize:12, color:'#888', textAlign:'center', padding:'8px 0', lineHeight:1.6 }}>
-                  Complete practices to see your resonance pulse.
+                  Complete your baseline to see your resonance pulse.
                 </div>
-              ) : <>
-                <div style={{ background: strongest.bg||'#F7F6F3', borderRadius:8, padding:'8px 10px', marginBottom:8 }}>
-                  <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>Highest resonance</div>
-                  <div style={{ fontSize:13, fontWeight:600, color: strongest.text||'#1a1a18' }}>{strongest.name||'—'}: {strongest.score||0}%</div>
-                </div>
-                <div style={{ background: weakest.bg||'#FCEBEB', borderRadius:8, padding:'8px 10px' }}>
-                  <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>Primary interference</div>
-                  <div style={{ fontSize:13, fontWeight:600, color: weakest.text||'#A32D2D' }}>{weakest.name||'—'}: {weakest.score||0}%</div>
-                </div>
-              </>}
+              ) : (() => {
+                const bodyMeta = DOMAINS.map(d => ({ ...d, score: coherence.bodies[d.id] ?? 0 }))
+                const hi = bodyMeta.reduce((a, b) => b.score >= a.score ? b : a, bodyMeta[0])
+                const lo = bodyMeta.reduce((a, b) => b.score <= a.score ? b : a, bodyMeta[0])
+                return <>
+                  <div style={{ background: hi.bg||'#F7F6F3', borderRadius:8, padding:'8px 10px', marginBottom:8 }}>
+                    <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>Highest resonance</div>
+                    <div style={{ fontSize:13, fontWeight:600, color: hi.text||'#1a1a18' }}>{hi.name}: {hi.score}</div>
+                  </div>
+                  <div style={{ background: lo.bg||'#FCEBEB', borderRadius:8, padding:'8px 10px' }}>
+                    <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>Primary interference</div>
+                    <div style={{ fontSize:13, fontWeight:600, color: lo.text||'#A32D2D' }}>{lo.name}: {lo.score}</div>
+                  </div>
+                </>
+              })()}
             </div>
           </div>
 
@@ -2183,28 +2268,6 @@ function AppMain() {
       )}
 
       <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} isMobile={isMobile} doneToday={doneToday} totalCount={totalCount} betaVisible={doneToday >= 2} />
-
-      <footer style={{ textAlign: 'center', padding: '32px 16px 24px', fontSize: 11, color: '#aaa' }}>
-        <a href="/privacy" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Privacy</a>
-        <span style={{ color: '#ddd' }}>·</span>
-        <a href="/terms" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Terms</a>
-      </footer>
     </div>
   )
-}
-
-// Route wrapper: decide between the main app and standalone legal pages.
-// Has NO hooks itself, so the early returns don't violate the Rules of Hooks.
-export default function App() {
-  if (typeof window !== 'undefined') {
-    const path = (window.location.pathname || '').toLowerCase()
-    const hash = (window.location.hash || '').toLowerCase()
-    if (path === '/privacy' || path === '/privacy/' || hash === '#privacy') {
-      return <LegalPage which="privacy" />
-    }
-    if (path === '/terms' || path === '/terms/' || hash === '#terms') {
-      return <LegalPage which="terms" />
-    }
-  }
-  return <AppMain />
 }
