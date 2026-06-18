@@ -1417,6 +1417,16 @@ export default function App() {
     }
   }, [checked, onboardingProfile])
 
+  // Rounded accumulated body scores for DISPLAY surfaces (RadarChart, SystemMap).
+  // Falls back to today-based domainScores if coherence isn't ready, so visuals
+  // never break. Analysis/intelligence engines keep using domainScores directly.
+  const coherenceBodies = useMemo(() => {
+    if (!coherence?.ready) return domainScores
+    const out = {}
+    for (const d of DOMAINS) out[d.id] = Math.round(coherence.bodies?.[d.id] ?? 0)
+    return out
+  }, [coherence, domainScores])
+
 
   // Coaching tip — based on weakest domain from onboarding or today's scores
   const coachingDomain = onboardingProfile
@@ -2184,6 +2194,7 @@ export default function App() {
               checked={checked || {}}
               onboardingProfile={onboardingProfile}
               domainScores={domainScores || {}}
+              coherenceBodies={coherenceBodies || {}}
               dailyPct={dailyPct || 0}
               streakCount={streakCount || 0}
               triggerRate={triggerRate || 0}
@@ -2242,7 +2253,7 @@ export default function App() {
 
         
         {/* ── SYSTEM MAP ── */}
-        {tab === 'map' && <SystemMap domainScores={domainScores} onboardingProfile={onboardingProfile}/>}
+        {tab === 'map' && <SystemMap domainScores={domainScores} coherenceBodies={coherenceBodies} onboardingProfile={onboardingProfile}/>}
 
         {/* ── FOUNDATION ── */}
         {tab === 'foundation' && <Foundation/>}
