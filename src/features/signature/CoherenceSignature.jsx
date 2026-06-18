@@ -152,7 +152,7 @@ function SignatureCard({ userName, domainScores, coherenceScore, onboardingProfi
 
       {/* Footer */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, borderTop: '0.5px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.04em' }}>quintave.vercel.app</div>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.04em' }}>quintave.app</div>
         <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{today}</div>
       </div>
     </div>
@@ -228,9 +228,9 @@ export default function CoherenceSignature({ userName, domainScores, coherenceSc
           </button>
           <button onClick={() => {
             if (navigator.share) {
-              navigator.share({ title: 'My Quintave Coherence Signature', text: `My coherence score is ${coherenceScore}/100 — ${new Object(COHERENCE_STATES.find(s=>coherenceScore>=s.min&&coherenceScore<=s.max)||COHERENCE_STATES[0]).label}. Check out Quintave: quintave.vercel.app`, url: 'https://quintave.vercel.app' })
+              navigator.share({ title: 'My Quintave Coherence Signature', text: `My coherence score is ${coherenceScore}/100 — ${new Object(COHERENCE_STATES.find(s=>coherenceScore>=s.min&&coherenceScore<=s.max)||COHERENCE_STATES[0]).label}. Check out Quintave: quintave.app`, url: 'https://quintave.app' })
             } else {
-              navigator.clipboard.writeText(`My Quintave coherence score: ${coherenceScore}/100 — ${(COHERENCE_STATES.find(s=>coherenceScore>=s.min&&coherenceScore<=s.max)||COHERENCE_STATES[0]).label}. Check it out: quintave.vercel.app`)
+              navigator.clipboard.writeText(`My Quintave coherence score: ${coherenceScore}/100 — ${(COHERENCE_STATES.find(s=>coherenceScore>=s.min&&coherenceScore<=s.max)||COHERENCE_STATES[0]).label}. Check it out: quintave.app`)
               alert('Link copied to clipboard!')
             }
           }}
