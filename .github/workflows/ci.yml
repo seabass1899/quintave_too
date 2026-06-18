@@ -24,11 +24,11 @@ jobs:
         with:
           node-version: '22'
 
-      # Install deps. Use `npm ci` when the lockfile is in sync; fall back to
-      # `npm install` otherwise (this repo has had mixed lockfiles). No npm
-      # cache is configured, since a stale/mixed lockfile can break the cache step.
+      # Install deps with `npm install` (not `npm ci`): this repo's lockfile
+      # drifts (mixed npm/pnpm history), and npm install tolerates that while
+      # ci does not. No npm cache, which can choke on a stale/mixed lockfile.
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install --no-audit --no-fund
 
       # 1) Build must succeed — the check that catches compile errors that can't
       #    be verified locally without a network.
