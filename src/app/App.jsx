@@ -795,7 +795,7 @@ function TriggerMap({ triggers, setTriggers }) {
 
 // ─── Ring ─────────────────────────────────────────────────────────────────────
 
-function Ring({ pct, size = 86 }) {
+function Ring({ pct, size = 86, label = 'daily', suffix = '%' }) {
   const r = size * 0.38; const circ = 2 * Math.PI * r; const sw = size * 0.08
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
@@ -803,8 +803,8 @@ function Ring({ pct, size = 86 }) {
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1a1a18" strokeWidth={sw}
         strokeDasharray={circ} strokeDashoffset={circ - (pct/100)*circ}
         strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`}/>
-      <text x={size/2} y={size/2+5} textAnchor="middle" fontSize={size*0.19} fontWeight="700" fill="#1a1a18">{Math.round(pct)}%</text>
-      <text x={size/2} y={size/2+15} textAnchor="middle" fontSize={size*0.1} fill="#888">daily</text>
+      <text x={size/2} y={size/2+5} textAnchor="middle" fontSize={size*0.19} fontWeight="700" fill="#1a1a18">{Math.round(pct)}{suffix}</text>
+      <text x={size/2} y={size/2+15} textAnchor="middle" fontSize={size*0.1} fill="#888">{label}</text>
     </svg>
   )
 }
@@ -852,7 +852,7 @@ function CoherenceHeadline({ coherence, compact }) {
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
         <div style={{ position:'relative', flexShrink:0 }}>
-          <Ring pct={coherence.overall} size={compact ? 72 : 86}/>
+          <Ring pct={coherence.overall} size={compact ? 72 : 86} label="coherence" suffix=""/>
         </div>
         <div style={{ minWidth:0 }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:z.bg, color:z.color, borderRadius:999, padding:'3px 10px', fontSize:11, fontWeight:700 }}>
@@ -2012,11 +2012,11 @@ export default function App() {
                 return <>
                   <div style={{ background: hi.bg||'#F7F6F3', borderRadius:8, padding:'8px 10px', marginBottom:8 }}>
                     <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>Highest resonance</div>
-                    <div style={{ fontSize:13, fontWeight:600, color: hi.text||'#1a1a18' }}>{hi.name}: {hi.score}</div>
+                    <div style={{ fontSize:13, fontWeight:600, color: hi.text||'#1a1a18' }}>{hi.name}: {Math.round(hi.score)}</div>
                   </div>
                   <div style={{ background: lo.bg||'#FCEBEB', borderRadius:8, padding:'8px 10px' }}>
                     <div style={{ fontSize:10, color:'#888', marginBottom:2 }}>Primary interference</div>
-                    <div style={{ fontSize:13, fontWeight:600, color: lo.text||'#A32D2D' }}>{lo.name}: {lo.score}</div>
+                    <div style={{ fontSize:13, fontWeight:600, color: lo.text||'#A32D2D' }}>{lo.name}: {Math.round(lo.score)}</div>
                   </div>
                 </>
               })()}
