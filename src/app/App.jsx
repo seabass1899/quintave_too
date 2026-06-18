@@ -31,6 +31,8 @@ import { silentSync, loadCloudState, applyCloudStateToLocal, syncLocalStateToClo
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
 import { computeBodyProgress, overallCoherence, planeFor, planeLabel, justCrossedIntoBlue, needsReassessment } from '../features/frequency/coherenceProgress'
+import AccountSettings from '../features/account/AccountSettings'
+import LegalPage from '../features/legal/LegalPages'
 
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
@@ -1071,7 +1073,7 @@ function MobileTuningFocus({ tip, domainId }) {
   )
 }
 
-export default function App() {
+function AppMain() {
   const [tab, setTab] = useState('today')
   const [session, setSession] = useState(null)
   const [testerMode, setTesterMode] = useState(() => {
@@ -1216,6 +1218,7 @@ export default function App() {
   const [showBreathwork, setShowBreathwork] = useState(false)
   const [showWeekly,     setShowWeekly]     = useState(false)
   const [showNotifs,     setShowNotifs]     = useState(false)
+  const [showAccount,    setShowAccount]    = useState(false)
   const [ripple,         setRipple]         = useState(null)
   const [milestone,      setMilestone]      = useState(null)
   const [openDomain,     setOpenDomain]     = useState(null)
@@ -1752,6 +1755,7 @@ export default function App() {
       {showBreathwork && <BreathworkTimer onClose={() => setShowBreathwork(false)}/>}
       {showWeekly && <WeeklyReview onClose={() => setShowWeekly(false)} checked={checked}/>}
       {showNotifs && <NotificationSettings onClose={() => setShowNotifs(false)}/>}
+      {showAccount && <AccountSettings session={session} isPremium={isPremium} onClose={() => setShowAccount(false)}/>}
 
       {weeklyDue && (
         <div style={{ background: '#4A3FB5', color: '#fff', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
@@ -1820,6 +1824,23 @@ export default function App() {
               </div>
             </div>
 
+            {/* Account — always visible for signed-in users (not tester-gated) */}
+            {session?.user && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Account</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  <button onClick={() => { setShowNotifs(true); setShowDrawer(false) }}
+                    style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
+                    Reminders
+                  </button>
+                  <button onClick={() => { setShowAccount(true); setShowDrawer(false) }}
+                    style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
+                    Account &amp; subscription
+                  </button>
+                </div>
+              </div>
+            )}
+
             {testerMode && (
               <>
                 <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Tester tools</div>
@@ -1829,7 +1850,6 @@ export default function App() {
                     { label:'∿ Noise Audit', fn:() => setShowNoise(true) },
                     { label:'◈ Coach View', fn:() => setShowPractitioner(true) },
                     { label:'Review', fn:() => setShowWeekly(true) },
-                    { label:'Reminders', fn:() => setShowNotifs(true) },
                     { label:'Save data', fn:exportBackup },
                     { label:'Export Beta', fn:exportBetaData },
                     { label:'Clear today', fn:() => { if(window.confirm("Clear today's practice?")) setChecked({...checked,[today]:{}}) } },
@@ -1876,13 +1896,15 @@ export default function App() {
             <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
             {/* SyncControls always visible on desktop — not gated behind tester mode */}
             <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
+            {session?.user && (<>
+              <button onClick={() => setShowAccount(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Account</button>
+            </>)}
             {testerMode && (<>
               <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
               <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
               <button onClick={() => setShowPractitioner(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#E6F1FB', color:'#0C447C', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>◈ Coach</button>
               <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
               <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
-              <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
               <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
               <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
               <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
@@ -2280,6 +2302,24 @@ export default function App() {
       )}
 
       <FeedbackButton dailyPct={dailyPct} streakCount={streakCount} weakest={weakest} isMobile={isMobile} doneToday={doneToday} totalCount={totalCount} betaVisible={doneToday >= 2} />
+
+      <footer style={{ textAlign: 'center', padding: '32px 16px 24px', fontSize: 11, color: '#aaa' }}>
+        <a href="/privacy" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Privacy</a>
+        <span style={{ color: '#ddd' }}>·</span>
+        <a href="/terms" style={{ color: '#aaa', textDecoration: 'none', margin: '0 8px' }}>Terms</a>
+      </footer>
     </div>
   )
+}
+
+// Route wrapper: render standalone legal pages or the main app. No hooks here,
+// so the early returns don't violate the Rules of Hooks.
+export default function App() {
+  if (typeof window !== 'undefined') {
+    const path = (window.location.pathname || '').toLowerCase()
+    const hash = (window.location.hash || '').toLowerCase()
+    if (path === '/privacy' || path === '/privacy/' || hash === '#privacy') return <LegalPage which="privacy" />
+    if (path === '/terms' || path === '/terms/' || hash === '#terms') return <LegalPage which="terms" />
+  }
+  return <AppMain />
 }
