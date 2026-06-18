@@ -192,7 +192,7 @@ function TrendSpark({ data, color }) {
   )
 }
 
-export default function ProgressTab({ checked, onboardingProfile, earnedMilestones, domainScores, dayStatus }) {
+export default function ProgressTab({ checked, onboardingProfile, earnedMilestones, domainScores, coherence, dayStatus }) {
   const [expandedDomain, setExpandedDomain] = useState(null)
   const today = new Date()
   
@@ -237,24 +237,46 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
   })
 
   const activeDays = last30.filter(d => d.hasPractice).length
-  const avgCoherence = activeDays > 0
-    ? Math.round(last30.filter(d => d.hasPractice).reduce((a, d) => a + d.coherence, 0) / activeDays)
-    : onboardingProfile?.overallScore || 0
+  // CURRENT STATE: prefer accumulated coherence (same source as Today/Signature);
+  // fall back to the today-based average if coherence isn't ready.
+  const avgCoherence = coherence?.ready
+    ? coherence.overall
+    : (activeDays > 0
+        ? Math.round(last30.filter(d => d.hasPractice).reduce((a, d) => a + d.coherence, 0) / activeDays)
+        : onboardingProfile?.overallScore || 0)
 
   const todayData = last30[last30.length - 1]
   const coherenceState = getCoherenceState(avgCoherence)
 
   // ── Per-domain 30-day data ──
+  // When accumulated coherence is ready, per-body levels/trends come from the
+  // coherence series (the real accumulated trajectory). Otherwise fall back to
+  // the today-based daily scores. Practice-streak logic below always uses checked.
+  const cohReady = !!coherence?.ready && Array.isArray(coherence.series) && coherence.series.length > 0
+  const bodySeries = (id) => coherence.series.map(p => Math.round(p.bodies?.[id] ?? 0))
+
   const domainProgress = DOMAINS.map(d => {
-    const scores7 = [], scores30 = []
-    for (let i = 0; i < 30; i++) {
-      const day = last30[i]
-      if (i >= 23) scores7.push(day.scores[d.id])
-      scores30.push(day.scores[d.id])
+    let scores7, scores30, avg7, avg30, trend
+    if (cohReady) {
+      const ser = bodySeries(d.id)
+      const cur = ser[ser.length - 1]                       // current accumulated level
+      const prior = ser[Math.max(0, ser.length - 8)]        // ~7 days ago
+      const prior30 = ser[0]                                // start of window
+      avg7 = cur                                            // "level now" — accumulated
+      avg30 = prior30                                       // level 30 days (window start)
+      trend = cur > prior + 2 ? 'rising' : cur < prior - 2 ? 'falling' : 'stable'
+      scores30 = ser.slice(-30)                             // sparkline = accumulated trajectory
+    } else {
+      scores7 = []; scores30 = []
+      for (let i = 0; i < 30; i++) {
+        const day = last30[i]
+        if (i >= 23) scores7.push(day.scores[d.id])
+        scores30.push(day.scores[d.id])
+      }
+      avg7 = Math.round(scores7.reduce((a, b) => a + b, 0) / 7)
+      avg30 = Math.round(scores30.reduce((a, b) => a + b, 0) / 30)
+      trend = avg7 > avg30 + 5 ? 'rising' : avg7 < avg30 - 5 ? 'falling' : 'stable'
     }
-    const avg7 = Math.round(scores7.reduce((a, b) => a + b, 0) / 7)
-    const avg30 = Math.round(scores30.reduce((a, b) => a + b, 0) / 30)
-    const trend = avg7 > avg30 + 5 ? 'rising' : avg7 < avg30 - 5 ? 'falling' : 'stable'
 
     // Streak for each practice in this domain
     const practiceData = PRACTICES[d.id].map((p, i) => {
@@ -323,7 +345,7 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
       {/* ── Row 1: Key stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
         {[
-          { label: 'Current state', value: coherenceState.label, sub: `${avgCoherence}/100 avg`, color: coherenceState.color, bg: coherenceState.bg },
+          { label: 'Current state', value: coherenceState.label, sub: coherence?.ready ? `${avgCoherence}/100 coherence` : `${avgCoherence}/100 avg`, color: coherenceState.color, bg: coherenceState.bg },
           { label: 'Day streak', value: `${overallStreak}`, sub: overallStreak >= 7 ? 'on a roll' : 'keep going', color: '#1D9E75', bg: '#E1F5EE' },
           { label: 'Active days', value: `${activeDays}`, sub: 'last 30 days', color: '#7F77DD', bg: '#EEEDFE' },
           { label: 'Total practices', value: `${totalEver}`, sub: 'all time', color: '#378ADD', bg: '#E6F1FB' },
