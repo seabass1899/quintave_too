@@ -336,6 +336,17 @@ export const PROTOCOLS = {
     measure: 'Track consistency — days per week with morning light exposure. Notice the correlation between weeks with 5–7 days of morning light and your sleep quality, energy, and mood baseline.',
   },
 
+  'Body Signal Scan': {
+    why: 'Most people only notice the body when it breaks down — exhaustion, illness, injury, or shutdown. By then the signal has been screaming for a long time. Interoception — the felt sense of the body\'s internal state — is a trainable skill. Catching early signals (rising tension, dropping energy, shallow breath, hunger, the first edge of overwhelm) lets you adjust before imbalance compounds. This is the listening half of Form, balancing the doing-heavy practices around it.',
+    steps: [
+      'Pause wherever you are. Take one slow breath and bring attention inside the body rather than out to the task. Scan quickly: energy level, breath depth, areas of tension, hunger or thirst, the overall "weather" of your nervous system right now.',
+      'Name what you find in plain terms — "shoulders tight, breath shallow, running on low energy." You are not fixing, you are reading the dashboard before the warning lights come on.',
+      'Choose one small adjustment the signal is asking for — water, a stretch, a slower breath, food, a two-minute pause — and take it. Log how early you caught the signal, 1–10 (1 = only noticed at breakdown, 10 = caught it at the first whisper).',
+    ],
+    beginner: 'Three times today — mid-morning, mid-afternoon, evening — stop for 20 seconds and ask your body one question: "What do you need right now?" Listen for the first honest answer. That is the whole practice.',
+    measure: 'Log signals caught early 1–10. Over weeks, the catching moves earlier — you start noticing the whisper instead of the scream. That earlier detection is the metric, and it is what prevents the crashes.',
+  },
+
   // ── FIELD (new) ─────────────────────────────────────────────────────────────
 
   '90-Second Rule': {
@@ -360,6 +371,17 @@ export const PROTOCOLS = {
     measure: 'Log tension released 1–10 after each session. Over weeks, the same areas will begin to hold less — evidence that the Field is clearing. Note which areas consistently hold the most charge.',
   },
 
+  'Projection Check': {
+    why: 'When another person triggers a strong reaction, the charge feels like it is entirely about them — but a significant part of it is usually yours: an old wound, an unmet need, a protection pattern the situation activated. Without separating the two, you blame, defend, withdraw, or react, and the same dynamic repeats across relationships. This practice builds the relational half of Field work — most emotional practices process feeling in isolation; this one works the charge that arises between you and another person.',
+    steps: [
+      'Recall (or pause inside) a moment you were triggered by someone. Before analyzing them, turn toward your own body: where is the charge, and what does it feel like? Name the emotion underneath the reaction — often hurt, fear, or shame beneath the anger.',
+      'Ask the separating question: "What here is genuinely about their behavior, and what is my older material being activated?" Most triggers are a mix. You are not excusing them or blaming yourself — you are sorting what is yours to own from what is theirs.',
+      'Name one piece that is yours ("the intensity is my old fear of being dismissed") and, if relevant, one piece that is theirs to be addressed directly. Log charge owned 1–10 — how much of your reaction you were able to recognize as yours.',
+    ],
+    beginner: 'Next time someone gets under your skin, before reacting, silently ask one question: "What part of this is mine?" You do not have to answer perfectly. Just asking interrupts the projection and creates a half-second of choice.',
+    measure: 'Log charge owned 1–10. Higher over time means you are catching your own material faster in the heat of the moment — which is what turns reactive relationships into conscious ones.',
+  },
+
   // ── MIND (new) ──────────────────────────────────────────────────────────────
 
   'Belief Audit': {
@@ -382,6 +404,17 @@ export const PROTOCOLS = {
     ],
     beginner: 'Choose one sentence. Say it 5 times slowly before getting out of bed tomorrow morning. Notice whether you feel anything different on the fifth repetition compared to the first.',
     measure: 'Log resonance felt 1–10 — how much did the statement feel true by the end? Over weeks, the same mantra will feel increasingly real as the neural pathway strengthens.',
+  },
+
+  'Integrity Review': {
+    why: 'Coherence is not just clear intention — it is the daily match between what you say matters and what you actually do. Morning Directive sets the intention; without a closing review, drift between stated priorities and real choices goes unseen and compounds. This practice closes the loop: a brief, honest, non-punishing look at where your actions matched your deeper intentions today and where they did not. The goal is alignment and self-honesty, never self-criticism.',
+    steps: [
+      'In the evening, recall what you said mattered most today — your Morning Directive, your stated priorities, the person you intended to be. Hold it without judgment.',
+      'Honestly review the day against it: where did your choices align with what matters, and where did they drift toward autopilot, avoidance, or other people\'s agendas? Note one clear alignment and one clear drift — specifically, without self-attack.',
+      'Choose one small correction for tomorrow that would close the gap. End by acknowledging the alignment you did achieve. Log action–intention match 1–10 for the day.',
+    ],
+    beginner: 'Before sleep, ask two questions: "Where did I live my priorities today?" and "Where did I drift?" One honest answer each. That awareness alone begins to close the gap — no fixing required yet.',
+    measure: 'Log action–intention match 1–10. Rising scores mean your daily choices are increasingly expressing your deeper intentions — the practical definition of an aligned life. Watch the trend, not any single day.',
   },
 
   // ── CODE (new) ──────────────────────────────────────────────────────────────
