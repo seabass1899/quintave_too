@@ -1681,16 +1681,16 @@ export default function App() {
         </div>
       )}
       {showSignature && (() => {
-        // Build blended scores for signature — use onboarding baseline when no practices logged
+        // Signature uses the ACCUMULATED coherence (same source of truth as the
+        // Today screen) so the shareable card matches the rest of the app.
         const sigScores = {}
-        const hasAnyPractice = Object.values(domainScores).some(s => s > 0)
         DOMAINS.forEach(d => {
-          const practiceScore = domainScores[d.id] || 0
+          const accumulated = coherence?.bodies?.[d.id]
           const baselineScore = onboardingProfile?.scores?.[d.id]
             ? Math.round((onboardingProfile.scores[d.id] / 10) * 100) : 50
-          sigScores[d.id] = practiceScore > 0 ? practiceScore : baselineScore
+          sigScores[d.id] = Math.round(Number.isFinite(accumulated) ? accumulated : baselineScore)
         })
-        const sigCoherence = getCoherenceScore(sigScores)
+        const sigCoherence = coherence?.ready ? coherence.overall : getCoherenceScore(sigScores)
         if (!isPremium) {
           return (
             <PremiumGate
