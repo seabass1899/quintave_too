@@ -180,7 +180,7 @@ function findPracticeByKey(key) {
   }
 }
 
-export const TODAY_PLAN_VERSION = 13
+export const TODAY_PLAN_VERSION = 14
 
 function getPracticeCrossCount(item) {
   return Array.isArray(item?.cross) ? item.cross.length : 0
@@ -1409,10 +1409,11 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
     'd3_0': ['d3', 'Name + Locate Emotion'],   // Somatic Body Scan → Name + Locate
     'd3_1': ['d3', 'Gratitude + Reframe'],     // Emotional Log → Gratitude + Reframe
     'd3_2': ['d3', 'Gratitude + Reframe'],     // Forgiveness Protocol → Gratitude
-    // d4 — Mind
-    'd4_0': ['d4', 'Morning Directive'],       // Thought Audit → Morning Directive
-    'd4_1': ['d4', 'Visualization Practice'],  // Daily Mantra → Visualization
-    'd4_2': ['d4', 'Morning Directive'],       // Belief Audit → Morning Directive
+    // d4 — Mind  (avoid morning-only 'Morning Directive' as a substitute — it
+    // leaked into Midday/Evening. Use phase-neutral lower-friction Mind practices.)
+    'd4_0': ['d4', 'Visualization Practice'],  // Thought Audit → Visualization
+    'd4_1': ['d4', 'Thought Audit'],           // Daily Mantra → Thought Audit
+    'd4_2': ['d4', 'Visualization Practice'],  // Belief Audit → Visualization
     // d5 — Code
     'd5_0': ['d5', 'Pattern Interrupt'],       // Theta/Shadow Work → Pattern Interrupt
     'd5_1': ['d5', 'Affirmation Installation'],// Trigger Mapping → Affirmation
@@ -1450,6 +1451,8 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
     items = items.map(item => {
       if (stronglyAvoided.has(item.key) && SUBSTITUTION_MAP[item.key]) {
         const [subDomainId, subName] = SUBSTITUTION_MAP[item.key]
+        // Never substitute in a morning-only practice outside the morning phase.
+        if (p.id !== 'morning' && MORNING_ONLY_PRACTICES.has(subName)) return item
         const substitute = findPractice(subDomainId, subName)
         if (substitute && !dayUsed.has(substitute.key)) {
           adaptations.push({
