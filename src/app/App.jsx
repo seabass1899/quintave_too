@@ -1707,6 +1707,23 @@ function AppMain() {
               </div>
             </div>
 
+            {/* Account — always visible for signed-in users (not tester-gated) */}
+            {session?.user && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Account</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  <button onClick={() => { setShowNotifs(true); setShowDrawer(false) }}
+                    style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
+                    Reminders
+                  </button>
+                  <button onClick={() => { setShowAccount(true); setShowDrawer(false) }}
+                    style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
+                    Account &amp; subscription
+                  </button>
+                </div>
+              </div>
+            )}
+
             {testerMode && (
               <>
                 <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', color:'#888', marginBottom:10 }}>Tester tools</div>
@@ -1716,8 +1733,6 @@ function AppMain() {
                     { label:'∿ Noise Audit', fn:() => setShowNoise(true) },
                     { label:'◈ Coach View', fn:() => setShowPractitioner(true) },
                     { label:'Review', fn:() => setShowWeekly(true) },
-                    { label:'Reminders', fn:() => setShowNotifs(true) },
-                    { label:'Account', fn:() => setShowAccount(true) },
                     { label:'Save data', fn:exportBackup },
                     { label:'Export Beta', fn:exportBetaData },
                     { label:'Clear today', fn:() => { if(window.confirm("Clear today's practice?")) setChecked({...checked,[today]:{}}) } },
@@ -1764,14 +1779,16 @@ function AppMain() {
             <button onClick={openFeedback} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>Feedback</button>
             {/* SyncControls always visible on desktop — not gated behind tester mode */}
             <SyncControls session={session} authReady={authReady} onShowAuth={() => setShowAuth(true)} />
+            {session?.user && (<>
+              <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
+              <button onClick={() => setShowAccount(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Account</button>
+            </>)}
             {testerMode && (<>
               <button onClick={() => setShowSignature(true)} style={{ padding:'5px 10px', borderRadius:7, border:'1.5px solid #7F77DD', background:'#EEEDFE', color:'#3C3489', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}>✦ Signature</button>
               <button onClick={() => setShowNoise(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#FAEEDA', color:'#633806', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>∿ Noise</button>
               <button onClick={() => setShowPractitioner(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#E6F1FB', color:'#0C447C', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>◈ Coach</button>
               <button onClick={() => setShowBreathwork(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Breathwork</button>
               <button onClick={() => setShowWeekly(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Review</button>
-              <button onClick={() => setShowNotifs(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Reminders</button>
-              <button onClick={() => setShowAccount(true)} style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Account</button>
               <button onClick={exportBackup} style={{ padding:'5px 10px', borderRadius:7, border:'none', background:'#1a1a18', color:'#fff', fontSize:11, cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', flexShrink:0 }}>Save</button>
               <button onClick={exportBetaData} style={{ padding:'7px 12px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.12)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Export Beta Data</button>
               <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
