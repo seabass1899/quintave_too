@@ -26,8 +26,7 @@ import AnalyticsTab from '../features/analytics/AnalyticsTab'
 import FrequencyLayer from '../features/frequency/FrequencyLayer'
 import AuthBox from '../features/auth/AuthBox'
 import SyncControls from '../features/sync/SyncControls'
-import { supabase, getSession } from './supabaseClient'
-import { silentSync, loadCloudState, applyCloudStateToLocal, syncLocalStateToCloud } from './services/syncService'
+import { useCloudSync } from './hooks/useCloudSync'
 import { trackEvent, trackAppOpen, readEvents, getAnalyticsSummary, clearAnalytics } from './utils/analytics'
 import OnboardingModal from '../components/OnboardingModal'
 import { computeBodyProgress, overallCoherence, planeFor, planeLabel, justCrossedIntoBlue, needsReassessment } from '../features/frequency/coherenceProgress'
@@ -1075,16 +1074,12 @@ function MobileTuningFocus({ tip, domainId }) {
 
 function AppMain() {
   const [tab, setTab] = useState('today')
-  const [session, setSession] = useState(null)
   const [testerMode, setTesterMode] = useState(() => {
     try { return localStorage.getItem('q_tester_mode') === 'true' } catch { return false }
   })
   const isMobile = useWindowWidth() < 768
   const [showDrawer, setShowDrawer] = useState(false)
-  const [authReady, setAuthReady] = useState(false)
-  const [cloudRestoring, setCloudRestoring] = useState(false)
   useDayRollover() // detect midnight rollover
-  const { isPremium } = useSubscription(session)
 
 
 
@@ -1186,35 +1181,12 @@ function AppMain() {
   const [onboardingProfile, setOnboardingProfile] = useLS('q_onboarding', null)
   const [earnedMilestones, setEarnedMilestones] = useLS('q_milestones', [])
 
-  // ── Cloud restore — defined at component level so it has access to all setters ──
-  // Called when a magic link lands on a fresh tab with no local data.
-  // Directly updates React state so UI re-renders without a page reload.
-  const restoreFromCloud = React.useCallback(async (userId) => {
-    if (!userId || !supabase) return
-    try {
-      setCloudRestoring(true)
-      const cloudData = await loadCloudState(userId)
-      if (cloudData) {
-        // Write all fields to localStorage first. This is the fresh-device
-        // auto-restore path (no local data to overwrite), so confirmed=true.
-        applyCloudStateToLocal(cloudData, true)
-        // Directly update React state — useLS won't re-read localStorage on its own
-        if (cloudData.onboarding?.completedAt) {
-          setOnboardingProfile(cloudData.onboarding)
-        }
-        if (cloudData.checked && Object.keys(cloudData.checked).length > 0) {
-          setChecked(cloudData.checked)
-        }
-        if (cloudData.day_status && Object.keys(cloudData.day_status).length > 0) {
-          setDayStatus(cloudData.day_status)
-        }
-      }
-    } catch (e) {
-      console.warn('Cloud restore failed:', e)
-    } finally {
-      setCloudRestoring(false)
-    }
-  }, []) // eslint-disable-line
+  // ── Auth + cloud sync (extracted to a hook to isolate regression-prone logic) ──
+  const { session, authReady, cloudRestoring, scheduleSync } = useCloudSync({
+    setChecked, setDayStatus, setOnboardingProfile, setShowAuth,
+  })
+  const { isPremium } = useSubscription(session)
+
   const [showBreathwork, setShowBreathwork] = useState(false)
   const [showWeekly,     setShowWeekly]     = useState(false)
   const [showNotifs,     setShowNotifs]     = useState(false)
@@ -1234,21 +1206,6 @@ function AppMain() {
   })
   const rippleTimer  = useRef(null)
   const milestoneTimer = useRef(null)
-  // Debounce timer for background sync — collapses rapid check-ins (and other
-  // edits) into a single cloud write ~1.5s after the user stops interacting,
-  // instead of firing one upsert per tap. Prevents overlapping syncs from
-  // queuing on the user_state row lock and tripping the "taking too long" watchdog.
-  const syncDebounceTimer = useRef(null)
-  const scheduleSync = React.useCallback(() => {
-    if (!session?.user?.id) return
-    clearTimeout(syncDebounceTimer.current)
-    syncDebounceTimer.current = setTimeout(() => {
-      silentSync(session.user.id)
-    }, 1500)
-  }, [session?.user?.id])
-  // Clear the pending debounce on unmount
-  React.useEffect(() => () => clearTimeout(syncDebounceTimer.current), [])
-
   useEffect(() => { trackAppOpen() }, [])
 
   useEffect(() => {
@@ -1265,82 +1222,6 @@ function AppMain() {
   }, [testerMode])
 
 
-  useEffect(() => {
-    let mounted = true
-
-    // Helper: check if local onboarding is valid
-    const hasLocalOnboarding = () => {
-      try {
-        const o = JSON.parse(localStorage.getItem('q_onboarding') || 'null')
-        return !!(o?.completedAt && o?.scores && Object.keys(o.scores).length > 0)
-      } catch { return false }
-    }
-
-    // Safety timeout — if session check hangs for 6s, unblock the UI anyway.
-    // Do NOT setSession(null) here: that was wiping a session that was merely
-    // slow to load. Just mark auth "ready" so the UI stops waiting; if a real
-    // session resolves afterward, onAuthStateChange/getSession will set it.
-    const authTimeout = setTimeout(() => {
-      if (mounted && !authReady) {
-        setAuthReady(true)
-      }
-    }, 6000)
-
-    getSession()
-      .then(async (currentSession) => {
-        clearTimeout(authTimeout)
-        if (!mounted) return
-        setSession(currentSession)
-
-        // On initial load with a session but no local data — restore from cloud
-        if (currentSession?.user?.id && !hasLocalOnboarding()) {
-          await restoreFromCloud(currentSession.user.id)
-        }
-
-        if (mounted) setAuthReady(true)
-      })
-      .catch(() => {
-        clearTimeout(authTimeout)
-        if (!mounted) return
-        setSession(null)
-        setAuthReady(true)
-      })
-
-    const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      if (!mounted) return
-
-      // Only clear the session on an explicit sign-out. Other events
-      // (INITIAL_SESSION, TOKEN_REFRESHED, etc.) can arrive with a null
-      // session during load races — blindly setting null here was wiping a
-      // valid session and resetting premium to free.
-      if (_event === 'SIGNED_OUT') {
-        setSession(null)
-        return
-      }
-
-      if (nextSession) {
-        setSession(nextSession)
-        setShowAuth(false)
-      }
-
-      // Magic link / OTP sign-in fires SIGNED_IN on a fresh tab — restore cloud data
-      if (_event === 'SIGNED_IN' && nextSession?.user?.id && !hasLocalOnboarding()) {
-        await restoreFromCloud(nextSession.user.id)
-      }
-
-      // Auto-sync on sign-in when user has local data
-      if (_event === 'SIGNED_IN' && nextSession?.user?.id && hasLocalOnboarding()) {
-        try { await syncLocalStateToCloud(nextSession.user.id) } catch {}
-      }
-
-      if (mounted && !authReady) setAuthReady(true)
-    })
-
-    return () => {
-      mounted = false
-      data?.subscription?.unsubscribe?.()
-    }
-  }, [restoreFromCloud])
 
   const today = tk()
   const todayChecks = checked[today] || {}
