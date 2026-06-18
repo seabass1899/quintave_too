@@ -49,7 +49,7 @@ function RadarChart({ scores }) {
   )
 }
 
-export default function AnalyticsTab({ checked, onboardingProfile, domainScores, dailyPct, streakCount, triggerRate, setShowSignature, setOnboardingProfile, exportNotes, exportCSV, exportBackup }) {
+export default function AnalyticsTab({ checked, onboardingProfile, domainScores, coherenceBodies, dailyPct, streakCount, triggerRate, setShowSignature, setOnboardingProfile, exportNotes, exportCSV, exportBackup }) {
   const safeChecked = checked || {}
   const today = new Date().toDateString()
   const activeDays = Object.keys(safeChecked).reduce((acc, dateStr) => {
@@ -326,7 +326,7 @@ export default function AnalyticsTab({ checked, onboardingProfile, domainScores,
               <div style={card}>
                 <div style={{ fontSize:14, fontWeight:600, marginBottom:4 }}>Resonance map</div>
                 <div style={{ fontSize:11, color:'#888', marginBottom:8 }}>A perfect pentagon = full coherence across all five bodies. Distortion reveals where interference lives.</div>
-                <RadarChart scores={domainScores}/>
+                <RadarChart scores={coherenceBodies || domainScores}/>
               </div>
             </div>
 
