@@ -78,6 +78,7 @@ export const PRACTICES = {
     { name: 'Cold Exposure', target: '2–5 min', metric: 'Recovery time ↓', cross: ['d3','d5'] },
     { name: 'Hydration Protocol', target: '2–3L water', metric: 'Litres consumed', cross: [] },
     { name: 'Sun + Circadian Anchor', target: '10 min AM', metric: 'Morning light exposure', cross: ['d3','d4'] },
+    { name: 'Body Signal Scan', target: '5 min', metric: 'Signals caught early 1–10', cross: ['d3','d1'] },
   ],
   d3: [
     { name: 'Name + Locate Emotion', target: '1 event', metric: 'Intensity 1–10', cross: ['d5'] },
@@ -87,6 +88,7 @@ export const PRACTICES = {
     { name: 'Forgiveness Protocol', target: '1 session', metric: 'Charge level 1–10', cross: ['d5'] },
     { name: '90-Second Rule', target: '1+ activation', metric: 'Completion without suppression', cross: ['d5'] },
     { name: 'Somatic Body Scan', target: '10 min', metric: 'Tension released 1–10', cross: ['d1','d5'] },
+    { name: 'Projection Check', target: '1 trigger', metric: 'Charge owned 1–10', cross: ['d4','d5'] },
   ],
   d4: [
     { name: 'Morning Directive', target: '1 intention', metric: 'Alignment score 1–10', cross: ['d5'] },
@@ -96,6 +98,7 @@ export const PRACTICES = {
     { name: 'Visualization Practice', target: '10 min', metric: 'Vividness 1–10', cross: ['d1','d3','d5'] },
     { name: 'Belief Audit', target: '1 belief examined', metric: 'Clarity gained 1–10', cross: ['d5'] },
     { name: 'Daily Mantra Installation', target: '5 min', metric: 'Resonance felt 1–10', cross: ['d5','d1'] },
+    { name: 'Integrity Review', target: '5 min PM', metric: 'Action–intention match 1–10', cross: ['d1','d5'] },
   ],
   d5: [
     { name: 'Pattern Interrupt', target: '1+ interrupt', metric: 'Successful interrupts', cross: ['d3','d4'] },
