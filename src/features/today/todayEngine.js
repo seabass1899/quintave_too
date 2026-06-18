@@ -99,10 +99,36 @@ const MORNING_ADAPTIVE_POOLS = {
 // must never be injected into Midday/Evening by phase routing. Routing the
 // *domain* to another phase is fine, but the practice pulled must fit that
 // phase — e.g. route Mind to Midday as 'Thought Audit', never 'Morning Directive'.
-const MORNING_ONLY_PRACTICES = new Set([
+export const MORNING_ONLY_PRACTICES = new Set([
   'Morning Directive',
   'Sun + Circadian Anchor',
 ])
+
+// Lower-friction same-domain substitutes for strongly-avoided practices.
+// INVARIANT: no entry may map to a MORNING_ONLY_PRACTICES value (tested in CI).
+export const SUBSTITUTION_MAP = {
+  // d1 — Source
+  'd1_0': ['d1', 'Observer Drill'],          // Stillness Exposure → Observer Drill
+  'd1_1': ['d1', '5 Recall Triggers'],       // Observer Drill → 5 Recall Triggers
+  // d2 — Form
+  'd2_0': ['d2', 'Breathwork'],              // Sun + Circadian Anchor → Breathwork
+  'd2_1': ['d2', 'Hydration Protocol'],      // Breathwork → Hydration Protocol
+  'd2_2': ['d2', 'Breathwork'],              // Training/Mobility → Breathwork
+  // d3 — Field
+  'd3_0': ['d3', 'Name + Locate Emotion'],   // Somatic Body Scan → Name + Locate
+  'd3_1': ['d3', 'Gratitude + Reframe'],     // Emotional Log → Gratitude + Reframe
+  'd3_2': ['d3', 'Gratitude + Reframe'],     // Forgiveness Protocol → Gratitude
+  // d4 — Mind  (avoid morning-only 'Morning Directive' as a substitute — it
+  // leaked into Midday/Evening. Use phase-neutral lower-friction Mind practices.)
+  'd4_0': ['d4', 'Visualization Practice'],  // Thought Audit → Visualization
+  'd4_1': ['d4', 'Thought Audit'],           // Daily Mantra → Thought Audit
+  'd4_2': ['d4', 'Visualization Practice'],  // Belief Audit → Visualization
+  // d5 — Code
+  'd5_0': ['d5', 'Pattern Interrupt'],       // Theta/Shadow Work → Pattern Interrupt
+  'd5_1': ['d5', 'Affirmation Installation'],// Trigger Mapping → Affirmation
+  'd5_2': ['d5', 'Pattern Interrupt'],       // Identity Decompression → Pattern Interrupt
+}
+
 
 const REQUIRED_MORNING_POOL = [
   ['d4', 'Morning Directive'],
@@ -1397,28 +1423,6 @@ export function generateTodayPlan({ domainScores = {}, checked = {}, dayStatus =
   // When a practice has strong avoidance, swap it for a lower-friction
   // alternative in the same domain. This is structural, not just score nudging.
   // The substitution table maps avoided practice keys to preferred replacements.
-  const SUBSTITUTION_MAP = {
-    // d1 — Source
-    'd1_0': ['d1', 'Observer Drill'],          // Stillness Exposure → Observer Drill
-    'd1_1': ['d1', '5 Recall Triggers'],       // Observer Drill → 5 Recall Triggers
-    // d2 — Form
-    'd2_0': ['d2', 'Breathwork'],              // Sun + Circadian Anchor → Breathwork
-    'd2_1': ['d2', 'Hydration Protocol'],      // Breathwork → Hydration Protocol
-    'd2_2': ['d2', 'Breathwork'],              // Training/Mobility → Breathwork
-    // d3 — Field
-    'd3_0': ['d3', 'Name + Locate Emotion'],   // Somatic Body Scan → Name + Locate
-    'd3_1': ['d3', 'Gratitude + Reframe'],     // Emotional Log → Gratitude + Reframe
-    'd3_2': ['d3', 'Gratitude + Reframe'],     // Forgiveness Protocol → Gratitude
-    // d4 — Mind  (avoid morning-only 'Morning Directive' as a substitute — it
-    // leaked into Midday/Evening. Use phase-neutral lower-friction Mind practices.)
-    'd4_0': ['d4', 'Visualization Practice'],  // Thought Audit → Visualization
-    'd4_1': ['d4', 'Thought Audit'],           // Daily Mantra → Thought Audit
-    'd4_2': ['d4', 'Visualization Practice'],  // Belief Audit → Visualization
-    // d5 — Code
-    'd5_0': ['d5', 'Pattern Interrupt'],       // Theta/Shadow Work → Pattern Interrupt
-    'd5_1': ['d5', 'Affirmation Installation'],// Trigger Mapping → Affirmation
-    'd5_2': ['d5', 'Pattern Interrupt'],       // Identity Decompression → Pattern Interrupt
-  }
 
   // ── Strong avoidance detection for substitution ────────────────────────────
   const stronglyAvoided = new Set(
