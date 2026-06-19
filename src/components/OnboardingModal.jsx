@@ -24,8 +24,8 @@ const slides = [
       <>
         <p style={{ color: '#5F5E5A', lineHeight: 1.7, marginBottom: 18 }}>
           You are not broken. Quintave helps you detect drift across the five
-          frequency bodies that shape your daily experience — and correct
-          back toward Source alignment.
+          frequency bodies that shape your daily experience — and tune them
+          back into resonance with Source.
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {Object.entries(DOMAIN_STYLES).map(([name, style]) => (
@@ -78,7 +78,7 @@ const slides = [
           <div style={{ fontSize: 13, color: '#3C3489', lineHeight: 1.7 }}>
             Source is immovable. It does not drift, stress, or get injured.
             It is the reference frequency all other bodies must harmonize with.
-            Your daily practices are instruments of alignment — bringing Form,
+            Your daily practices are instruments of tuning — bringing Form,
             Field, Mind, and Code back into resonance with Source.
           </div>
         </div>
@@ -91,14 +91,14 @@ const slides = [
     )
   },
   {
-    title: 'Daily Alignment',
+    title: 'Daily Tuning',
     subtitle: 'The system reads your state and builds your plan.',
     body: ({ }) => (
       <>
         <p style={{ color: '#5F5E5A', lineHeight: 1.7, marginBottom: 16 }}>
           Each day Quintave detects which frequency body has drifted furthest
           from Source and builds a correction plan for that body. You do not
-          need to do everything — simply complete your minimum daily alignment.
+          need to do everything — simply complete your minimum daily tuning.
         </p>
         <div style={{
           display: 'flex', justifyContent: 'center', gap: 8,
@@ -124,13 +124,13 @@ const slides = [
         </div>
         <p style={{ color: '#888', lineHeight: 1.6, fontSize: 12 }}>
           Complete Morning to unlock Midday. Complete Midday to unlock Evening.
-          Lock the daily minimum to build your streak.
+          Lock in the daily minimum to keep deepening your resonance.
         </p>
       </>
     )
   },
   {
-    title: 'Begin your alignment',
+    title: 'Begin your tuning',
     subtitle: 'The goal is coherence, not perfection.',
     body: ({ }) => (
       <>
@@ -141,7 +141,7 @@ const slides = [
         <div style={{ display: 'grid', gap: 8 }}>
           {[
             { icon: '✦', title: 'Source first', desc: 'Every morning begins with Source — the anchor before anything else.' },
-            { icon: '⚡', title: 'Correction, not perfection', desc: 'One aligned day begins restoring the frequency. Consistency builds the plane.' },
+            { icon: '⚡', title: 'Correction, not perfection', desc: 'One day in tune begins restoring the frequency. Consistency builds the plane.' },
             { icon: '◎', title: 'The system reads you', desc: 'Your plan changes based on what your frequency bodies actually need today.' },
           ].map((item, i) => (
             <div key={i} style={{
