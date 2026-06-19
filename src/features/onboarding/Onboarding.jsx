@@ -94,7 +94,7 @@ function FrequencySlider({ value, onChange, color, low, high }) {
 // ─── Main Onboarding ──────────────────────────────────────────────────────────
 
 export default function Onboarding({ onComplete }) {
-  // flat question index across all 15 questions
+  // flat question index across all 25 questions
   const [questionIdx, setQuestionIdx] = useState(-1) // -1 = welcome
   const [scores, setScores] = useState({
     d1: [5, 5, 5, 5, 5], d2: [5, 5, 5, 5, 5], d3: [5, 5, 5, 5, 5], d4: [5, 5, 5, 5, 5], d5: [5, 5, 5, 5, 5],
@@ -273,17 +273,17 @@ export default function Onboarding({ onComplete }) {
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', color: '#888', textTransform: 'uppercase', marginBottom: 14 }}>A coherence instrument</div>
             <div style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.04em', color: '#1a1a18', marginBottom: 10 }}>Quintave</div>
             <div style={{ fontSize: 16, color: '#5F5E5A', lineHeight: 1.65, maxWidth: 360, margin: '0 auto' }}>
-              Your best life is not built. It is revealed — when every part of you is in alignment.
+              Manifestation isn't luck. It's resonance.
             </div>
           </div>
 
           <div style={{ ...card, marginBottom: 14 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18', marginBottom: 10 }}>You are a five-dimensional being.</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18', marginBottom: 10 }}>You are Source, moving through four bodies.</div>
             <div style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.75, marginBottom: 20 }}>
-              At your core is <strong>Source</strong> — the eternal, deathless self that needs no development. Around it orbit four frequency bodies: <strong>Form</strong>, <strong>Field</strong>, <strong>Mind</strong>, and <strong>Code</strong>. Each has a natural frequency. Each can be pulled into distortion by lower-vibration inputs.
+              At your core you are <strong>Source</strong> — whole, eternal, complete. You move through four frequency bodies: <strong>Form</strong> (physical), <strong>Field</strong> (emotional), <strong>Mind</strong> (mental), and <strong>Code</strong> (subconscious). When they fall out of tune with Source, life feels like resistance — effort that doesn't land.
             </div>
             <div style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.75, marginBottom: 22 }}>
-              Quintave is a <strong>daily tuning practice</strong> — a system for bringing all five frequency bodies into resonance with Source. When that coherence is sustained, abundance, health, and freedom are not goals you chase. They are what naturally emerges.
+              Quintave is a <strong>daily tuning practice</strong> that brings all four bodies back into resonance with Source. When that resonance holds, creating the life you want becomes deliberate — your best life isn't something you chase. It's what naturally emerges.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
               {[
@@ -304,14 +304,14 @@ export default function Onboarding({ onComplete }) {
 
           <div style={{ background: '#1a1a18', borderRadius: 14, padding: '18px 24px', marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: '#C0BEBA', lineHeight: 1.75 }}>
-              We will begin with a <strong style={{ color: '#fff' }}>coherence baseline assessment</strong> — 15 questions, three per frequency body. Each body is measured across three dimensions: your typical baseline, your current state this week, and your behavioral patterns under pressure. This separates who you are from where you are right now — producing a significantly more accurate starting point. Takes about 5–7 minutes.
+              We will begin with a <strong style={{ color: '#fff' }}>coherence baseline assessment</strong> — 25 questions, five per frequency body. Each body is measured across five dimensions: your typical baseline, your current state this week, your patterns under pressure, the depth of your connection, and your capacity to return. This separates who you are from where you are right now — producing a significantly more accurate starting point. Takes about 7–10 minutes.
             </div>
           </div>
 
           <button onClick={advance} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: '#1a1a18', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em', marginBottom: 10 }}>
             Begin my coherence baseline →
           </button>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>15 questions · 3 dimensions per body · 5–7 minutes · stored only on your device</div>
+          <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>25 questions · 5 dimensions per body · 7–10 minutes · stored only on your device</div>
         </div>
       </div>
     )
@@ -332,7 +332,7 @@ export default function Onboarding({ onComplete }) {
               Most tools address one part of you. A fitness app for the body. A meditation app for the mind. A therapy app for emotions. They work in isolation — which is why results are often temporary.
             </div>
             <div style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.85, marginBottom: 16 }}>
-              Quintave is built on a different premise: <strong style={{ color: '#1a1a18' }}>you are a five-dimensional being</strong>, and your experience of life is shaped by how well all five dimensions are working together — and with each other.
+              Quintave is built on a different premise: <strong style={{ color: '#1a1a18' }}>you are Source, moving through four frequency bodies</strong> — and your experience of life is shaped by how well those four are in tune with Source, and with each other.
             </div>
             <div style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.85 }}>
               When they align, something shifts. Not as a result of effort — but as a natural consequence of coherence. Clarity arrives. Energy returns. Circumstances begin to reflect what is happening inside. This is what we mean by your best life. Not a destination. A state of being.
@@ -348,13 +348,13 @@ export default function Onboarding({ onComplete }) {
             <div style={{ background: '#F7F6F3', borderRadius: 12, padding: '16px 18px' }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>♥ ∿ ◈ ☽</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18', marginBottom: 4 }}>Form · Field · Mind · Code</div>
-              <div style={{ fontSize: 11, color: '#5F5E5A', lineHeight: 1.6 }}>The four bodies that orbit the core — each with its own frequency, pulled in different directions by life. The daily practice brings them back into alignment.</div>
+              <div style={{ fontSize: 11, color: '#5F5E5A', lineHeight: 1.6 }}>The four bodies that orbit the core — each with its own frequency, pulled in different directions by life. The daily practice brings them back into tune.</div>
             </div>
           </div>
 
           <div style={{ background: '#1a1a18', borderRadius: 12, padding: '18px 22px', marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: '#C0BEBA', lineHeight: 1.8 }}>
-              The baseline assessment that follows measures where each of your five bodies currently resonates. It takes 5–7 minutes and produces your personal coherence signature — the starting point for everything that follows.
+              The baseline assessment that follows measures where each of your five frequency bodies currently resonates. It takes 7–10 minutes and produces your personal coherence signature — the starting point for everything that follows.
             </div>
           </div>
 
