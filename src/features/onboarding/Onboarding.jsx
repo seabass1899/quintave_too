@@ -5,9 +5,16 @@ import { syncLocalStateToCloud } from '../../app/services/syncService'
 
 // Inline coherence score — avoids import resolution issues on some mobile browsers
 const getCoherenceScore = (scores) => {
-  const s1 = (scores?.d1 || 0) * 1.5
-  const s2 = (scores?.d2 || 0) + (scores?.d3 || 0) + (scores?.d4 || 0) + (scores?.d5 || 0)
-  return Math.round((s1 + s2) / 6.5)
+  // Inputs d1..d5 are each on a 0–10 scale (per-body averages).
+  // Source (d1) is weighted 1.5×; total weight = 1.5 + 1 + 1 + 1 + 1 = 5.5.
+  const weighted =
+    (scores?.d1 || 0) * 1.5 +
+    (scores?.d2 || 0) +
+    (scores?.d3 || 0) +
+    (scores?.d4 || 0) +
+    (scores?.d5 || 0)
+  const weightedAvg = weighted / 5.5   // weighted average on the 0–10 scale
+  return Math.round(weightedAvg * 10)  // express on the 0–100 scale
 }
 const getCoherenceState = (score) => {
   const states = [
@@ -55,27 +62,33 @@ function ProgressBar({ total, current, color }) {
   )
 }
 
-function FrequencySlider({ value, onChange, color, low, high }) {
+function FrequencySlider({ value, onChange, color, low, high, answered }) {
   const label = value <= 2 ? 'Deep distortion' : value <= 4 ? 'Interference active' : value <= 6 ? 'Partial resonance' : value <= 8 ? 'Strong resonance' : 'Full coherence'
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
   return (
     <div>
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 14, opacity: answered ? 1 : 0.5, transition: 'opacity 0.2s ease' }}>
         <input type="range" min={1} max={10} step={1} value={value}
           onChange={e => onChange(Number(e.target.value))}
           style={{ width: '100%', accentColor: color, cursor: 'pointer' }}/>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
           {[1,2,3,4,5,6,7,8,9,10].map(n => (
             <div key={n} onClick={() => onChange(n)}
-              style={{ fontSize: 10, color: n === value ? color : '#C0BEBA', fontWeight: n === value ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>{n}</div>
+              style={{ fontSize: 10, color: (answered && n === value) ? color : '#C0BEBA', fontWeight: (answered && n === value) ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>{n}</div>
           ))}
         </div>
       </div>
       <div style={{ textAlign: 'center', marginBottom: 14 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#F7F6F3', borderRadius: 99, padding: '6px 16px' }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }}/>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a18' }}>{value}/10 — {label}</div>
-        </div>
+        {answered ? (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#F7F6F3', borderRadius: 99, padding: '6px 16px' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }}/>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a18' }}>{value}/10 — {label}</div>
+          </div>
+        ) : (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#F7F6F3', borderRadius: 99, padding: '6px 16px' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>Move the slider to answer</div>
+          </div>
+        )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div style={{ background: '#F7F6F3', borderRadius: 10, padding: '10px 12px', border: bdr }}>
@@ -105,6 +118,7 @@ export default function Onboarding({ onComplete }) {
   const [animating, setAnimating] = useState(false)
   const [email, setEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState('idle') // idle | sending | sent | skipped | error
+  const [answered, setAnswered] = useState({}) // { [flat questionIdx]: true } — gates advancing until the slider is touched
 
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
   const card = { background: '#fff', borderRadius: 16, border: bdr, padding: '28px 32px' }
@@ -375,6 +389,7 @@ export default function Onboarding({ onComplete }) {
     const currentScore = scores[domain.id][domainQIdx]
     const isNewDomain = domainQIdx === 0
     const questionNumber = questionIdx + 1
+    const isAnswered = !!answered[questionIdx]
 
     return (
       <div style={{ ...wrapper, alignItems: 'flex-start', paddingTop: 32 }}>
@@ -436,10 +451,11 @@ export default function Onboarding({ onComplete }) {
             </div>
             <FrequencySlider
               value={currentScore}
-              onChange={val => setScore(domain.id, domainQIdx, val)}
+              onChange={val => { setScore(domain.id, domainQIdx, val); setAnswered(a => ({ ...a, [questionIdx]: true })) }}
               color={domain.color}
               low={q.low}
               high={q.high}
+              answered={isAnswered}
             />
           </div>
 
@@ -455,7 +471,7 @@ export default function Onboarding({ onComplete }) {
             {questionIdx > 0 && (
               <button onClick={back} style={{ padding: '14px', borderRadius: 12, border: bdr, background: '#fff', fontSize: 14, cursor: 'pointer', color: '#5F5E5A' }}>← Back</button>
             )}
-            <button onClick={advance} style={{ padding: '14px', borderRadius: 12, border: 'none', background: '#1a1a18', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={advance} disabled={!isAnswered} style={{ padding: '14px', borderRadius: 12, border: 'none', background: isAnswered ? '#1a1a18' : '#E5E3DE', color: isAnswered ? '#fff' : '#999', fontSize: 14, fontWeight: 600, cursor: isAnswered ? 'pointer' : 'default', transition: 'all 0.2s ease' }}>
               {questionIdx === totalQuestions - 1 ? 'Read my coherence signature →' : domainQIdx === 4 ? `Next frequency body →` : 'Next question →'}
             </button>
           </div>
