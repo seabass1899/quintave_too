@@ -67,10 +67,10 @@ function FrequencySlider({ value, onChange, color, low, high, answered }) {
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
   return (
     <div>
-      <div style={{ marginBottom: 14, opacity: answered ? 1 : 0.5, transition: 'opacity 0.2s ease' }}>
+      <div style={{ marginBottom: 14, opacity: answered ? 1 : 0.6, transition: 'opacity 0.2s ease' }}>
         <input type="range" min={1} max={10} step={1} value={value}
           onChange={e => onChange(Number(e.target.value))}
-          style={{ width: '100%', accentColor: color, cursor: 'pointer' }}/>
+          style={{ width: '100%', accentColor: answered ? color : '#C8C6CF', cursor: 'pointer' }}/>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
           {[1,2,3,4,5,6,7,8,9,10].map(n => (
             <div key={n} onClick={() => onChange(n)}
