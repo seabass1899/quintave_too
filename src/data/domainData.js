@@ -180,7 +180,7 @@ export const COHERENCE_STATES = [
   { label: 'Stirring',    min: 21, max: 40, color: '#BA7517', bg: '#FAEEDA', desc: 'Something is waking up. The interference patterns are becoming visible. You are beginning to sense there is more to who you are than circumstances have suggested.' },
   { label: 'Grounding',   min: 41, max: 60, color: '#378ADD', bg: '#E6F1FB', desc: 'The practices are anchoring. Each frequency body is finding its natural rhythm. You are building a foundation that will hold — this is where the deepest work happens.' },
   { label: 'Aligning',    min: 61, max: 80, color: '#7F77DD', bg: '#EEEDFE', desc: 'All five bodies are moving into coherence with each other. Life is beginning to reflect what is happening inside. Synchronicity increases. Clarity deepens.' },
-  { label: 'Whole',       min: 81, max: 100, color: '#1D9E75', bg: '#E1F5EE', desc: 'All five frequency bodies are in sustained coherence. Abundance, health, and freedom are not goals being pursued — they are natural expressions of a being in full alignment.' },
+  { label: 'Whole',       min: 81, max: 100, color: '#1D9E75', bg: '#E1F5EE', desc: 'All five frequency bodies are in sustained coherence. The life you want is no longer something you chase — it emerges naturally from a self in full resonance with Source.' },
 ]
 
 export function getCoherenceState(score) {
