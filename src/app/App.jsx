@@ -36,9 +36,11 @@ import LegalPage from '../features/legal/LegalPages'
 // Local fallback in case of import resolution issues on some browsers
 const getCoherenceScore = (scores) => {
   if (typeof _getCoherenceScore === 'function') return _getCoherenceScore(scores)
-  const s1 = (scores?.d1 || 0) * 1.5
-  const s2 = (scores?.d2 || 0) + (scores?.d3 || 0) + (scores?.d4 || 0) + (scores?.d5 || 0)
-  return Math.round((s1 + s2) / 6.5)
+  // Fallback mirrors the canonical formula: 0–10 inputs, Source 1.5×, output 0–100.
+  const weighted =
+    (scores?.d1 || 0) * 1.5 +
+    (scores?.d2 || 0) + (scores?.d3 || 0) + (scores?.d4 || 0) + (scores?.d5 || 0)
+  return Math.round((weighted / 5.5) * 10)
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -1584,7 +1586,14 @@ function AppMain() {
             ? Math.round((onboardingProfile.scores[d.id] / 10) * 100) : 50
           sigScores[d.id] = Math.round(Number.isFinite(accumulated) ? accumulated : baselineScore)
         })
-        const sigCoherence = coherence?.ready ? coherence.overall : getCoherenceScore(sigScores)
+        // sigScores are already on a 0–100 scale (accumulated coherence or
+        // rescaled baseline), so weight-average them directly (Source 1.5×).
+        const sigCoherence = coherence?.ready
+          ? coherence.overall
+          : Math.round(
+              ((sigScores.d1 || 0) * 1.5 +
+                (sigScores.d2 || 0) + (sigScores.d3 || 0) + (sigScores.d4 || 0) + (sigScores.d5 || 0)) / 5.5
+            )
         if (!isPremium) {
           return (
             <PremiumGate
