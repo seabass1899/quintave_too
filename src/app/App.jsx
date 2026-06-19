@@ -1166,14 +1166,12 @@ function AppMain() {
             repairedAt: new Date().toISOString(),
           }
           repaired = true
-          console.log('Day status repair:', k, '→', repairedStatus[k].status, '(' + doneCount + ' done)')
         }
       }
 
       if (repaired) {
         // setDayStatus writes to localStorage AND triggers React re-render immediately
         setDayStatus(repairedStatus)
-        console.log('Day status repair complete')
       }
     } catch (e) {
       console.warn('Day status repair failed:', e)
