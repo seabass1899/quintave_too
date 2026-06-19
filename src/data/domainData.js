@@ -188,7 +188,14 @@ export function getCoherenceState(score) {
 }
 
 export function getCoherenceScore(domainScores) {
-  const s1 = (domainScores?.d1 || 0) * 1.5
-  const s2 = (domainScores?.d2 || 0) + (domainScores?.d3 || 0) + (domainScores?.d4 || 0) + (domainScores?.d5 || 0)
-  return Math.round((s1 + s2) / 6.5)
+  // Inputs d1..d5 are each on a 0–10 scale (per-body averages).
+  // Source (d1) is weighted 1.5×; total weight = 1.5 + 1 + 1 + 1 + 1 = 5.5.
+  const weighted =
+    (domainScores?.d1 || 0) * 1.5 +
+    (domainScores?.d2 || 0) +
+    (domainScores?.d3 || 0) +
+    (domainScores?.d4 || 0) +
+    (domainScores?.d5 || 0)
+  const weightedAvg = weighted / 5.5   // weighted average on the 0–10 scale
+  return Math.round(weightedAvg * 10)  // express on the 0–100 scale
 }
