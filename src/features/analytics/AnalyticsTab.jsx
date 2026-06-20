@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { confirmDialog } from '../../app/ui/dialog'
 import { DOMAINS, PRACTICES, COHERENCE_STATES, getCoherenceState } from '../../data'
 
 const DAYS = ['S','M','T','W','T','F','S']
@@ -461,8 +462,8 @@ export default function AnalyticsTab({ checked, onboardingProfile, domainScores,
                     </div>
                   )
                 })()}
-                <button onClick={() => {
-                  if(window.confirm('Retake your coherence baseline? Your current scores will be archived.')) {
+                <button onClick={async () => {
+                  if(await confirmDialog({ title: 'Retake your coherence baseline?', message: 'Your current scores will be archived, and you’ll start a fresh assessment.', confirmLabel: 'Retake', destructive: true })) {
                     const archived = { ...(onboardingProfile||{}), archivedAt: new Date().toISOString() }
                     const history = (() => { try { return JSON.parse(localStorage.getItem('q_onboarding_history') || '[]') } catch { return [] } })()
                     history.push(archived)
