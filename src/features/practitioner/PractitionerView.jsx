@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { DOMAINS, PRACTICES, getCoherenceState, getCoherenceScore as _getCS } from '../../data'
-const getCoherenceScore = (s) => { if(typeof _getCS==='function') return _getCS(s); const s1=(s?.d1||0)*1.5; const s2=(s?.d2||0)+(s?.d3||0)+(s?.d4||0)+(s?.d5||0); return Math.round((s1+s2)/6.5) }
+const getCoherenceScore = (s) => { if(typeof _getCS==='function') return _getCS(s); const s1=(s?.d1||0)*1.5; const s2=(s?.d2||0)+(s?.d3||0)+(s?.d4||0)+(s?.d5||0); return Math.round(((s1+s2)/5.5)*10) }
 
 export default function PractitionerView({ checked, onboardingProfile }) {
   const [copied, setCopied] = useState(false)
