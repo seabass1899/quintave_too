@@ -772,7 +772,6 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], behav
   const behavior = getBehaviorAdjustment(item, behaviorStats, decision)
   const criticalFrictionPenalty = slot === 'critical' && decision?.behaviorMode === 'lower_friction' && getPracticeFriction(item) >= 3 ? -8 : 0
   const depthBonus = decision?.behaviorMode === 'increase_depth' && getPracticeFriction(item) >= 2 && !repeatedRecently ? 5 : 0
-  const coherencePhase = decision?.phaseSummary?.phase
   const phaseComplexity = decision?.phaseSummary?.complexity
   const phaseFrictionBonus = phaseComplexity === 'low' && getPracticeFriction(item) === 1 ? 5 : phaseComplexity === 'deepening' && getPracticeFriction(item) >= 2 ? 4 : 0
   const phaseRecoveryPenalty = ['recovery', 'collapse_rebuild'].includes(phase) && getPracticeFriction(item) >= 3 ? -10 : 0
@@ -782,7 +781,7 @@ function scoreCandidate(item, { weak = [], used = new Set(), history = [], behav
     ? getAdaptiveScoreAdjustment(item, todayChecked, _cachedAdaptiveProfile)
     : 0
 
-  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + memoryDriftBonus + leverageBonus + phaseFitBonus + repeatPenalty + memoryResistancePenalty + behavior.score + criticalFrictionPenalty + depthBonus + deterministicJitter + adaptiveScore
+  return weakBonus + preferredBonus + decisionBonus + recoveryBonus + trajectoryBonus + stabilityDepthBonus + memoryDriftBonus + leverageBonus + phaseFitBonus + repeatPenalty + memoryResistancePenalty + behavior.score + criticalFrictionPenalty + depthBonus + phaseFrictionBonus + phaseRecoveryPenalty + deterministicJitter + adaptiveScore
 }
 
 function smartPick(candidates = [], used = new Set(), context = {}) {
