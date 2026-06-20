@@ -42,6 +42,20 @@ function getRecentDays(checked, date, count) {
   return days
 }
 
+// Count completions of ANY practice belonging to a body over the last `days` days.
+// Used to tell true BODY avoidance (the body is neglected entirely) apart from
+// PRACTICE avoidance (one practice is skipped while the body is engaged elsewhere).
+function bodyEngagementCount(checked, date, domainId, days = 7) {
+  let completed = 0
+  for (let i = 0; i <= days; i++) {
+    const checks = checked[getPreviousDateKey(date, i)] || {}
+    for (const [pkey, done] of Object.entries(checks)) {
+      if (done && pkey.split('_')[0] === domainId) completed++
+    }
+  }
+  return completed
+}
+
 // ─── Section 1: Weekly Summary ────────────────────────────────────────────────
 
 function buildWeeklySummary(checked, dayStatus, date) {
@@ -352,7 +366,10 @@ function buildPatternDetection(checked, dayStatus, date) {
     }
   }
 
-  for (let i = 0; i < 30; i++) {
+  // Current streak: count consecutive locked days. A day still in progress (today
+  // not yet locked) must NOT reset the streak — only a genuinely missed day breaks it.
+  const todayLockedW = dayStatus?.[getPreviousDateKey(date, 0)]?.status === 'locked'
+  for (let i = todayLockedW ? 0 : 1; i < 30; i++) {
     const key = getPreviousDateKey(date, i)
     if (dayStatus?.[key]?.status === 'locked') currentStreak++
     else break
@@ -416,20 +433,42 @@ function buildRiskPrediction(checked, dayStatus, date) {
     }
   }
 
-  // Risk B: Sustained avoidance of a body
+  // Risk B: Avoidance — distinguish BODY avoidance from PRACTICE avoidance.
+  // A single skipped practice does NOT mean the body is avoided if the user is
+  // engaging that body through other practices. Only call it body avoidance when
+  // the body has had zero completions recently.
   if (profile?.avoidance?.length >= 1) {
     const strongAvoidance = profile.avoidance.filter(a => a.severity === 'strong')
     if (strongAvoidance.length >= 1) {
       const top = strongAvoidance[0]
-      risks.push({
-        id: 'body_avoidance',
-        severity: 'high',
-        headline: `${getDomainName(top.domainId)} is being consistently avoided.`,
-        detail: `${top.name} has been skipped ${top.skipped} of ${top.assigned} times it was assigned. Sustained avoidance of one body creates coherence drag that compounds over time.`,
-        consequence: `Without intervention, ${getDomainName(top.domainId)} will continue to be the ceiling on your overall coherence score.`,
-        action: `Replace ${top.name} with a lower-friction ${getDomainName(top.domainId)} practice this week. The goal is re-engagement, not performance.`,
-        confidence: 0.85,
-      })
+      const domain = getDomainName(top.domainId)
+      const bodyDone = bodyEngagementCount(checked, date, top.domainId)
+
+      if (bodyDone === 0) {
+        // True body avoidance: the body is genuinely neglected across all its practices.
+        risks.push({
+          id: 'body_avoidance',
+          severity: 'high',
+          domainId: top.domainId,
+          headline: `${domain} is being consistently avoided.`,
+          detail: `No ${domain} practice has been completed recently — ${top.name} was skipped ${top.skipped} of ${top.assigned} times it was assigned. Sustained avoidance of one body creates coherence drag that compounds over time.`,
+          consequence: `Without intervention, ${domain} will continue to be the ceiling on your overall coherence score.`,
+          action: `Pick the lowest-friction ${domain} practice and complete it once daily this week. The goal is re-engagement, not performance.`,
+          confidence: 0.85,
+        })
+      } else {
+        // Practice avoidance only: the body IS engaged via other practices.
+        risks.push({
+          id: 'practice_avoidance',
+          severity: 'moderate',
+          domainId: top.domainId,
+          headline: `${top.name} isn't fitting your routine.`,
+          detail: `${top.name} was skipped ${top.skipped} of ${top.assigned} times it was assigned — but you're still engaging ${domain} through other practices, so this is a practice-fit issue, not body avoidance.`,
+          consequence: `A practice you keep skipping adds friction without adding signal.`,
+          action: `Swap ${top.name} for a lower-friction ${domain} practice that fits you better.`,
+          confidence: 0.8,
+        })
+      }
     }
   }
 
@@ -491,7 +530,9 @@ function buildRecommendation(summary, bodyTrends, effectivePractice, patterns, r
   let action = ''
 
   if (topRisk?.severity === 'high') {
-    focus = `Address ${topRisk.headline.split(' ')[0]} ${topRisk.headline.split(' ')[1]} avoidance`
+    focus = topRisk.id === 'body_avoidance'
+      ? `Address ${getDomainName(topRisk.domainId)} avoidance`
+      : topRisk.headline.replace(/\.$/, '')
     priority = topRisk.action
     reason = topRisk.consequence
     action = topRisk.action
