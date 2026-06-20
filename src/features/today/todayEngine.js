@@ -648,28 +648,38 @@ function getPracticeBehaviorStats(checked = {}, date = new Date(), daysBack = 7)
   const completedSet = new Set(completed.map(h => `${h.date}::${h.key}`))
   const byPractice = {}
   const byDomain = {}
+  const dayStatusMap = safeReadJSON('q_day_status', {})
 
   assigned.forEach(a => {
     const practice = findPracticeByKey(a.key)
     const domainId = practice?.phaseDomainId || practice?.domain?.id || a.key.split('_')[0]
     const completedThisAssignment = completedSet.has(`${a.date}::${a.key}`)
+    // On fulfilled (locked) days the user met their daily minimum — practices left
+    // undone are beyond the minimum, NOT skips. Only count a skip when the minimum
+    // was not met that day. Keeps assignment/substitution consistent with the
+    // "just do the minimum" promise.
+    const dayFulfilled = dayStatusMap?.[a.date]?.status === 'locked'
 
     if (!byPractice[a.key]) {
       byPractice[a.key] = { key: a.key, domainId, assigned: 0, completed: 0, skipped: 0, lastAssigned: null, lastCompleted: null }
     }
-    byPractice[a.key].assigned += 1
-    byPractice[a.key].lastAssigned = a.date
+    if (!byDomain[domainId]) byDomain[domainId] = { domainId, assigned: 0, completed: 0, skipped: 0 }
+
     if (completedThisAssignment) {
+      byPractice[a.key].assigned += 1
+      byPractice[a.key].lastAssigned = a.date
       byPractice[a.key].completed += 1
       byPractice[a.key].lastCompleted = a.date
-    } else {
+      byDomain[domainId].assigned += 1
+      byDomain[domainId].completed += 1
+    } else if (!dayFulfilled) {
+      byPractice[a.key].assigned += 1
+      byPractice[a.key].lastAssigned = a.date
       byPractice[a.key].skipped += 1
+      byDomain[domainId].assigned += 1
+      byDomain[domainId].skipped += 1
     }
-
-    if (!byDomain[domainId]) byDomain[domainId] = { domainId, assigned: 0, completed: 0, skipped: 0 }
-    byDomain[domainId].assigned += 1
-    if (completedThisAssignment) byDomain[domainId].completed += 1
-    else byDomain[domainId].skipped += 1
+    // else: minimum met + practice undone → beyond-minimum extra, not counted
   })
 
   // Completed practices may include older plans or manually checked library practices.
