@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useLocalStorage as useLS } from './state/useLocalStorage'
+import { DialogHost, toast, confirmDialog } from './ui/dialog'
 import Onboarding from '../features/onboarding/Onboarding'
 import { PROTOCOLS } from '../data/protocols'
 import SystemMap from '../features/system/SystemMap'
@@ -894,7 +895,7 @@ function FeedbackButton({ dailyPct, streakCount, weakest, isMobile, betaVisible 
         date: new Date().toISOString(),
         state: { dailyPct, streak: streakCount, weakest: weakest?.name || weakest?.id || null },
       }]))
-      alert('Feedback saved. Thank you.')
+      toast('Feedback saved. Thank you.', { type: 'success' })
     } catch (e) {
       console.error('Feedback capture failed:', e)
     }
@@ -960,7 +961,7 @@ function LaunchMetrics() {
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             <button onClick={() => { setEvents(readEvents()) }} style={{ padding:'8px 14px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.08)', background:'#fff', fontSize:12, fontWeight:800, cursor:'pointer' }}>Refresh</button>
             <button onClick={exportEvents} style={{ padding:'8px 14px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.08)', background:'#1a1a18', color:'#fff', fontSize:12, fontWeight:800, cursor:'pointer' }}>Export events</button>
-            <button onClick={() => { if (confirm('Clear launch event log?')) { clearAnalytics(); setEvents([]) } }} style={{ padding:'8px 14px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.08)', background:'#fff', fontSize:12, fontWeight:800, cursor:'pointer' }}>Clear events</button>
+            <button onClick={async () => { if (await confirmDialog({ title: 'Clear event log?', message: 'This clears the launch event log on this device.', confirmLabel: 'Clear', destructive: true })) { clearAnalytics(); setEvents([]) } }} style={{ padding:'8px 14px', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.08)', background:'#fff', fontSize:12, fontWeight:800, cursor:'pointer' }}>Clear events</button>
           </div>
         </div>
       </div>
@@ -1461,7 +1462,7 @@ function AppMain() {
   }
   const importBackup = e => {
     const file=e.target.files[0];if(!file)return
-    const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.checked)setChecked(d.checked);if(d.weekDays)setWeekDays(d.weekDays);if(d.notes)setNotes(d.notes);if(d.ratings)setRatings(d.ratings);if(d.metrics)setMetrics(d.metrics);if(d.directive)setDirective(d.directive);if(d.execTarget)setExecTarget(d.execTarget);if(d.evening)setEvening(d.evening);if(d.weekAdj)setWeekAdj(d.weekAdj);if(d.triggers)setTriggers(d.triggers);if(d.dayStatus)localStorage.setItem('q_day_status', JSON.stringify(d.dayStatus));alert('Backup restored.')}catch{alert('Invalid file.')}};r.readAsText(file)
+    const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.checked)setChecked(d.checked);if(d.weekDays)setWeekDays(d.weekDays);if(d.notes)setNotes(d.notes);if(d.ratings)setRatings(d.ratings);if(d.metrics)setMetrics(d.metrics);if(d.directive)setDirective(d.directive);if(d.execTarget)setExecTarget(d.execTarget);if(d.evening)setEvening(d.evening);if(d.weekAdj)setWeekAdj(d.weekAdj);if(d.triggers)setTriggers(d.triggers);if(d.dayStatus)localStorage.setItem('q_day_status', JSON.stringify(d.dayStatus));toast('Backup restored.', { type: 'success' })}catch{toast('Invalid file.', { type: 'error' })}};r.readAsText(file)
   }
 
   const bdr = '0.5px solid rgba(0,0,0,0.08)'
@@ -1522,6 +1523,7 @@ function AppMain() {
 
   return (
     <div className="app-shell">
+      <DialogHost />
       <style>{`
         @keyframes rippleFadeIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
         .app-shell { min-height: 100vh; background: #F4F3F0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color: #1a1a18; }
@@ -1740,7 +1742,7 @@ function AppMain() {
                     { label:'Review', fn:() => setShowWeekly(true) },
                     { label:'Save data', fn:exportBackup },
                     { label:'Export Beta', fn:exportBetaData },
-                    { label:'Clear today', fn:() => { if(window.confirm("Clear today's practice?")) setChecked({...checked,[today]:{}}) } },
+                    { label:'Clear today', fn:async () => { if(await confirmDialog({ title:"Clear today's practice?", message:'This cannot be undone.', confirmLabel:'Clear', destructive:true })) setChecked({...checked,[today]:{}}) } },
                   ].map(({ label, fn }) => (
                     <button key={label} onClick={() => { fn(); setShowDrawer(false) }}
                       style={{ minHeight:44, borderRadius:10, border:bdr, background:'#F8F7F4', color:'#1a1a18', fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left', padding:'0 14px' }}>
@@ -1798,7 +1800,7 @@ function AppMain() {
               <label style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
                 Restore<input type="file" accept=".json" onChange={importBackup} style={{ display:'none' }}/>
               </label>
-              <button onClick={() => { if(window.confirm("Clear today's practice? This cannot be undone.")) setChecked({...checked,[today]:{}}) }}
+              <button onClick={async () => { if(await confirmDialog({ title:"Clear today's practice?", message:'This cannot be undone.', confirmLabel:'Clear', destructive:true })) setChecked({...checked,[today]:{}}) }}
                 style={{ padding:'5px 10px', borderRadius:7, border:bdr, background:'#fff', fontSize:11, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Clear</button>
             </>)}
           </>
