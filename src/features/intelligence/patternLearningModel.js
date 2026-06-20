@@ -120,6 +120,7 @@ function getFeedbackSentiment(date = new Date(), daysBack = OBSERVATION_WINDOW_D
 function computePracticeCompletionRates(checked, date) {
   const days = getRecentChecked(checked, date)
   const assigned = getAssignedKeys(date)
+  const dayStatusMap = safeRead('q_day_status', {})
 
   const stats = {}
 
@@ -141,11 +142,16 @@ function computePracticeCompletionRates(checked, date) {
           lastSkipped: null,
         }
       }
-      stats[key].assigned++
       if (checks[key]) {
+        stats[key].assigned++
         stats[key].completed++
         stats[key].lastCompleted = dateKey
-      } else {
+      } else if (dayStatusMap?.[dateKey]?.status !== 'locked') {
+        // Only a skip if the user did NOT meet their daily minimum that day.
+        // On fulfilled (locked) days, practices left undone are beyond the
+        // minimum — the app promises "just do the minimum," so it must not
+        // penalize undone extras as avoidance.
+        stats[key].assigned++
         stats[key].skipped++
         stats[key].lastSkipped = dateKey
       }
