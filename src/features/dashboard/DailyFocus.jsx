@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
+import { toast } from '../../app/ui/dialog'
 import ReactDOM from 'react-dom'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION, pruneByRecentDays } from '../today/todayEngine'
 import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile, predictTomorrow } from '../intelligence/patternLearningModel'
@@ -565,7 +566,7 @@ function BetaFeedbackLayer({ plan, isMobile }) {
 
   const submit = () => {
     if (!accuracy) {
-      alert("Please select how accurate today's alignment felt.")
+      toast("Please select how accurate today's alignment felt.", { type: 'error' })
       return
     }
     const entry = {
@@ -585,7 +586,7 @@ function BetaFeedbackLayer({ plan, isMobile }) {
       localStorage.setItem('q_beta_feedback', JSON.stringify({ ...existing, [today]: entry }))
     } catch {}
     setSubmitted(true)
-    alert('Feedback saved. Thank you.')
+    toast('Feedback saved. Thank you.', { type: 'success' })
   }
 
   return (
