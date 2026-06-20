@@ -75,7 +75,9 @@ export default function AnalyticsTab({ checked, onboardingProfile, domainScores,
             const s3 = scores.d3
             const s4 = scores.d4
             const s5 = scores.d5
-            return Math.round((s1 + s2 + s3 + s4 + s5) / 6.5)
+            // Weighted average on the 0–100 scale. Inputs are already 0–100,
+            // and total weight = 1.5 + 1 + 1 + 1 + 1 = 5.5 (not 6.5).
+            return Math.round((s1 + s2 + s3 + s4 + s5) / 5.5)
           }
 
           const todayCoherence = getDayCoherence(today)
