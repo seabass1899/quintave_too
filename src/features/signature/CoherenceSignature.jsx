@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react'
+import { toast } from '../../app/ui/dialog'
 import { DOMAINS, COHERENCE_STATES, getCoherenceState } from '../../data'
 
 function getState(score) { return getCoherenceState(score) }
@@ -191,7 +192,7 @@ export default function CoherenceSignature({ userName, domainScores, coherenceSc
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch(e) {
-      alert('To save your signature: take a screenshot of the card. On Windows: Win+Shift+S. On Mac: Cmd+Shift+4.')
+      toast('To save your signature, take a screenshot of the card. Windows: Win+Shift+S. Mac: Cmd+Shift+4.')
     }
     setCopying(false)
   }
@@ -231,7 +232,7 @@ export default function CoherenceSignature({ userName, domainScores, coherenceSc
               navigator.share({ title: 'My Quintave Coherence Signature', text: `My coherence score is ${coherenceScore}/100 — ${new Object(COHERENCE_STATES.find(s=>coherenceScore>=s.min&&coherenceScore<=s.max)||COHERENCE_STATES[0]).label}. Check out Quintave: quintave.app`, url: 'https://quintave.app' })
             } else {
               navigator.clipboard.writeText(`My Quintave coherence score: ${coherenceScore}/100 — ${(COHERENCE_STATES.find(s=>coherenceScore>=s.min&&coherenceScore<=s.max)||COHERENCE_STATES[0]).label}. Check it out: quintave.app`)
-              alert('Link copied to clipboard!')
+              toast('Link copied to clipboard!', { type: 'success' })
             }
           }}
             style={{ flex: 1, padding: '12px', borderRadius: 10, border: bdr, background: '#fff', fontSize: 14, cursor: 'pointer' }}>
