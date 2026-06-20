@@ -62,19 +62,21 @@ function buildWeeklySummary(checked, dayStatus, date) {
   let locked = 0, missed = 0, open = 0
   const days7 = []
 
-  // ── Window: last 7 days excluding today (i=1..7) + today if already locked ──
-  // Starting at i=0 (today) caused instability — the count changed throughout
-  // the day depending on whether today was locked yet, making the weekly number
-  // appear to go backward. The correct approach: look at the last 7 completed
-  // days (yesterday through 7 days ago), then add today only if it's locked.
+  // ── Window: a fixed 7-day window so aligned days can never exceed 7/7. ──
+  // Today is counted only if it's already locked (avoids the count appearing to
+  // go backward mid-day). When today IS locked it occupies one of the 7 slots,
+  // so we take 6 prior days; otherwise the full 7 prior days. Either way the
+  // window is exactly 7 days, keeping aligned days and consistency ≤ 100%.
   const todayKey = getPreviousDateKey(date, 0)
   const todayStatus = dayStatus?.[todayKey]?.status || 'open'
-  if (todayStatus === 'locked') {
+  const todayLocked = todayStatus === 'locked'
+  if (todayLocked) {
     locked++
     days7.push({ key: todayKey, status: 'locked', checks: checked[todayKey] || {} })
   }
 
-  for (let i = 1; i <= 7; i++) {
+  const priorDays = todayLocked ? 6 : 7
+  for (let i = 1; i <= priorDays; i++) {
     const key = getPreviousDateKey(date, i)
     const status = dayStatus?.[key]?.status || 'open'
     if (status === 'locked') locked++
@@ -121,6 +123,7 @@ function buildWeeklySummary(checked, dayStatus, date) {
     completionRate,
     trend,
     weekOverWeek,
+    priorLocked,
     headline,
     soWhat,
     confidence: locked >= 3 ? 0.9 : 0.7,
