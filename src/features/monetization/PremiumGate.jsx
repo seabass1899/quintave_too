@@ -8,6 +8,7 @@
  */
 
 import React, { useState } from 'react'
+import { toast } from '../../app/ui/dialog'
 import ReactDOM from 'react-dom'
 
 // ── Stripe checkout URLs (Payment Links) ─────────────────────────────────────
@@ -71,7 +72,7 @@ function UpgradeModal({ onClose, session }) {
 
     if (!base) {
       console.error('Stripe checkout URL is not configured (VITE_STRIPE_*_URL).')
-      alert('Checkout is temporarily unavailable. Please try again later.')
+      toast('Checkout is temporarily unavailable. Please try again later.', { type: 'error' })
       return
     }
 
@@ -79,7 +80,7 @@ function UpgradeModal({ onClose, session }) {
     // Without it, checkout.session.completed cannot be attributed and premium
     // is never granted — so never open an unattributable checkout.
     if (!uid) {
-      alert('Please sign in before upgrading.')
+      toast('Please sign in before upgrading.', { type: 'error' })
       onClose?.()
       return
     }
