@@ -73,7 +73,8 @@ function SummaryCard({ summary }) {
         <span style={{ fontSize: 12, fontWeight: 800, background: trendBg, color: trendColor, padding: '4px 10px', borderRadius: 99 }}>{trendLabel}</span>
         {summary.weekOverWeek !== null && (
           <span style={{ fontSize: 12, color: '#aaa' }}>
-            {summary.weekOverWeek > 0 ? `+${summary.weekOverWeek}%` : `${summary.weekOverWeek}%`} vs last week
+            {summary.priorLocked} → {summary.locked} aligned days vs last week
+            {' '}({summary.weekOverWeek > 0 ? `+${summary.weekOverWeek}` : summary.weekOverWeek}%)
           </span>
         )}
       </div>
