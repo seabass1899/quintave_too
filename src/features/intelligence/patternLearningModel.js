@@ -875,7 +875,11 @@ export function getTrajectoryForecast(checked = {}, dayStatus = {}, domainScores
 
   const forecasts = MOVABLE_IDS.map(id => {
     const trend = domainTrends.find(d => d.id === id)
-    const isAvoided = avoidance.some(a => a.domainId === id && a.severity !== 'mild')
+    // A single skipped practice does not mean the body is avoided. Only treat the
+    // body as avoided here if a practice is avoided AND the body itself shows no
+    // upward engagement (not rising and not gaining velocity).
+    const practiceAvoided = avoidance.some(a => a.domainId === id && a.severity !== 'mild')
+    const isAvoided = practiceAvoided && trend?.trend !== 'rising' && (domainVelocity[id] || 0) <= 0
     const hasMomentum = momentum.some(m => m.domainId === id)
     const velocity = domainVelocity[id] || 0
     const score7 = trend?.score7 || 0
@@ -1147,9 +1151,11 @@ export function getMomentumState(checked = {}, dayStatus = {}, date = new Date()
   const profile = getOrComputeProfile(checked, dayStatus, date)
   const { momentum, avoidance, phasePerformance, domainTrends } = profile
 
-  // Compute streak
+  // Compute streak — a day still in progress (today not yet locked) must NOT reset
+  // the streak. Start from today only if it's already locked; otherwise from yesterday.
   let currentStreak = 0
-  for (let i = 0; i < 30; i++) {
+  const todayLockedM = dayStatus[getPreviousDateKey(date, 0)]?.status === 'locked'
+  for (let i = todayLockedM ? 0 : 1; i < 30; i++) {
     const key = getPreviousDateKey(date, i)
     if (dayStatus[key]?.status === 'locked') currentStreak++
     else break
