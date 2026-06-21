@@ -15,8 +15,9 @@
 //   • Overall coherence = HARMONY of the four movable bodies × Source strength.
 //     Harmony rewards all bodies being balanced AND elevated together (not one
 //     maxed while others languish).
-//   • Overall 0–100 maps to frequency planes 1–11 (Red 1–4, Blue 5–9, Gray
-//     10–11). Crossing into Blue (score ≥ 50, plane 5) is the key milestone.
+//   • Overall 0–100 maps to frequency planes 3–11 (Red 3–4, Blue 5–9, Gray
+//     10–11). Plane 3 is the floor — planes 1–2 are not reachable by design.
+//     Crossing into Blue (score ≥ 50, plane 5) is the key milestone.
 //
 // Calibration (from product decisions):
 //   • ~2–3 weeks of consistent daily practice moves a red-zone player into Blue.
