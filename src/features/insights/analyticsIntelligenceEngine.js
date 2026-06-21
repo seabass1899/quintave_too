@@ -504,9 +504,9 @@ export function getCausalPrediction(checked = {}, dayStatus = {}, domainScores =
       confidence,
       evidenceCount:  evidence.length,
       evidence,
-      confidenceLabel: confidence >= 0.80 ? 'High confidence'
-        : confidence >= 0.70 ? 'Moderate confidence'
-        : 'Emerging pattern',
+      confidenceLabel: confidence >= 0.80 ? 'High'
+        : confidence >= 0.70 ? 'Moderate'
+        : 'Emerging',
     }
   } catch { return { ready: false, riskLevel: 'neutral' } }
 }

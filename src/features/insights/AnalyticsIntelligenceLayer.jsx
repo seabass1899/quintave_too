@@ -59,7 +59,7 @@ function ConfidenceDot({ confidence }) {
   return (
     <span style={{ fontSize: 10, color, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />
-      {pct}% confidence
+      {pct}% pattern strength
     </span>
   )
 }
@@ -431,7 +431,7 @@ export default function AnalyticsIntelligenceLayer({ checked = {}, dayStatus = {
           <span style={{ fontSize: 16, fontWeight: 900, color: '#1a1a18' }}>Analytics Intelligence</span>
         </div>
         <div style={{ fontSize: 12, color: '#888', lineHeight: 1.5 }}>
-          Four questions answered from your behavioral data. All patterns shown at 65%+ confidence only.
+          Four questions answered from your behavioral data. All patterns shown at 65%+ strength only.
         </div>
       </div>
 
