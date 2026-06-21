@@ -36,7 +36,7 @@ function SoWhat({ text }) {
 function ConfidenceDot({ confidence }) {
   const color = confidence >= 0.85 ? '#1D9E75' : confidence >= 0.7 ? '#BA7517' : '#888'
   return (
-    <div title={`${Math.round(confidence * 100)}% confidence`}
+    <div title={`${Math.round(confidence * 100)}% pattern strength`}
       style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 2 }} />
   )
 }
@@ -324,7 +324,7 @@ export default function WeeklyIntelligenceReport({ checked, dayStatus, domainSco
       )}
 
       <div style={{ fontSize: 10, color: '#ccc', textAlign: 'center', paddingTop: 10 }}>
-        Report generated {new Date(report.generatedAt).toLocaleString()} · Patterns only shown at 65%+ confidence
+        Report generated {new Date(report.generatedAt).toLocaleString()} · Patterns only shown at 65%+ strength
       </div>
     </div>
   )
