@@ -325,7 +325,7 @@ export default function Onboarding({ onComplete }) {
           <button onClick={advance} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: '#1a1a18', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em', marginBottom: 10 }}>
             Begin my coherence baseline →
           </button>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>25 questions · 5 dimensions per body · 7–10 minutes · stored only on your device</div>
+          <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>25 questions · 5 dimensions per body · 7–10 minutes · private to you</div>
         </div>
       </div>
     )
