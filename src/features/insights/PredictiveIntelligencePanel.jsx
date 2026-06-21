@@ -54,7 +54,7 @@ function TrajectoryForecastCard({ forecast }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>Confidence</div>
+          <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>Pattern strength</div>
           <div style={{ fontSize: 16, fontWeight: 900, color: '#1a1a18' }}>{forecast.overallConfidence}%</div>
           <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{expanded ? '▲' : '▼'}</div>
         </div>
@@ -82,7 +82,7 @@ function TrajectoryForecastCard({ forecast }) {
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5, marginBottom: 4 }}>{f.soWhat}</div>
-                  <div style={{ fontSize: 10, color: '#aaa' }}>{Math.round(f.confidence * 100)}% confidence</div>
+                  <div style={{ fontSize: 10, color: '#aaa' }}>{Math.round(f.confidence * 100)}% pattern strength</div>
                 </div>
               </div>
             )
@@ -152,7 +152,7 @@ function BehavioralRisksCard({ risks }) {
                   ◈ {risk.soWhat}
                 </div>
                 <div style={{ fontSize: 10, color: '#aaa', marginTop: 6 }}>
-                  {Math.round(risk.confidence * 100)}% confidence · Rule: {risk.rule}
+                  {Math.round(risk.confidence * 100)}% pattern strength · Rule: {risk.rule}
                 </div>
               </div>
             )
@@ -390,7 +390,7 @@ export default function PredictiveIntelligencePanel({ checked, dayStatus, domain
       )}
 
       <div style={{ fontSize: 10, color: '#ccc', textAlign: 'center', paddingTop: 10 }}>
-        Predictions only shown at 65%+ confidence · Not deterministic forecasts
+        Predictions only shown at 65%+ strength · Not deterministic forecasts
       </div>
     </div>
   )
