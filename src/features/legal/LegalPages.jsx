@@ -81,7 +81,7 @@ function PrivacyPolicy() {
 
       <h2 style={h2}>Who we are</h2>
       <p style={p}>
-        {COMPANY} is operated as a sole proprietorship. For any privacy-related request
+        {COMPANY} is operated by Quintave LLC, a Texas limited liability company. For any privacy-related request
         or question, contact us at <a href={`mailto:${CONTACT_EMAIL}`} style={a}>{CONTACT_EMAIL}</a>.
         For privacy purposes, we act as the controller of your personal data.
       </p>
