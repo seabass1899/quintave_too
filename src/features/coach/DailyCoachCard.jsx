@@ -130,7 +130,7 @@ export function CausalNarrativeCard({ message, isMobile }) {
 
   const confPct   = Math.round((message.confidence || 0.7) * 100)
   const confColor = confPct >= 80 ? '#085041' : confPct >= 70 ? '#BA7517' : '#888'
-  const confLabel = confPct >= 80 ? 'High confidence' : confPct >= 70 ? 'Moderate confidence' : 'Emerging pattern'
+  const confLabel = confPct >= 80 ? 'High' : confPct >= 70 ? 'Moderate' : 'Emerging'
 
   return (
     <div style={{
@@ -248,7 +248,7 @@ export function CausalNarrativeCard({ message, isMobile }) {
           }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: confColor, display: 'inline-block' }} />
             <span style={{ fontSize: 10, color: '#888', fontWeight: 600 }}>
-              {confPct}% confidence — {confLabel}
+              {confPct}% pattern strength — {confLabel}
             </span>
           </div>
         </div>
