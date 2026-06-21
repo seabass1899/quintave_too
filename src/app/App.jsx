@@ -2061,7 +2061,7 @@ function AppMain() {
                 placeholder="One small change that will improve my coherence next week..."
                 style={{ width:'100%', fontSize:13, color:'#1a1a18', background:'#F7F6F3', border:bdr, borderRadius:8, padding:'8px 10px', fontFamily:'inherit', outline:'none', marginBottom:12 }}/>
               <div style={{ fontSize:12, color:'#5F5E5A', background:'#F7F6F3', borderRadius:8, padding:'10px 12px', lineHeight:1.6 }}>
-                <strong>Data is stored locally.</strong> Use Save data before clearing your browser or switching devices.
+                <strong>When you're signed in, your data syncs to your account across devices.</strong> Use Save data to keep an extra local backup you can restore anytime.
               </div>
             </div>
           </div>
