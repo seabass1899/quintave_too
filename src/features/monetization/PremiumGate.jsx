@@ -52,7 +52,7 @@ const GATE_CONTENT = {
     headline: 'Your behavioral identity generated from real data',
     features: [
       'Alignment type — who you are behaviorally, not who you think you are',
-      'Behavioral laws — automatically detected patterns with confidence scores',
+      'Behavioral laws — automatically detected patterns with strength scores',
       'Optimal correction order — the sequence that works best for your system',
       'Adaptive style — how your system responds to pressure and momentum',
     ],
