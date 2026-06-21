@@ -124,7 +124,7 @@ function BehavioralLawsCard({ laws }) {
                   {style.label}
                 </span>
                 <span style={{ fontSize: 10, color: '#aaa', marginLeft: 'auto' }}>
-                  {Math.round(law.confidence * 100)}% confidence
+                  {Math.round(law.confidence * 100)}% pattern strength
                 </span>
               </div>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1a18', lineHeight: 1.35, marginBottom: 5 }}>
@@ -303,7 +303,7 @@ export default function CoherenceProfile({ checked, dayStatus, domainScores, onb
       )}
 
       <div style={{ fontSize: 10, color: '#ccc', textAlign: 'center', paddingTop: 10 }}>
-        Profile generated {new Date(profile.generatedAt).toLocaleString()} · Patterns shown at 65%+ confidence only
+        Profile generated {new Date(profile.generatedAt).toLocaleString()} · Patterns shown at 65%+ strength only
       </div>
     </div>
   )
