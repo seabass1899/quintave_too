@@ -1596,14 +1596,19 @@ function AppMain() {
             )
         if (!isPremium) {
           return (
-            <PremiumGate
-              feature="signature"
-              isPremium={false}
-              session={session}
-              onShowAuth={() => { setShowSignature(false); setShowAuth(true) }}
-            >
-              <div />
-            </PremiumGate>
+            <div onClick={() => setShowSignature(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, padding: 20, overflowY: 'auto' }}>
+              <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: 440 }}>
+                <button onClick={() => setShowSignature(false)} aria-label="Close" style={{ position: 'absolute', top: -36, right: 0, background: 'none', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+                <PremiumGate
+                  feature="signature"
+                  isPremium={false}
+                  session={session}
+                  onShowAuth={() => { setShowSignature(false); setShowAuth(true) }}
+                >
+                  <div />
+                </PremiumGate>
+              </div>
+            </div>
           )
         }
         return (
