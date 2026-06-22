@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { descriptorFor } from '../../data'
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -303,6 +304,9 @@ export default function SystemMap({ domainScores, coherenceBodies, onboardingPro
                     {Math.round(scores?.[selectedNode.id] || 0)}
                   </span>
                 </div>
+                {descriptorFor(selectedNode.id) && (
+                  <div style={{ fontSize: 12, color: selectedNode.color, opacity: 0.7, marginTop: 2, fontWeight: 400 }}>{descriptorFor(selectedNode.id)}</div>
+                )}
               </div>
               <button onClick={() => setSelected(null)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: selectedNode.color, opacity: 0.6 }}>×</button>
