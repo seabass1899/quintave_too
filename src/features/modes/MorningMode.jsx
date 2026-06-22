@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { descriptorFor } from '../../data'
 
 // Morning sequence — ordered by optimal flow
 // Source first (sets the anchor), Form (breathwork), Field, Mind, Code
@@ -273,13 +274,14 @@ export default function MorningMode({ checked, setChecked, directive, setDirecti
           </div>
 
           {/* Domain badge */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, marginBottom: 20 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 99, background: `${current.color}18`, border: `0.5px solid ${current.color}30` }}>
               <span style={{ fontSize: 14 }}>{current.icon}</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: current.color, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 {current.domainId === 'd1' ? 'Source' : current.domainId === 'd2' ? 'Form' : current.domainId === 'd3' ? 'Field' : current.domainId === 'd4' ? 'Mind' : 'Code'}
               </span>
             </div>
+            <span style={{ fontSize: 11, color: current.color, opacity: 0.6 }}>{descriptorFor(current.domainId)}</span>
           </div>
 
           {/* Practice name */}
