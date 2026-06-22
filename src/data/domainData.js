@@ -4,7 +4,7 @@
 export const DOMAINS = [
   { id: 'd1', name: 'Source', icon: '✦', color: '#7F77DD', bg: '#EEEDFE', text: '#3C3489',
     desc: 'The eternal and infinite dimension of pure being — deathless, boundless, beyond space and time.',
-    label: 'SOURCE ·', headline: 'The eternal self',
+    label: 'SOURCE ·', headline: 'The eternal self', descriptor: 'the still center',
     sub: 'Source is the awareness beneath all thought — deathless, boundless, the tuning fork everything else calibrates to. These questions measure your current access to that dimension.',
     questions: [
       { q: 'Generally speaking, how often do you experience a sense of awareness or presence beneath your thoughts — a quiet observer that is not caught in the noise?', low: 'Rarely — I am almost always identified with my thoughts and reactions', high: 'Often — I regularly rest as the awareness behind experience', angle: 'Presence depth', dimension: 'typical' },
@@ -15,7 +15,7 @@ export const DOMAINS = [
     ] },
   { id: 'd2', name: 'Form', icon: '♥', color: '#1D9E75', bg: '#E1F5EE', text: '#085041',
     desc: 'The physical dimension of matter and energy — the vessel optimized through movement, sleep, and recovery.',
-    label: 'FORM ·', headline: 'The physical vessel',
+    label: 'FORM ·', headline: 'The physical vessel', descriptor: 'the physical body',
     sub: 'Form is the instrument the soul chose. Its quality determines how much energy is available for everything else. These questions measure how well you are maintaining the vessel.',
     questions: [
       { q: 'In general, how well do you maintain your physical foundation — sleep, movement, and nutrition — as a consistent daily practice?', low: 'Poorly — sleep, movement, and nutrition are inconsistent most of the time', high: 'Well — these are reliable daily habits that support my energy', angle: 'Physical foundation', dimension: 'typical' },
@@ -26,7 +26,7 @@ export const DOMAINS = [
     ] },
   { id: 'd3', name: 'Field', icon: '∿', color: '#BA7517', bg: '#FAEEDA', text: '#633806',
     desc: 'The emotional dimension of resonance and charge — processed, regulated, and integrated daily.',
-    label: 'FIELD ·', headline: 'The emotional body',
+    label: 'FIELD ·', headline: 'The emotional body', descriptor: 'the emotional body',
     sub: 'Field is the emotional dimension — resonance, charge, and the energetic atmosphere you carry. These questions measure how clearly your Field is functioning.',
     questions: [
       { q: 'Generally, how well do you process and move emotional experiences — naming them, feeling them, and letting them pass rather than suppressing or carrying them?', low: 'Poorly — I tend to suppress, avoid, or carry emotional charge for extended periods', high: 'Well — emotions move through me and I rarely accumulate carried charge', angle: 'Emotional processing', dimension: 'typical' },
@@ -37,7 +37,7 @@ export const DOMAINS = [
     ] },
   { id: 'd4', name: 'Mind', icon: '◈', color: '#378ADD', bg: '#E6F1FB', text: '#0C447C',
     desc: 'The conscious dimension of thought and will — where intention, belief, and deliberate focus are formed.',
-    label: 'MIND ·', headline: 'The conscious director',
+    label: 'MIND ·', headline: 'The conscious director', descriptor: 'the mental body',
     sub: 'Mind is the conscious interface — where intention, belief, and deliberate focus are formed. These questions measure how deliberately your Mind is operating.',
     questions: [
       { q: 'Generally, how deliberately do you direct your mental focus — setting intentions, choosing what to think about, and operating from conscious direction rather than autopilot?', low: 'Rarely — my mind runs on autopilot and reacts to whatever arises', high: 'Consistently — I direct my attention intentionally and catch drift quickly', angle: 'Mental direction', dimension: 'typical' },
@@ -48,7 +48,7 @@ export const DOMAINS = [
     ] },
   { id: 'd5', name: 'Code', icon: '☽', color: '#D85A30', bg: '#FAECE7', text: '#712B13',
     desc: 'The subconscious dimension of programming and pattern — the hidden operating system governing all behavior.',
-    label: 'CODE ·', headline: 'The subconscious system',
+    label: 'CODE ·', headline: 'The subconscious system', descriptor: 'the subconscious body',
     sub: 'Code is the operating system — the subconscious patterns governing 95% of behavior below awareness. These questions measure how consciously you relate to your programming.',
     questions: [
       { q: 'Generally, how aware are you of the automatic behavioral patterns that shape your responses — the habitual loops that run below conscious awareness?', low: 'Largely unaware — my behavior often surprises or frustrates me in retrospect', high: 'Clearly aware — I can name my core patterns and see them operating in real time', angle: 'Pattern awareness', dimension: 'typical' },
@@ -182,6 +182,15 @@ export const COHERENCE_STATES = [
   { label: 'Aligning',    min: 61, max: 80, color: '#7F77DD', bg: '#EEEDFE', desc: 'All five bodies are moving into coherence with each other. Life is beginning to reflect what is happening inside. Synchronicity increases. Clarity deepens.' },
   { label: 'Whole',       min: 81, max: 100, color: '#1D9E75', bg: '#E1F5EE', desc: 'All five frequency bodies are in sustained coherence. The life you want is no longer something you chase — it emerges naturally from a self in full resonance with Source.' },
 ]
+
+// Inline descriptor layer: maps domainId → plain-language tag ("the emotional
+// body") used as a subordinate label next to the body name on display surfaces,
+// so new users learn what Field/Code mean without leaving onboarding. Engine
+// prose keeps the bare name — descriptors are for labels/headers only.
+export const DOMAIN_DESCRIPTORS = DOMAINS.reduce((m, d) => { m[d.id] = d.descriptor; return m }, {})
+export function descriptorFor(domainId) {
+  return DOMAIN_DESCRIPTORS[domainId] || ''
+}
 
 export function getCoherenceState(score) {
   return COHERENCE_STATES.find(s => score >= s.min && score <= s.max) || COHERENCE_STATES[0]
