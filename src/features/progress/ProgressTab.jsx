@@ -454,7 +454,7 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700 }}>Source</span>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>Source <span style={{ fontWeight: 400, color: '#9b9892' }}>· the still center</span></span>
                         <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 99, background: '#1a1a18', color: '#fff', fontWeight: 700, letterSpacing: '0.05em' }}>ANCHOR</span>
                         <span style={{ fontSize: 10, padding: '2px 9px', borderRadius: 99, background: accessBg, color: accessColor, fontWeight: 700 }}>{accessLabel}</span>
                       </div>
@@ -504,7 +504,7 @@ export default function ProgressTab({ checked, onboardingProfile, earnedMileston
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 500 }}>{d.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{d.name} <span style={{ fontWeight: 400, color: '#9b9892' }}>· {d.descriptor}</span></span>
                       {d.currentThreshold && (
                         <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 99, background: d.bg, color: d.text, fontWeight: 600 }}>{d.currentThreshold.level}</span>
                       )}
