@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { toast } from '../../app/ui/dialog'
+import { descriptorFor } from '../../data'
 import ReactDOM from 'react-dom'
 import { generateTodayPlan, PHASES, getDateKey, transitionDayStatus, createTodayPlanSnapshot, TODAY_PLAN_VERSION, pruneByRecentDays } from '../today/todayEngine'
 import { getWeeklyIntelligence, loadPatternProfile, invalidatePatternProfile, getOrComputeProfile, predictTomorrow } from '../intelligence/patternLearningModel'
@@ -973,10 +974,11 @@ function CoherenceProgressLayer({ decision }) {
   }
 
   const rows = [
-    { id: 'd1', label: 'Source', state: 'Anchored', symbol: '◎', tone: 'anchor' },
+    { id: 'd1', label: 'Source', state: 'Anchored', symbol: '◎', tone: 'anchor', descriptor: descriptorFor('d1') },
     ...MOVABLE_IDS.map(id => ({
       id,
       label: labels[id] || id,
+      descriptor: descriptorFor(id),
       ...getBodyState(id),
     })),
   ]
@@ -1037,6 +1039,17 @@ function CoherenceProgressLayer({ decision }) {
                 }}>
                   {row.label}
                 </div>
+                {row.descriptor && (
+                  <div style={{
+                    fontSize: 10,
+                    color: style.text,
+                    opacity: 0.55,
+                    marginTop: 1,
+                    fontWeight: 400,
+                  }}>
+                    {row.descriptor}
+                  </div>
+                )}
                 <div style={{
                   fontSize: 11,
                   color: style.border,
