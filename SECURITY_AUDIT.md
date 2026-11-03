@@ -37,7 +37,7 @@ for this app and should be reviewed next (see "Still to do").
 1. Confirm RLS on `user_state`, `subscriptions`, `feedback`, `user_events`: users may only read/write rows where `user_id = auth.uid()`; `subscriptions` must have **no** client insert/update policy.
 2. `delete-account` Edge Function: derive the user from the JWT, never from the request body.
 3. Stripe webhook: verify the signature; treat `client_reference_id` as untrusted and map it against the Stripe customer/email.
-4. If Supabase runs on a custom domain, add it to `connect-src` in the CSP.
+4. The CSP `connect-src` is pinned to the project host `kwuplcrwzlpgbpzsnzgs.supabase.co`. If the Supabase project or domain ever changes, update it in `vercel.json`.
 
 ## UI / UX check (headless Chromium, 1366×900 and 390×844)
 
