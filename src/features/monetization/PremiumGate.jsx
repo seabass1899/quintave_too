@@ -87,7 +87,7 @@ function UpgradeModal({ onClose, session }) {
 
     const params = new URLSearchParams({ client_reference_id: uid })
     if (email) params.set('prefilled_email', email)
-    window.open(`${base}?${params.toString()}`, '_blank')
+    window.open(`${base}?${params.toString()}`, '_blank', 'noopener,noreferrer')
 
     // Tell useSubscription to start polling — the webhook grants premium a beat
     // later, so this lets the gate unlock without a manual page reload.

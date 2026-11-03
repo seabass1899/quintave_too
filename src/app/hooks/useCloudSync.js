@@ -89,6 +89,12 @@ export function useCloudSync({ setChecked, setDayStatus, setOnboardingProfile, s
         setAuthReady(true)
       })
 
+    // Supabase is optional (no env vars → local-only mode). Without this guard
+    // the whole app crashed on `null.auth` instead of running offline.
+    if (!supabase) {
+      return () => { mounted = false; clearTimeout(authTimeout) }
+    }
+
     const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!mounted) return
 
