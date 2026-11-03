@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { DOMAINS, COHERENCE_STATES } from '../../data'
 import { signInWithMagicLink, getSession } from '../../app/supabaseClient'
 import { syncLocalStateToCloud } from '../../app/services/syncService'
@@ -48,73 +48,22 @@ const INTERFERENCE_INSIGHTS = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ProgressBar({ total, current, color }) {
-  return (
-    <div style={{ marginBottom: 28 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ fontSize: 11, color: '#888' }}>Question {current} of {total}</div>
-        <div style={{ fontSize: 11, color: '#888' }}>{Math.round((current / total) * 100)}% complete</div>
-      </div>
-      <div style={{ height: 4, borderRadius: 99, background: '#E5E3DE', overflow: 'hidden' }}>
-        <div style={{ height: 4, borderRadius: 99, background: color || '#1a1a18', width: `${(current / total) * 100}%`, transition: 'width 0.4s ease' }}/>
-      </div>
-    </div>
-  )
-}
-
-function FrequencySlider({ value, onChange, color, low, high, answered }) {
-  const label = value <= 2 ? 'Deep distortion' : value <= 4 ? 'Interference active' : value <= 6 ? 'Partial resonance' : value <= 8 ? 'Strong resonance' : 'Full coherence'
-  const bdr = '0.5px solid rgba(0,0,0,0.08)'
-  return (
-    <div>
-      <div style={{ marginBottom: 14, opacity: answered ? 1 : 0.6, transition: 'opacity 0.2s ease' }}>
-        <input type="range" min={1} max={10} step={1} value={value}
-          onChange={e => onChange(Number(e.target.value))}
-          style={{ width: '100%', accentColor: answered ? color : '#C8C6CF', cursor: 'pointer' }}/>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-          {[1,2,3,4,5,6,7,8,9,10].map(n => (
-            <div key={n} onClick={() => onChange(n)}
-              style={{ fontSize: 10, color: (answered && n === value) ? color : '#C0BEBA', fontWeight: (answered && n === value) ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>{n}</div>
-          ))}
-        </div>
-      </div>
-      <div style={{ textAlign: 'center', marginBottom: 14 }}>
-        {answered ? (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#F7F6F3', borderRadius: 99, padding: '6px 16px' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }}/>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a18' }}>{value}/10 — {label}</div>
-          </div>
-        ) : (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#F7F6F3', borderRadius: 99, padding: '6px 16px' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>Move the slider to answer</div>
-          </div>
-        )}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div style={{ background: '#F7F6F3', borderRadius: 10, padding: '10px 12px', border: bdr }}>
-          <div style={{ fontSize: 9, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Low resonance (1–3)</div>
-          <div style={{ fontSize: 12, color: '#5F5E5A', lineHeight: 1.5 }}>{low}</div>
-        </div>
-        <div style={{ background: '#F7F6F3', borderRadius: 10, padding: '10px 12px', border: bdr }}>
-          <div style={{ fontSize: 9, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>High resonance (8–10)</div>
-          <div style={{ fontSize: 12, color: '#5F5E5A', lineHeight: 1.5 }}>{high}</div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Main Onboarding ──────────────────────────────────────────────────────────
 
 export default function Onboarding({ onComplete }) {
   // flat question index across all 25 questions
-  const [questionIdx, setQuestionIdx] = useState(-1) // -1 = welcome
+  // Arriving from the landing page's "Find your baseline" CTA (?start=baseline)
+  // skips the welcome/orient screens — the landing page already covered them.
+  const startAtBaseline = (() => {
+    try { return new URLSearchParams(window.location.search).get('start') === 'baseline' } catch { return false }
+  })()
+  const [questionIdx, setQuestionIdx] = useState(startAtBaseline ? 0 : -1) // -1 = welcome
   const [scores, setScores] = useState({
     d1: [5, 5, 5, 5, 5], d2: [5, 5, 5, 5, 5], d3: [5, 5, 5, 5, 5], d4: [5, 5, 5, 5, 5], d5: [5, 5, 5, 5, 5],
   })
   const [userName, setUserName] = useState('')
   const [focusMode, setFocusMode] = useState(null)
-  const [phase, setPhase] = useState('welcome') // welcome | questions | name | results | email
+  const [phase, setPhase] = useState(startAtBaseline ? 'questions' : 'welcome') // welcome | orient | questions | name | results | email
   const [animating, setAnimating] = useState(false)
   const [email, setEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState('idle') // idle | sending | sent | skipped | error
@@ -278,6 +227,29 @@ export default function Onboarding({ onComplete }) {
     } catch {}
   }
 
+  // Keyboard shortcuts on the baseline questions: 1–9 (0 = 10) answer, Enter advances.
+  const keyRef = useRef(null)
+  keyRef.current = { phase, questionIdx, answered, advance, allQuestions, setScore, setAnswered }
+  useEffect(() => {
+    const onKey = (e) => {
+      const k = keyRef.current
+      if (!k || k.phase !== 'questions' || e.metaKey || e.ctrlKey || e.altKey) return
+      const tag = e.target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      const cq = k.allQuestions[k.questionIdx]
+      if (!cq) return
+      const n = e.key === '0' ? 10 : Number(e.key)
+      if (Number.isInteger(n) && n >= 1 && n <= 10) {
+        k.setScore(cq.domain.id, cq.domainQIdx, n)
+        k.setAnswered(a => ({ ...a, [k.questionIdx]: true }))
+      } else if (e.key === 'Enter' && k.answered[k.questionIdx] && tag !== 'BUTTON' && tag !== 'A') {
+        k.advance()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // ── WELCOME ──────────────────────────────────────────────────────────────────
   if (phase === 'welcome') {
     return (
@@ -387,93 +359,75 @@ export default function Onboarding({ onComplete }) {
   if (phase === 'questions' && currentQ) {
     const { domain, q, domainQIdx } = currentQ
     const currentScore = scores[domain.id][domainQIdx]
-    const isNewDomain = domainQIdx === 0
     const questionNumber = questionIdx + 1
     const isAnswered = !!answered[questionIdx]
+    const T = {
+      bg: '#F6F3EC', card: '#F6F3EC', ink: '#263B33', muted: '#6E746D', faint: '#8F948B',
+      line: '#D9D5C8', track: '#E3E5D6', olive: '#77814F',
+      sans: '"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+      display: 'Manrope,"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+    }
+    const shortAngle = (q.angle || '').split(/[—(]/)[0].trim()
+    const pick = (n) => { setScore(domain.id, domainQIdx, n); setAnswered(a => ({ ...a, [questionIdx]: true })) }
+    const canHover = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches
+    const lastQuestion = questionIdx === totalQuestions - 1
+    const nextLabel = lastQuestion ? 'See my coherence signature' : domainQIdx === 4 ? 'Next dimension' : 'Next question'
 
     return (
-      <div style={{ ...wrapper, alignItems: 'flex-start', paddingTop: 32 }}>
-        <div style={{ ...inner, maxWidth: 580 }}>
-          <ProgressBar total={totalQuestions} current={questionNumber} color={domain.color}/>
-
-          {/* Domain header — only on first question of each domain */}
-          {isNewDomain && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: domain.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
-                {domain.icon}
-              </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: domain.color, marginBottom: 3 }}>
-                  {domain.label}
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{domain.headline}</div>
-              </div>
+      <div style={{ minHeight: '100vh', background: '#2F4339', backgroundImage: 'radial-gradient(80% 60% at 50% 40%, #3A5045 0%, #2B3D34 100%)', fontFamily: T.sans, color: T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+        <div role="dialog" aria-labelledby="q-text" style={{ ...inner, maxWidth: 760, background: T.card, borderRadius: 14, boxShadow: '0 30px 80px -30px rgba(0,0,0,0.5)', padding: 'clamp(22px, 4vw, 32px) clamp(20px, 4.5vw, 50px) clamp(22px, 4vw, 40px)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 26 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: T.display, fontWeight: 600, fontSize: 21, letterSpacing: '-0.04em' }}>
+              <svg width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8 6.8 25.2"/></svg>
+              quintave
             </div>
-          )}
-
-          {isNewDomain && (
-            <div style={{ background: domain.bg, borderRadius: 12, padding: '14px 18px', marginBottom: 16, borderLeft: `3px solid ${domain.color}` }}>
-              <div style={{ fontSize: 13, color: domain.text, lineHeight: 1.7 }}>{domain.sub}</div>
-            </div>
-          )}
-
-          {/* Question card */}
-          <div style={{ ...card, marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: domain.color, background: domain.bg, padding: '3px 8px', borderRadius: 99 }}>
-                {domain.name} · {q.angle}
-              </div>
-              <div style={{ fontSize: 11, color: '#888' }}>Question {domainQIdx + 1} of 5 for this body</div>
-            </div>
-            {/* Dimension label — tells the user what this question is measuring */}
-            <div style={{ fontSize: 10, color: '#aaa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
-              {(() => {
-                const DIM_LABELS = {
-                  typical: '⬤ Typical baseline — how this area is for you generally',
-                  current: '⬤ Current state — how it is right now, this week',
-                  behavioral: '⬤ Behavioral context — what happens when this area suffers',
-                  remembrance: '⬤ Depth — how deeply you know yourself here',
-                  practice: '⬤ Capacity — your ability to return and recover',
-                  embodiment: '⬤ Depth — how attuned you are to this body',
-                  regulation: '⬤ Capacity — how well you recover and rebalance',
-                  'emotional honesty': '⬤ Depth — how honestly you meet this body',
-                  'relational charge': '⬤ Capacity — your awareness in the moment',
-                  'belief discernment': '⬤ Depth — your sovereignty over this body',
-                  'choice alignment': '⬤ Capacity — how aligned your actions are',
-                  'root pattern recognition': '⬤ Depth — how clearly you see this body',
-                  'rewriting capacity': '⬤ Capacity — your power to choose differently',
-                }
-                return DIM_LABELS[q.dimension] || '⬤ ' + (q.angle || '')
-              })()}
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', lineHeight: 1.65, marginBottom: 24 }}>
-              {q.q}
-            </div>
-            <FrequencySlider
-              value={currentScore}
-              onChange={val => { setScore(domain.id, domainQIdx, val); setAnswered(a => ({ ...a, [questionIdx]: true })) }}
-              color={domain.color}
-              low={q.low}
-              high={q.high}
-              answered={isAnswered}
-            />
+            <a href="/landing.html" aria-label="Close the baseline" style={{ width: 36, height: 36, borderRadius: '50%', border: `1px solid ${T.line}`, display: 'grid', placeItems: 'center', color: T.ink, textDecoration: 'none', fontSize: 15 }}>✕</a>
           </div>
 
-          {/* Interference note — only on last question of each domain */}
-          {domainQIdx === 4 && (
-            <div style={{ background: '#F7F6F3', borderRadius: 10, padding: '12px 16px', marginBottom: 14, borderLeft: '3px solid #D3D1C7' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#888', marginBottom: 4 }}>When this body is out of resonance</div>
-              <div style={{ fontSize: 12, color: '#5F5E5A', lineHeight: 1.6 }}>{domain.interference}</div>
-            </div>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: T.muted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
+            <span>Your coherence baseline</span>
+            <span style={{ textTransform: 'none' }}>{questionNumber} of {totalQuestions}</span>
+          </div>
+          <div role="progressbar" aria-valuemin={1} aria-valuemax={totalQuestions} aria-valuenow={questionNumber} aria-label="Baseline progress" style={{ height: 4, borderRadius: 99, background: T.track, overflow: 'hidden', marginBottom: 36 }}>
+            <div style={{ height: 4, borderRadius: 99, background: T.olive, width: `${(questionNumber / totalQuestions) * 100}%`, transition: 'width 0.4s ease' }}/>
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: questionIdx > 0 ? '1fr 3fr' : '1fr', gap: 10 }}>
-            {questionIdx > 0 && (
-              <button onClick={back} style={{ padding: '14px', borderRadius: 12, border: bdr, background: '#fff', fontSize: 14, cursor: 'pointer', color: '#5F5E5A' }}>← Back</button>
-            )}
-            <button onClick={advance} disabled={!isAnswered} style={{ padding: '14px', borderRadius: 12, border: 'none', background: isAnswered ? '#1a1a18' : '#E5E3DE', color: isAnswered ? '#fff' : '#999', fontSize: 14, fontWeight: 600, cursor: isAnswered ? 'pointer' : 'default', transition: 'all 0.2s ease' }}>
-              {questionIdx === totalQuestions - 1 ? 'Read my coherence signature →' : domainQIdx === 4 ? `Next frequency body →` : 'Next question →'}
+          <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: T.ink, marginBottom: 18 }}>
+            {domain.icon} {domain.name} · {shortAngle}
+          </div>
+          <h1 id="q-text" style={{ fontFamily: T.display, fontWeight: 500, fontSize: 'clamp(21px, 3.4vw, 28px)', lineHeight: 1.42, letterSpacing: '-0.035em', margin: '0 0 30px' }}>
+            {q.q}
+          </h1>
+
+          <div role="radiogroup" aria-labelledby="q-text" style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: 'clamp(4px, 1vw, 6px)' }}>
+            {[1,2,3,4,5,6,7,8,9,10].map(n => {
+              const sel = isAnswered && currentScore === n
+              return (
+                <button key={n} type="button" role="radio" aria-checked={sel} onClick={() => pick(n)}
+                  style={{ height: 46, borderRadius: 4, border: `1px solid ${sel ? T.ink : T.line}`, background: sel ? T.ink : 'transparent', color: sel ? '#F6F3EC' : T.ink, fontSize: 15, fontFamily: T.sans, cursor: 'pointer', transition: 'all 0.15s ease', padding: 0 }}>
+                  {n}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, marginTop: 10, fontSize: 11, color: T.muted, lineHeight: 1.45 }}>
+            <span style={{ maxWidth: '46%' }}>1 · {q.low}</span>
+            <span style={{ maxWidth: '46%', textAlign: 'right' }}>10 · {q.high}</span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 34, gap: 12 }}>
+            <button type="button" onClick={back} style={{ background: 'none', border: 'none', color: T.muted, fontSize: 15, cursor: 'pointer', padding: '12px 6px', fontFamily: T.sans }}>
+              ← Back
             </button>
+            <button type="button" onClick={advance} disabled={!isAnswered}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', gap: 40, minWidth: 'min(198px, 60%)', padding: '20px 24px', borderRadius: 6, border: 'none', background: isAnswered ? T.ink : '#A3AAA2', color: '#F6F3EC', fontSize: 15, fontWeight: 500, fontFamily: T.sans, cursor: isAnswered ? 'pointer' : 'not-allowed', transition: 'background 0.2s ease' }}>
+              {nextLabel} <span aria-hidden="true" style={{ fontSize: 18 }}>→</span>
+            </button>
+          </div>
+
+          <div style={{ marginTop: 30, fontSize: 11, color: T.muted, lineHeight: 1.7 }}>
+            Answer for yourself, without judgment. Your answers stay in this browser.<br/>
+            Reflective prompts, not a clinical assessment.{canHover ? ' Tip: press 1–9 (0 for 10) and Enter.' : ''}
           </div>
         </div>
       </div>

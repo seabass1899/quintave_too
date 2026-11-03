@@ -3,514 +3,462 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quintave — Manifestation is resonance</title>
+  <title>Quintave — Return to resonance</title>
+  <meta name="description" content="Less resistance. More resonance. Quintave is a quiet daily practice that brings your body, emotions, mind, and patterns into tune with who you are." />
+  <meta property="og:title" content="Quintave — Return to resonance" />
+  <meta property="og:description" content="A quieter way to come back to yourself. Find your coherence baseline across five dimensions." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#F6F3EC" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Manrope:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --source: #8B84E8;
-      --form: #2DB88A;
-      --field: #D4891F;
-      --mind: #4A9AE8;
-      --code: #E86840;
-      --bg: #0C0B0F;
-      --bg2: #13121A;
-      --surface: #1E1C2A;
-      --surface2: #252233;
-      --border: rgba(255,255,255,0.08);
-      --text: #F0EEF8;
-      --muted: #9A96AD;
-      --subtle: #68647B;
-      --danger: #E86840;
-      --success: #2DB88A;
+      --bg: #F6F3EC;
+      --bg-soft: #EFEBE1;
+      --ink: #263B33;
+      --ink-2: #33473F;
+      --olive: #77814F;
+      --olive-soft: #9AA27A;
+      --muted: #6E746D;
+      --faint: #9A9E95;
+      --line: #E1DCCF;
+      --sage: #E8EBDC;
+      --gold: #C8B784;
+      --gold-deep: #A8955F;
+      --card: #FBF9F4;
+      --radius: 6px;
+      --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --display: 'Manrope', 'DM Sans', system-ui, sans-serif;
+      --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+      --wrap: 1200px;
     }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    img, svg { display: block; max-width: 100%; }
+    a { color: inherit; }
+    button { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--olive); outline-offset: 3px; border-radius: 4px; }
+    .skip { position: absolute; left: -999px; top: 8px; background: var(--ink); color: #fff; padding: 10px 14px; border-radius: var(--radius); z-index: 100; }
+    .skip:focus { left: 16px; }
+    .wrap { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+    .eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink); }
+    .eyebrow.dot::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--olive-soft); margin-right: 10px; vertical-align: 2px; }
+    .display { font-family: var(--display); font-weight: 500; letter-spacing: -0.045em; line-height: 1.02; color: var(--ink); }
+    .ital { font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: -0.02em; color: var(--olive); }
 
-    html { scroll-behavior: smooth; }
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: space-between; gap: 36px; background: var(--ink); color: #F6F3EC; text-decoration: none; font-weight: 500; font-size: 15px; padding: 20px 24px; border-radius: var(--radius); border: 0; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+    .btn:hover { background: #1C2D27; }
+    .btn:active { transform: translateY(1px); }
+    .btn .arrow { font-size: 18px; line-height: 1; transition: transform .2s ease; }
+    .btn:hover .arrow { transform: translate(2px, -2px); }
+    .btn.sm { padding: 15px 18px; font-size: 14px; gap: 28px; }
+    .link-line { display: inline-flex; align-items: center; gap: 28px; color: var(--ink); text-decoration: none; font-size: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); transition: border-color .2s; }
+    .link-line:hover { border-color: var(--ink); }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 300;
-      line-height: 1.6;
-      overflow-x: hidden;
+    /* Nav */
+    header.nav { position: sticky; top: 0; z-index: 50; background: rgba(246, 243, 236, 0.86); backdrop-filter: saturate(1.2) blur(10px); -webkit-backdrop-filter: saturate(1.2) blur(10px); transition: box-shadow .2s; }
+    header.nav.scrolled { box-shadow: 0 1px 0 var(--line); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+    .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: -0.04em; color: var(--ink); }
+    .logo svg { width: 28px; height: 28px; }
+    .logo sup { font-size: 9px; font-weight: 500; margin-left: -6px; vertical-align: 14px; color: var(--muted); }
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+    .nav-links a { text-decoration: none; font-size: 14px; color: var(--ink-2); padding: 6px 0; border-bottom: 1px solid transparent; transition: border-color .2s; }
+    .nav-links a:hover { border-color: var(--ink); }
+
+    /* Hero */
+    .hero { padding: 56px 0 40px; }
+    .hero-grid { display: grid; grid-template-columns: 1.08fr 1fr; gap: 40px; align-items: center; }
+    .hero h1 { font-size: clamp(44px, 5.4vw, 80px); margin: 30px 0 36px; }
+    .hero h1 .ln { white-space: nowrap; }
+    .hero h1 .ital { font-size: 1.04em; }
+    .hero-lede { font-size: 17px; color: var(--muted); line-height: 1.85; max-width: 380px; margin-bottom: 36px; }
+    .hero-meta { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); margin-top: 18px; }
+    .hero-meta span + span::before { content: '·'; margin-right: 12px; }
+    .hero-note { display: flex; gap: 18px; align-items: center; margin-top: 64px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+    .hero-note svg { width: 28px; height: 28px; flex-shrink: 0; color: var(--faint); }
+
+    .stage { position: relative; aspect-ratio: 0.9 / 1; max-height: 720px; border-radius: 340px 340px 14px 14px; background: radial-gradient(120% 80% at 50% 45%, #F3F2EA 0%, #EEEDE3 55%, #ECEADF 100%); overflow: hidden; perspective: 1200px; }
+    .stage-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+    .orbit { position: absolute; inset: 9% 6% 14%; width: 88%; height: 77%; }
+    .orbit .spin { transform-origin: 300px 300px; animation: spin 60s linear infinite; }
+    .orbit .spin.r2 { animation-duration: 84s; animation-direction: reverse; }
+    .orbit .spin.r3 { animation-duration: 110s; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .stage-shadow { position: absolute; left: 22%; right: 22%; bottom: 12%; height: 46px; border-radius: 50%; background: radial-gradient(closest-side, rgba(120,116,90,.22), transparent); filter: blur(4px); }
+    .chip { position: absolute; display: flex; align-items: center; gap: 10px; background: rgba(251, 249, 244, 0.88); border: 1px solid rgba(225, 220, 207, 0.9); border-radius: 8px; padding: 13px 16px; font-size: 12.5px; color: var(--ink-2); box-shadow: 0 10px 30px -18px rgba(38, 59, 51, 0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: float 7s ease-in-out infinite; }
+    .chip small { display: block; font-size: 9.5px; color: var(--faint); margin-top: 2px; }
+    .chip .ic { font-size: 14px; line-height: 1; }
+    .chip.c-source { left: 44%; top: 44%; padding: 14px 18px 14px 16px; animation-delay: -2s; }
+    .chip.c-mind { right: 5%; top: 30%; transform: rotate(5deg); animation-delay: -4s; }
+    .chip.c-form { left: 8%; top: 72%; transform: rotate(-5deg); }
+    @keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+    .stage-foot { position: absolute; left: 0; right: 0; bottom: 18px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--faint); }
+    .stage-foot .dotl::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--olive-soft); margin-right: 8px; vertical-align: 1px; }
+    .pause { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--gold); background: transparent; color: var(--gold-deep); font-size: 9px; letter-spacing: 0; cursor: pointer; display: grid; place-items: center; }
+    .pause:hover { background: rgba(200, 183, 132, .14); }
+    .paused .spin, .paused .chip { animation-play-state: paused; }
+
+    /* Tagline strip */
+    .strip { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 32px; }
+    .strip .wrap { display: flex; justify-content: space-between; align-items: center; padding-top: 20px; padding-bottom: 20px; }
+    .strip .eyebrow { font-size: 10px; color: var(--ink-2); }
+    .strip a { font-size: 11px; color: var(--muted); text-decoration: none; }
+    .strip a:hover { color: var(--ink); }
+
+    /* Section shell */
+    section.block { padding: 110px 0; scroll-margin-top: 60px; }
+    .num { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink); margin-bottom: 26px; }
+
+    /* 01 Approach */
+    .approach { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+    .approach h2 { font-size: clamp(40px, 4.4vw, 54px); line-height: 1.08; }
+    .approach h2 .ital { display: block; }
+    .approach-copy h3 { font-family: var(--display); font-weight: 500; font-size: 22px; line-height: 1.5; letter-spacing: -0.02em; margin-bottom: 26px; max-width: 420px; }
+    .approach-copy p { font-size: 14px; color: var(--muted); line-height: 1.8; max-width: 470px; margin-bottom: 14px; }
+    .approach-copy .link-line { margin-top: 20px; }
+
+    /* 02 Dimensions */
+    .dims-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 48px; }
+    .dims-head h2 { font-size: clamp(40px, 4.6vw, 56px); }
+    .dims-head p { font-size: 13px; color: var(--muted); text-align: left; line-height: 1.7; }
+    .dims { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .dim { position: relative; text-align: left; background: transparent; border: 1px solid var(--line); border-radius: var(--radius); padding: 30px 22px 22px; min-height: 152px; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; transition: background .25s, border-color .25s, color .25s, transform .25s; }
+    .dim:hover { border-color: #CFC9B8; transform: translateY(-2px); }
+    .dim .ic { position: absolute; top: 28px; left: 22px; font-size: 20px; line-height: 1; }
+    .dim .go { position: absolute; right: 22px; bottom: 36px; font-size: 13px; }
+    .dim strong { font-weight: 500; font-size: 16px; letter-spacing: -0.01em; }
+    .dim span { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+    .dim[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #F6F3EC; }
+    .dim[aria-selected="true"] span { color: rgba(246, 243, 236, 0.65); }
+    .dim-panel { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0; padding: 56px 0 60px; border-bottom: 1px solid var(--line); }
+    .dim-panel .left { display: flex; gap: 44px; padding: 0 56px 0 20px; border-right: 1px solid var(--line); }
+    .dim-panel .bigic { font-size: 40px; color: var(--olive-soft); line-height: 1; padding-top: 34px; width: 40px; text-align: center; }
+    .dim-panel h3 { font-family: var(--display); font-weight: 500; font-size: 24px; letter-spacing: -0.025em; margin: 12px 0 14px; }
+    .dim-panel p { font-size: 13.5px; color: var(--muted); line-height: 1.8; max-width: 400px; }
+    .dim-panel .right { padding: 0 0 0 44px; }
+    .dim-panel .eyebrow { font-size: 10.5px; }
+    .dim-panel .right .eyebrow { color: var(--faint); font-size: 9.5px; }
+    .dim-panel blockquote { font-family: var(--serif); font-style: italic; font-size: 24px; color: var(--olive); line-height: 1.4; margin: 26px 0 36px; }
+    .fade { animation: fade .45s ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* 03 Practice */
+    .practice { display: grid; grid-template-columns: 1fr 1fr; gap: 84px; align-items: center; }
+    .ritual { position: relative; aspect-ratio: 1.16 / 1; border-radius: 120px 8px 8px 8px; overflow: hidden; background: radial-gradient(90% 70% at 70% 15%, #F1E3CF 0%, rgba(241,227,207,0) 60%), linear-gradient(160deg, #E7D3BA 0%, #D9BFA2 55%, #CDB092 100%); }
+    .ritual::before { content: ''; position: absolute; inset: -20%; background: repeating-linear-gradient(115deg, rgba(255,250,240,0) 0 60px, rgba(255,250,240,.16) 60px 120px, rgba(255,250,240,0) 120px 220px); filter: blur(18px); }
+    .ritual svg { position: absolute; inset: 6% 12% 4%; width: 76%; height: 90%; }
+    .ritual .cap { position: absolute; left: 32px; bottom: 26px; font-size: 8.5px; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(90, 70, 50, .55); }
+    .practice h2 { font-size: clamp(40px, 4.4vw, 54px); line-height: 1.1; margin-bottom: 36px; }
+    .practice h2 .ital { display: block; }
+    .practice .lede { font-size: 14px; color: var(--muted); line-height: 1.8; max-width: 380px; margin-bottom: 32px; }
+    .steps { list-style: none; margin-bottom: 40px; }
+    .steps li { display: grid; grid-template-columns: 30px 1fr; padding: 12px 0; }
+    .steps .n { font-size: 10px; color: var(--faint); padding-top: 4px; }
+    .steps strong { display: block; font-weight: 500; font-size: 14.5px; }
+    .steps span { font-size: 12px; color: var(--muted); }
+
+    /* Final CTA */
+    .final { background: var(--sage); text-align: center; padding: 96px 0 84px; }
+    .final .star { width: 34px; height: 34px; margin: 0 auto 32px; color: var(--olive-soft); }
+    .final h2 { font-size: clamp(38px, 4.4vw, 54px); margin: 22px 0 22px; }
+    .final p { font-size: 14px; color: var(--muted); margin-bottom: 34px; }
+    .final small { display: block; font-size: 10.5px; color: var(--muted); margin-top: 18px; }
+
+    footer { padding: 32px 0 40px; }
+    footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 11px; color: var(--muted); }
+    footer .logo { font-size: 20px; }
+    footer .logo svg { width: 20px; height: 20px; }
+    footer .meta { display: flex; gap: 22px; }
+    footer a { text-decoration: none; }
+    footer a:hover { color: var(--ink); }
+
+    /* Reveal on scroll (progressive enhancement: only hides when JS is running) */
+    .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s ease, transform .8s ease; }
+    .js .reveal.in { opacity: 1; transform: none; }
+
+    /* Responsive */
+    @media (max-width: 1020px) {
+      .nav-links { gap: 22px; }
+      .hero-grid, .approach, .practice { grid-template-columns: 1fr; }
+      .hero-grid { gap: 40px; }
+      .stage { max-width: 600px; width: 100%; margin: 0 auto; }
+      .hero h1 { font-size: clamp(42px, 9vw, 76px); }
+      .practice { gap: 56px; }
+      .dims { grid-template-columns: repeat(3, 1fr); }
+      .dim-panel { grid-template-columns: 1fr; gap: 40px; }
+      .dim-panel .left { border-right: 0; padding: 0; }
+      .dim-panel .right { padding: 32px 0 0 84px; border-top: 1px solid var(--line); }
     }
-
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.4;
+    @media (max-width: 760px) {
+      .nav-links { display: none; }
+      .nav-inner { height: 64px; }
+      .logo { font-size: 22px; }
+      .btn.sm { padding: 12px 14px; gap: 14px; font-size: 13px; }
+      .hero { padding-top: 28px; }
+      .hero h1 { margin: 22px 0 26px; }
+      .hero-note { margin-top: 40px; }
+      .btn { width: 100%; }
+      .btn.sm { width: auto; }
+      .stage { aspect-ratio: 0.92 / 1; border-radius: 200px 200px 12px 12px; }
+      .chip { padding: 10px 12px; font-size: 11.5px; }
+      .chip.c-source { left: 36%; }
+      .chip.c-mind { right: 3%; top: 24%; }
+      .stage-foot { padding: 0 16px; font-size: 7.5px; letter-spacing: 0.14em; white-space: nowrap; }
+      .strip .wrap { flex-direction: column; gap: 8px; align-items: flex-start; }
+      section.block { padding: 76px 0; }
+      .dims-head { flex-direction: column; align-items: flex-start; margin-bottom: 32px; }
+      .dims { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .dim { min-height: 124px; padding: 22px 18px 18px; }
+      .dim .ic { top: 20px; left: 18px; }
+      .dim .go { right: 18px; bottom: 30px; }
+      .dim:last-child { grid-column: span 2; }
+      .dim-panel { padding: 40px 0 44px; }
+      .dim-panel .left { gap: 20px; }
+      .dim-panel .bigic { font-size: 30px; width: 30px; padding-top: 30px; }
+      .dim-panel .right { padding: 28px 0 0; }
+      .dim-panel blockquote { font-size: 21px; }
+      .ritual { border-radius: 80px 8px 8px 8px; }
+      footer .wrap { flex-direction: column; align-items: flex-start; }
     }
-
-    nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      padding: 18px 48px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(12,11,15,0.82);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .nav-logo {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: var(--text);
-      text-decoration: none;
-    }
-
-    .nav-cta {
-      padding: 10px 18px;
-      border-radius: 8px;
-      background: rgba(139,132,232,0.16);
-      border: 1px solid rgba(139,132,232,0.34);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 500;
-      text-decoration: none;
-      transition: all 0.2s ease;
-    }
-
-    .nav-cta:hover { background: rgba(139,132,232,0.26); transform: translateY(-1px); }
-
-    section { position: relative; z-index: 1; }
-
-    .container {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 96px 48px;
-    }
-
-    .hero {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 1.08fr 0.92fr;
-      gap: 56px;
-      align-items: center;
-      padding-top: 120px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::after {
-      content: '';
-      position: absolute;
-      width: 850px; height: 850px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(139,132,232,0.09) 0%, transparent 68%);
-      top: 45%; left: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .eyebrow {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--source);
-      margin-bottom: 22px;
-    }
-
-    h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(48px, 7vw, 86px);
-      line-height: 0.98;
-      font-weight: 300;
-      letter-spacing: -0.03em;
-      margin-bottom: 24px;
-    }
-
-    h1 em { color: var(--source); font-style: normal; }
-
-    .hero-sub {
-      font-size: 18px;
-      line-height: 1.7;
-      color: var(--muted);
-      max-width: 590px;
-      margin-bottom: 20px;
-    }
-
-    .hero-proof {
-      color: #C7C2D7;
-      font-size: 15px;
-      line-height: 1.7;
-      max-width: 560px;
-      margin-bottom: 34px;
-    }
-
-    .cta-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-
-    .btn-primary, .btn-secondary {
-      min-height: 48px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 14px 28px;
-      border-radius: 9px;
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-      text-decoration: none;
-      transition: all 0.22s ease;
-    }
-
-    .btn-primary { background: var(--source); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
-    .btn-primary:hover { background: #9D96F0; transform: translateY(-1px); }
-
-    .btn-secondary { color: var(--text); border: 1px solid var(--border); background: rgba(255,255,255,0.04); }
-    .btn-secondary:hover { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.07); }
-
-    .micro-note { margin-top: 14px; color: var(--subtle); font-size: 12px; }
-
-    .app-frame {
-      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 16px;
-      box-shadow: 0 30px 90px rgba(0,0,0,0.35);
-    }
-
-    .mock-app {
-      border-radius: 17px;
-      overflow: hidden;
-      background: #F8F7FC;
-      color: #1E1C2A;
-      min-height: 560px;
-    }
-
-    .mock-top {
-      padding: 18px 18px 14px;
-      background: #fff;
-      border-bottom: 1px solid #E7E4F2;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .mock-title { font-weight: 700; color: #1E1C2A; font-size: 15px; }
-    .mock-streak { font-size: 12px; color: #6E6A7D; background: #F1EFFA; padding: 6px 9px; border-radius: 99px; }
-
-    .mock-body { padding: 18px; }
-
-    .mock-card {
-      background: #fff;
-      border: 1px solid #E7E4F2;
-      border-radius: 15px;
-      padding: 15px;
-      margin-bottom: 12px;
-    }
-
-    .mock-label {
-      color: #8B84E8;
-      text-transform: uppercase;
-      letter-spacing: 0.11em;
-      font-size: 10px;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-
-    .mock-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 13px; color: #383447; }
-    .mock-check { width: 18px; height: 18px; border-radius: 5px; background: #8B84E8; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: 0 0 auto; }
-    .mock-empty { background: #F1EFFA; color: transparent; border: 1px solid #DAD6EB; }
-
-    .mock-progress { height: 8px; background: #ECE9F7; border-radius: 99px; overflow: hidden; margin-top: 10px; }
-    .mock-fill { height: 100%; width: 75%; background: #8B84E8; border-radius: 99px; }
-
-    .mock-alert {
-      background: #FFF3EF;
-      border: 1px solid #F2BDA9;
-      color: #712B13;
-      border-radius: 13px;
-      padding: 12px;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .section-header { max-width: 760px; margin-bottom: 44px; }
-    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--source); margin-bottom: 16px; }
-    h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(36px, 5vw, 58px); line-height: 1.08; font-weight: 300; letter-spacing: -0.02em; margin-bottom: 18px; }
-    .section-copy { color: var(--muted); font-size: 16px; line-height: 1.8; max-width: 650px; }
-
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      min-height: 100%;
-    }
-
-    .card-num { color: var(--source); font-weight: 700; font-size: 13px; letter-spacing: 0.12em; margin-bottom: 14px; text-transform: uppercase; }
-    .card-title { font-size: 17px; font-weight: 600; margin-bottom: 10px; }
-    .card-text { color: var(--muted); font-size: 14px; line-height: 1.75; }
-
-    .split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px;
-      align-items: start;
-    }
-
-    .bullet-list { list-style: none; display: grid; gap: 12px; margin-top: 22px; }
-    .bullet-list li { display: flex; gap: 11px; color: var(--muted); font-size: 15px; line-height: 1.65; }
-    .bullet-list li::before { content: '→'; color: var(--source); font-weight: 700; flex: 0 0 auto; }
-
-    .consequence {
-      background: linear-gradient(180deg, rgba(232,104,64,0.12), rgba(232,104,64,0.045));
-      border-color: rgba(232,104,64,0.28);
-    }
-
-    .success {
-      background: linear-gradient(180deg, rgba(45,184,138,0.11), rgba(45,184,138,0.04));
-      border-color: rgba(45,184,138,0.25);
-    }
-
-    .domain-card { padding: 18px; }
-    .domain-dot { width: 9px; height: 9px; border-radius: 50%; margin-bottom: 14px; }
-    .domain-name { font-weight: 700; margin-bottom: 6px; }
-    .domain-role { color: var(--muted); font-size: 13px; line-height: 1.55; }
-
-    .quote-section {
-      background: var(--bg2);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .quote {
-      max-width: 840px;
-      margin: 0 auto;
-      text-align: center;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(28px, 4vw, 46px);
-      font-weight: 300;
-      line-height: 1.35;
-    }
-
-    .quote em { color: var(--source); font-style: normal; }
-
-    .final-cta { text-align: center; padding: 110px 48px; }
-    .final-cta h2 { margin-left: auto; margin-right: auto; max-width: 720px; }
-    .final-cta .section-copy { margin: 0 auto 28px; }
-
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 34px 48px;
-      color: var(--subtle);
-      font-size: 12px;
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    @media (max-width: 920px) {
-      .hero { grid-template-columns: 1fr; gap: 34px; min-height: auto; padding-top: 112px; }
-      .split { grid-template-columns: 1fr; }
-      .grid-3, .grid-5 { grid-template-columns: 1fr; }
-      .mock-app { min-height: auto; }
-    }
-
-    @media (max-width: 768px) {
-      nav { padding: 14px 18px; }
-      .nav-logo { font-size: 22px; }
-      .nav-cta { padding: 9px 12px; font-size: 12px; }
-      .container { padding: 72px 18px; }
-      .hero { padding-top: 104px; }
-      h1 { font-size: 42px; line-height: 1.02; }
-      .hero-sub { font-size: 16px; }
-      .hero-proof { font-size: 14px; }
-      .cta-row { width: 100%; }
-      .btn-primary, .btn-secondary { width: 100%; }
-      .app-frame { padding: 10px; border-radius: 18px; }
-      .mock-body { padding: 13px; }
-      .card { padding: 18px; }
-      .final-cta { padding: 82px 18px; }
-      footer { padding: 26px 18px; flex-direction: column; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .spin, .chip { animation: none !important; }
+      .js .reveal { opacity: 1; transform: none; transition: none; }
+      .stage-inner { transition: none; }
     }
   </style>
 </head>
 <body>
-  <nav>
-    <a href="#" class="nav-logo">Quintave</a>
-    <a href="/index.html" class="nav-cta">Find my baseline →</a>
-  </nav>
+  <a class="skip" href="#main">Skip to content</a>
 
-  <section class="container hero">
-    <div>
-      <div class="eyebrow">A coherence instrument</div>
-      <h1>Manifestation isn't luck. It's <em>resonance.</em></h1>
-      <p class="hero-sub">At your core you are Source. You move through four frequency bodies — physical, emotional, mental, and subconscious. When they're in tune with Source, creating the life you want becomes deliberate.</p>
-      <p class="hero-proof">Quintave shows you exactly where each body is in tune — and where it's drifted. A daily tuning practice that brings all four back into resonance, so your best life isn't something you chase. It's what emerges.</p>
-      <div class="cta-row">
-        <a href="/index.html" class="btn-primary">Find my coherence baseline →</a>
-      </div>
-      <p class="micro-note">Free to start · No credit card required · About 7–10 minutes</p>
-    </div>
-
-    <div class="app-frame" aria-label="Quintave app preview">
-      <div class="mock-app">
-        <div class="mock-top">
-          <div class="mock-title">Today’s Tuning</div>
-          <div class="mock-streak">In tune · 3 days</div>
-        </div>
-        <div class="mock-body">
-          <div class="mock-card">
-            <div class="mock-label">Morning · Initialize</div>
-            <div class="mock-row"><span class="mock-check">✓</span>Stillness Exposure <strong style="color:#8B84E8">Critical</strong></div>
-            <div class="mock-row"><span class="mock-check">✓</span>Morning Directive</div>
-            <div class="mock-row"><span class="mock-check mock-empty">.</span>Sun + Circadian Anchor</div>
-            <div class="mock-progress"><div class="mock-fill"></div></div>
-          </div>
-          <div class="mock-card success">
-            <div class="mock-label" style="color:#2DB88A">In resonance</div>
-            <div class="card-text" style="color:#4D465E">All four bodies in tune with Source. Tomorrow builds from this state.</div>
-          </div>
-          <div class="mock-alert">
-            <strong>Drift detected:</strong> Code has fallen out of tune. Today’s practice brings it back into resonance.
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="how" class="container">
-    <div class="section-header">
-      <div class="section-label">How it works</div>
-      <h2>Three phases. One daily tuning practice.</h2>
-      <p class="section-copy">Quintave reads where each body resonates, sets today’s practice, and keeps it simple — so you always know the one thing to do next.</p>
-    </div>
-    <div class="grid-3">
-      <div class="card">
-        <div class="card-num">01 · Morning</div>
-        <div class="card-title">Initialize your state</div>
-        <p class="card-text">Set direction before the day pulls your attention outward. Morning establishes the signal everything else builds from.</p>
-      </div>
-      <div class="card">
-        <div class="card-num">02 · Midday</div>
-        <div class="card-title">Correct drift</div>
-        <p class="card-text">Return to center when stress, reaction, distraction, or old patterns start pulling the system apart.</p>
-      </div>
-      <div class="card">
-        <div class="card-num">03 · Evening</div>
-        <div class="card-title">Stabilize the signal</div>
-        <p class="card-text">Close the day cleanly. Process what surfaced, encode the next direction, and protect tomorrow’s baseline.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="container">
-    <div class="split">
-      <div>
-        <div class="section-label">Why it works</div>
-        <h2>Most systems track behavior. Quintave tunes it.</h2>
-        <p class="section-copy">You don’t need more tracking. You need to see where each body is in tune — and a simple daily practice that brings the rest back into resonance with Source.</p>
-      </div>
-      <div class="grid-3" style="grid-template-columns: 1fr; gap: 12px;">
-        <div class="card success">
-          <div class="card-title">Practice consistently</div>
-          <p class="card-text">Resonance builds. Your bodies harmonize with Source, and creating the life you want gets easier.</p>
-        </div>
-        <div class="card consequence">
-          <div class="card-title">Drift happens</div>
-          <p class="card-text">Life pulls the bodies out of tune. Quintave shows you exactly which one — no guilt, just the next step back.</p>
-        </div>
-        <div class="card">
-          <div class="card-title">Return anytime</div>
-          <p class="card-text">Resonance is always one practice away. There’s no streak to lose — only your tuning to deepen.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="quote-section">
-    <div class="container">
-      <p class="quote">The goal isn’t to do more. It’s to bring every part of you back into <em>resonance</em> with who you already are.</p>
-    </div>
-  </section>
-
-  <section class="container">
-    <div class="section-header">
-      <div class="section-label">The five frequency bodies</div>
-      <h2>Five frequencies. One you.</h2>
-      <p class="section-copy">Your experience is shaped by five interacting frequencies. When they drift out of tune, life feels like resistance. Quintave brings them back into resonance, daily.</p>
-    </div>
-    <div class="grid-5">
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--source)"></div>
-        <div class="domain-name" style="color:var(--source)">Source</div>
-        <div class="domain-role">Baseline signal beneath noise, roles, and reaction.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--form)"></div>
-        <div class="domain-name" style="color:var(--form)">Form</div>
-        <div class="domain-role">Physical state, energy, sleep, movement, and recovery.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--field)"></div>
-        <div class="domain-name" style="color:var(--field)">Field</div>
-        <div class="domain-role">Emotional stability, charge, regulation, and release.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--mind)"></div>
-        <div class="domain-name" style="color:var(--mind)">Mind</div>
-        <div class="domain-role">Direction, belief, focus, and conscious intention.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--code)"></div>
-        <div class="domain-name" style="color:var(--code)">Code</div>
-        <div class="domain-role">Subconscious patterns and automated behavior.</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="container">
-    <div class="split">
-      <div>
-        <div class="section-label">Frequency model</div>
-        <h2>Your state changes gradually — not instantly.</h2>
-        <p class="section-copy">Progress isn’t a spike. It’s built through consistent tuning, a strong Source anchor, and less drift across the bodies.</p>
-      </div>
-      <div class="card">
-        <div class="card-title">Zone progression</div>
-        <ul class="bullet-list">
-          <li><span><strong style="color:var(--danger)">Red Zone</strong> — below Level 5, unstable connection and reactive drift.</span></li>
-          <li><span><strong style="color:var(--mind)">Blue Zone</strong> — Level 5–9, Source connection and domain harmonization.</span></li>
-          <li><span><strong style="color:#B6B2C7">Gray Zone</strong> — Level 10–11, neutrality and full signal stabilization.</span></li>
+  <header class="nav" id="nav">
+    <div class="wrap nav-inner">
+      <a href="/" class="logo" aria-label="Quintave home">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8 6.8 25.2"/></svg>
+        quintave<sup>®</sup>
+      </a>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li><a href="#approach">The approach</a></li>
+          <li><a href="#dimensions">Five dimensions</a></li>
+          <li><a href="#practice">Daily practice</a></li>
         </ul>
-      </div>
+      </nav>
+      <a href="/index.html?start=baseline" class="btn sm">Find your baseline <span class="arrow" aria-hidden="true">↗</span></a>
     </div>
-  </section>
+  </header>
 
-  <section class="final-cta" id="start">
-    <div class="section-label">Begin today</div>
-    <h2>Find your coherence baseline.</h2>
-    <p class="section-copy">Take the assessment, see exactly where each body resonates, and get your first day of tuning.</p>
-    <div class="cta-row" style="justify-content:center;">
-      <a href="/index.html" class="btn-primary">Find my coherence baseline →</a>
-    </div>
-    <p class="micro-note">Free to start · No credit card required · About 7–10 minutes</p>
-  </section>
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow dot">A coherence instrument</div>
+          <h1 class="display"><span class="ln">Less resistance.</span><br><span class="ln">More <span class="ital">resonance.</span></span></h1>
+          <p class="hero-lede">A quieter way to come back to yourself. Bring your body, emotions, mind, and patterns into tune with who you are.</p>
+          <a href="/index.html?start=baseline" class="btn">Discover your coherence <span class="arrow" aria-hidden="true">↗</span></a>
+          <div class="hero-meta"><span>7–10 minutes</span><span>No right or wrong answers</span></div>
+          <div class="hero-note">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M16 2c1.2 8.2 5.8 12.8 14 14-8.2 1.2-12.8 5.8-14 14-1.2-8.2-5.8-12.8-14-14 8.2-1.2 12.8-5.8 14-14Z"/></svg>
+            <p>You don't need to become someone new.<br>You need a little space to hear yourself.</p>
+          </div>
+        </div>
+
+        <div class="stage" id="stage">
+          <div class="stage-inner" id="stageInner">
+            <svg class="orbit" viewBox="0 0 600 600" role="img" aria-label="Five connected rings orbiting a glowing center, representing the five dimensions around Source">
+              <defs>
+                <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#D9CB9E"/>
+                  <stop offset=".5" stop-color="#B8A26A"/>
+                  <stop offset="1" stop-color="#E2D7B4"/>
+                </linearGradient>
+                <radialGradient id="core" cx=".38" cy=".32" r=".75">
+                  <stop offset="0" stop-color="#FBF6E6"/>
+                  <stop offset=".45" stop-color="#D8CBA0"/>
+                  <stop offset="1" stop-color="#9C8C5C"/>
+                </radialGradient>
+                <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+                  <stop offset="0" stop-color="#FFF8DC" stop-opacity=".9"/>
+                  <stop offset="1" stop-color="#FFF8DC" stop-opacity="0"/>
+                </radialGradient>
+                <radialGradient id="bead" cx=".35" cy=".3" r=".8">
+                  <stop offset="0" stop-color="#FFFBEF"/>
+                  <stop offset=".5" stop-color="#D6C796"/>
+                  <stop offset="1" stop-color="#9E8B55"/>
+                </radialGradient>
+              </defs>
+              <circle cx="300" cy="300" r="150" fill="url(#glow)"/>
+              <g fill="none" stroke="url(#ring)" stroke-width="3.2" stroke-linecap="round">
+                <g class="spin"><ellipse cx="300" cy="300" rx="232" ry="118" transform="rotate(-18 300 300)"/><circle r="9" fill="url(#bead)" stroke="none"><animateMotion dur="26s" repeatCount="indefinite" path="M 520.6 228.3 A 232 118 -18 1 1 79.4 371.7 A 232 118 -18 1 1 520.6 228.3"/></circle></g>
+                <g class="spin r2"><ellipse cx="300" cy="300" rx="236" ry="96" transform="rotate(38 300 300)"/><circle r="11" fill="url(#bead)" stroke="none"><animateMotion dur="34s" repeatCount="indefinite" path="M 486 445.3 A 236 96 38 1 1 114 154.7 A 236 96 38 1 1 486 445.3"/></circle></g>
+                <g class="spin r3"><ellipse cx="300" cy="300" rx="226" ry="84" transform="rotate(-72 300 300)"/><circle r="8" fill="url(#bead)" stroke="none"><animateMotion dur="30s" repeatCount="indefinite" path="M 369.8 85.1 A 226 84 -72 1 1 230.2 514.9 A 226 84 -72 1 1 369.8 85.1"/></circle></g>
+                <g class="spin"><ellipse cx="300" cy="300" rx="214" ry="150" transform="rotate(8 300 300)"/><circle r="10" fill="url(#bead)" stroke="none"><animateMotion dur="40s" repeatCount="indefinite" path="M 511.9 329.8 A 214 150 8 1 1 88.1 270.2 A 214 150 8 1 1 511.9 329.8"/></circle></g>
+                <g class="spin r2"><ellipse cx="300" cy="300" rx="236" ry="60" transform="rotate(66 300 300)"/></g>
+              </g>
+              <circle cx="300" cy="300" r="58" fill="url(#core)"/>
+            </svg>
+            <div class="stage-shadow" aria-hidden="true"></div>
+            <div class="chip c-source" aria-hidden="true"><span class="ic">✦</span><div>Source<small>Your steady center</small></div></div>
+            <div class="chip c-mind" aria-hidden="true"><span class="ic">◈</span>Mind</div>
+            <div class="chip c-form" aria-hidden="true"><span class="ic">♡</span>Form</div>
+          </div>
+          <div class="stage-foot">
+            <span class="dotl">Everything connected</span>
+            <button class="pause" id="pauseBtn" type="button" aria-pressed="false" aria-label="Pause animation">❚❚</button>
+            <span>Move to explore ↗</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="wrap">
+          <span class="eyebrow">Find your center. Change your frequency.</span>
+          <a href="#approach">Explore the approach ↓</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 Approach -->
+    <section class="block" id="approach">
+      <div class="wrap approach reveal">
+        <div>
+          <div class="num">01 / The approach</div>
+          <h2 class="display">One you.<span class="ital">Five dimensions.</span></h2>
+        </div>
+        <div class="approach-copy">
+          <h3>When one part of you feels out of tune, the rest of you feels it too.</h3>
+          <p>Quintave is a daily practice built around a simple idea: your inner world is connected. Your physical energy, emotional landscape, thoughts, and deeper patterns all shape your experience.</p>
+          <p>Start by noticing where you are. Then create a little more harmony, one intentional practice at a time.</p>
+          <a href="#dimensions" class="link-line">Get to know your five dimensions <span aria-hidden="true">↘</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 Dimensions -->
+    <section class="block" id="dimensions" style="padding-top:0">
+      <div class="wrap">
+        <div class="dims-head reveal">
+          <div>
+            <div class="num">02 / Your inner landscape</div>
+            <h2 class="display">Everything begins <span class="ital">with you.</span></h2>
+          </div>
+          <p>Five connected dimensions.<br>Tap one to explore.</p>
+        </div>
+
+        <div class="dims" role="tablist" aria-label="The five dimensions">
+          <button class="dim" role="tab" id="tab-source" aria-controls="dimPanel" aria-selected="true" data-dim="source"><span class="ic" aria-hidden="true">✦</span><strong>Source</strong><span>The tuning fork</span><b class="go" aria-hidden="true">↗</b></button>
+          <button class="dim" role="tab" id="tab-form" aria-controls="dimPanel" aria-selected="false" tabindex="-1" data-dim="form"><span class="ic" aria-hidden="true">♡</span><strong>Form</strong><span>The vessel</span><b class="go" aria-hidden="true">↗</b></button>
+          <button class="dim" role="tab" id="tab-field" aria-controls="dimPanel" aria-selected="false" tabindex="-1" data-dim="field"><span class="ic" aria-hidden="true">∿</span><strong>Field</strong><span>The emotional field</span><b class="go" aria-hidden="true">↗</b></button>
+          <button class="dim" role="tab" id="tab-mind" aria-controls="dimPanel" aria-selected="false" tabindex="-1" data-dim="mind"><span class="ic" aria-hidden="true">◈</span><strong>Mind</strong><span>The director</span><b class="go" aria-hidden="true">↗</b></button>
+          <button class="dim" role="tab" id="tab-code" aria-controls="dimPanel" aria-selected="false" tabindex="-1" data-dim="code"><span class="ic" aria-hidden="true">☽</span><strong>Code</strong><span>The deeper pattern</span><b class="go" aria-hidden="true">↗</b></button>
+        </div>
+
+        <div class="dim-panel" id="dimPanel" role="tabpanel" aria-labelledby="tab-source" aria-live="polite">
+          <div class="left fade" id="dimLeft">
+            <div class="bigic" id="dimIcon" aria-hidden="true">✦</div>
+            <div>
+              <div class="eyebrow" id="dimKicker">Your foundation</div>
+              <h3 id="dimTitle">Source. Your steady center.</h3>
+              <p id="dimBody">The awareness beneath the noise. A connection to who you are beyond your thoughts, roles, and circumstances.</p>
+            </div>
+          </div>
+          <div class="right fade" id="dimRight">
+            <div class="eyebrow">A moment to reflect</div>
+            <blockquote id="dimQuote">“When did I last feel fully present?”</blockquote>
+            <a href="/index.html?start=baseline" class="link-line">Explore in your baseline <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 Practice -->
+    <section class="block" id="practice" style="padding-top:20px">
+      <div class="wrap practice">
+        <div class="ritual reveal" role="img" aria-label="Golden rings and pearls suspended inside a glass sphere in warm light">
+          <svg viewBox="0 0 400 400" aria-hidden="true">
+            <defs>
+              <radialGradient id="glass" cx=".4" cy=".35" r=".7">
+                <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+                <stop offset=".75" stop-color="#fff" stop-opacity=".05"/>
+                <stop offset="1" stop-color="#fff" stop-opacity=".45"/>
+              </radialGradient>
+              <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#F3DFAE"/>
+                <stop offset=".45" stop-color="#C69A55"/>
+                <stop offset=".7" stop-color="#E9CF93"/>
+                <stop offset="1" stop-color="#A97D3F"/>
+              </linearGradient>
+              <radialGradient id="pearl" cx=".35" cy=".3" r=".8">
+                <stop offset="0" stop-color="#FFFDF7"/>
+                <stop offset=".55" stop-color="#F1DCC0"/>
+                <stop offset="1" stop-color="#C9A684"/>
+              </radialGradient>
+              <radialGradient id="floor" cx=".5" cy=".5" r=".5">
+                <stop offset="0" stop-color="#8A6A48" stop-opacity=".28"/>
+                <stop offset="1" stop-color="#8A6A48" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <ellipse cx="200" cy="372" rx="130" ry="16" fill="url(#floor)"/>
+            <circle cx="200" cy="196" r="168" fill="url(#glass)" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/>
+            <path d="M92 110 A150 150 0 0 1 200 40" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="3" stroke-linecap="round"/>
+            <g fill="none" stroke="url(#gold)" stroke-width="7">
+              <ellipse cx="200" cy="196" rx="130" ry="58" transform="rotate(-28 200 196)"/>
+              <ellipse cx="200" cy="196" rx="130" ry="58" transform="rotate(32 200 196)"/>
+              <ellipse cx="200" cy="196" rx="134" ry="46" transform="rotate(88 200 196)"/>
+              <ellipse cx="200" cy="196" rx="120" ry="70" transform="rotate(4 200 196)"/>
+            </g>
+            <circle cx="200" cy="196" r="26" fill="url(#pearl)"/>
+            <g fill="url(#pearl)">
+              <circle cx="276" cy="94" r="8"/><circle cx="84" cy="236" r="9"/><circle cx="318" cy="238" r="8"/>
+              <circle cx="132" cy="322" r="8"/><circle cx="252" cy="330" r="8"/>
+            </g>
+          </svg>
+          <span class="cap">A small ritual. A different rhythm.</span>
+        </div>
+        <div class="reveal">
+          <div class="num">03 / A practice, not a finish line</div>
+          <h2 class="display">Come back to yourself.<span class="ital">A little, every day.</span></h2>
+          <p class="lede">Coherence isn't a perfect state to hold. It's a relationship you return to.</p>
+          <ol class="steps">
+            <li><span class="n">01</span><div><strong>Notice your starting point</strong><span>A guided baseline across all five dimensions.</span></div></li>
+            <li><span class="n">02</span><div><strong>See your own pattern</strong><span>A personal snapshot of what feels aligned and what needs attention.</span></div></li>
+            <li><span class="n">03</span><div><strong>Make room for a daily return</strong><span>Choose a small practice for the dimension calling you.</span></div></li>
+          </ol>
+          <a href="/index.html?start=baseline" class="btn">Begin with where you are <span class="arrow" aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="final">
+      <div class="wrap reveal">
+        <svg class="star" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8 6.8 25.2"/></svg>
+        <div class="eyebrow">Your next chapter starts with a pause</div>
+        <h2 class="display">Find your own <span class="ital">frequency.</span></h2>
+        <p>25 thoughtful questions. Five dimensions. One clearer starting point.</p>
+        <a href="/index.html?start=baseline" class="btn">Find my baseline <span class="arrow" aria-hidden="true">↗</span></a>
+        <small>Your responses stay in this browser. No account needed.</small>
+      </div>
+    </section>
+  </main>
 
   <footer>
-    <div>Quintave</div>
-    <div>A daily tuning practice across Source, Form, Field, Mind, and Code. © 2026</div>
+    <div class="wrap">
+      <a href="/" class="logo" aria-label="Quintave home">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8 6.8 25.2"/></svg>
+        quintave
+      </a>
+      <span>A daily return to resonance.</span>
+      <div class="meta"><span>© 2026 Quintave</span><a href="/index.html">Open the app ↗</a></div>
+    </div>
   </footer>
+
+  <script src="/landing.js" defer></script>
 </body>
 </html>
