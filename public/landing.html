@@ -3,514 +3,423 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quintave — Manifestation is resonance</title>
+  <title>Quintave — Return to resonance</title>
+  <meta name="description" content="A daily tuning practice. Bring your body, emotions, mind, and patterns into tune with who you are — one small return at a time." />
+  <meta name="theme-color" content="#1f3026" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --source: #8B84E8;
-      --form: #2DB88A;
-      --field: #D4891F;
-      --mind: #4A9AE8;
-      --code: #E86840;
-      --bg: #0C0B0F;
-      --bg2: #13121A;
-      --surface: #1E1C2A;
-      --surface2: #252233;
-      --border: rgba(255,255,255,0.08);
-      --text: #F0EEF8;
-      --muted: #9A96AD;
-      --subtle: #68647B;
-      --danger: #E86840;
-      --success: #2DB88A;
+      --bg:        #F3F1EC;
+      --bg-warm:   #EFEDE6;
+      --surface:   #FBFAF7;
+      --surface-2: #F7F5F0;
+      --ink:       #1A1A17;
+      --ink-soft:  #3A3A34;
+      --muted:     #6E6D64;
+      --subtle:    #9A998E;
+      --line:      rgba(26,26,23,0.10);
+      --line-soft: rgba(26,26,23,0.06);
+      --forest:    #1F3026;
+      --forest-2:  #284032;
+      --sage:      #8A9A78;
+      --sage-deep: #6E7E5D;
+      --sage-band: #E4E8DD;
+      --gold:      #BBA86A;
+      --gold-soft: #D8CDA6;
+      /* dimension accents (match the app) */
+      --d-source: #7F77DD;
+      --d-form:   #2DB88A;
+      --d-field:  #C98A2B;
+      --d-mind:   #4A8FD8;
+      --d-code:   #D8673C;
+      --radius:   18px;
+      --radius-lg:24px;
+      --maxw:     1180px;
     }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
     body {
       background: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 300;
+      color: var(--ink);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 400;
       line-height: 1.6;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.4;
-    }
+    .serif { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .ital  { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; color: var(--sage-deep); font-weight: 500; }
 
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+    @media (max-width: 640px) { .wrap { padding: 0 20px; } }
+
+    a { color: inherit; text-decoration: none; }
+
+    .label {
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--subtle); font-weight: 600;
+      display: inline-flex; align-items: center; gap: 9px;
+    }
+    .label .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); display: inline-block; }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+      cursor: pointer; border: none; transition: transform .2s ease, background .2s ease, box-shadow .2s ease;
+    }
+    .btn-primary {
+      background: var(--forest); color: #F3F1EC;
+      padding: 18px 28px; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(31,48,38,0.2);
+    }
+    .btn-primary:hover { background: var(--forest-2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(31,48,38,0.18); }
+    .btn-primary .arrow { transition: transform .2s ease; }
+    .btn-primary:hover .arrow { transform: translate(2px,-2px); }
+    .btn-pill {
+      background: var(--forest); color: #F3F1EC;
+      padding: 11px 18px; border-radius: 11px; font-size: 14px;
+    }
+    .btn-pill:hover { background: var(--forest-2); }
+    .link-arrow {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: 14px; color: var(--ink-soft); font-weight: 500;
+      border-bottom: 1px solid var(--line); padding-bottom: 6px;
+      transition: border-color .2s ease, gap .2s ease;
+    }
+    .link-arrow:hover { border-color: var(--sage); gap: 14px; }
+
+    /* ── Nav ─────────────────────────────────────────── */
     nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      padding: 18px 48px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(12,11,15,0.82);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(12px); background: rgba(243,241,236,0.82);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 74px; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+    .nav-logo .star { color: var(--sage-deep); font-size: 18px; }
+    .nav-links { display: flex; gap: 36px; }
+    .nav-links a { font-size: 14px; color: var(--muted); font-weight: 400; transition: color .2s ease; }
+    .nav-links a:hover { color: var(--ink); }
+    @media (max-width: 860px) { .nav-links { display: none; } }
+
+    /* ── Hero ────────────────────────────────────────── */
+    .hero { padding: 70px 0 40px; }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 48px; align-items: center; }
+    @media (max-width: 920px) { .hero-grid { grid-template-columns: 1fr; gap: 20px; } }
+
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif; font-weight: 500;
+      font-size: clamp(56px, 9vw, 108px); line-height: 0.98; letter-spacing: -0.02em;
+      margin: 22px 0 0; color: var(--ink);
+    }
+    .hero h1 .ital { display: inline; }
+    .hero-sub { font-size: 19px; color: var(--muted); max-width: 440px; margin: 26px 0 0; line-height: 1.55; }
+    .hero-cta-row { margin-top: 34px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+    .hero-meta { font-size: 13px; color: var(--subtle); letter-spacing: 0.01em; }
+    .hero-meta .sep { margin: 0 10px; opacity: 0.5; }
+    .hero-note { display: flex; gap: 12px; align-items: flex-start; margin-top: 30px; max-width: 380px; }
+    .hero-note .spark { color: var(--sage); font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+    .hero-note p { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+    /* orbital visual */
+    .orbit-stage {
+      position: relative; aspect-ratio: 1/1; max-width: 480px; margin: 0 auto; width: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .orbit-glow {
+      position: absolute; inset: 8%; border-radius: 50%;
+      background: radial-gradient(circle at 50% 45%, rgba(216,205,166,0.5), rgba(216,205,166,0.12) 55%, transparent 72%);
+    }
+    .orbit-ring {
+      position: absolute; top: 50%; left: 50%; border: 1px solid var(--gold);
+      border-radius: 50%; opacity: 0.55; transform: translate(-50%,-50%) rotate(var(--rot)) rotateX(72deg);
+    }
+    .orbit-ring.r1 { width: 86%; height: 86%; --rot: 0deg; }
+    .orbit-ring.r2 { width: 86%; height: 86%; --rot: 60deg; }
+    .orbit-ring.r3 { width: 86%; height: 86%; --rot: 120deg; }
+    .orbit-ring.r4 { width: 64%; height: 64%; --rot: 30deg; opacity: 0.4; }
+    .orbit-core {
+      position: relative; width: 108px; height: 108px; border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, #EDE7CE, #C9B887 60%, #9B8C58);
+      box-shadow: 0 10px 40px rgba(155,140,88,0.4), inset 0 2px 8px rgba(255,255,255,0.5);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .orbit-node { position: absolute; width: 11px; height: 11px; border-radius: 50%; background: var(--gold); box-shadow: 0 2px 6px rgba(155,140,88,0.5); }
+    .n1 { top: 14%; left: 58%; } .n2 { top: 30%; left: 20%; } .n3 { top: 70%; left: 30%; } .n4 { top: 62%; left: 80%; } .n5 { top: 40%; left: 84%; }
+    .orbit-chip {
+      position: absolute; background: var(--surface); border: 1px solid var(--line);
+      border-radius: 12px; padding: 9px 13px; display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 24px rgba(26,26,23,0.08); font-size: 12px; font-weight: 500;
+    }
+    .orbit-chip .ci { font-size: 13px; }
+    .chip-source { top: 44%; left: 50%; transform: translate(-30%,-50%); }
+    .chip-source .sub { color: var(--subtle); font-size: 10px; font-weight: 400; display: block; }
+    .chip-mind { top: 30%; right: -4%; }
+    .chip-form { bottom: 20%; left: -4%; }
+    @media (max-width: 920px) { .orbit-stage { max-width: 360px; margin-top: 10px; } }
+
+    /* strip divider */
+    .strip { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 36px; }
+    .strip-inner { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+    .strip .label { color: var(--subtle); }
+    @media (max-width: 640px) { .strip-inner { flex-direction: column; gap: 10px; align-items: flex-start; } }
+
+    /* ── Section scaffolding ─────────────────────────── */
+    section { padding: 96px 0; }
+    @media (max-width: 640px) { section { padding: 64px 0; } }
+    .sec-num { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--subtle); font-weight: 600; margin-bottom: 26px; }
+    .display {
+      font-family: 'Cormorant Garamond', serif; font-weight: 500;
+      font-size: clamp(40px, 6vw, 68px); line-height: 1.02; letter-spacing: -0.015em; color: var(--ink);
     }
 
-    .nav-logo {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: var(--text);
-      text-decoration: none;
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+    @media (max-width: 860px) { .split { grid-template-columns: 1fr; gap: 28px; } }
+    .split-r h3 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 28px; line-height: 1.25; color: var(--ink); margin-bottom: 20px; }
+    .split-r p { color: var(--muted); font-size: 16px; margin-bottom: 16px; max-width: 460px; }
+
+    /* dimension cards */
+    .dims { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 44px; }
+    @media (max-width: 860px) { .dims { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 460px) { .dims { grid-template-columns: 1fr; } }
+    .dim {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 20px 18px 22px; min-height: 150px; display: flex; flex-direction: column;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; position: relative;
     }
+    .dim:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(26,26,23,0.08); }
+    .dim .ic { font-size: 20px; margin-bottom: auto; }
+    .dim .nm { font-size: 16px; font-weight: 600; margin-top: 44px; }
+    .dim .tag { font-size: 12px; color: var(--subtle); margin-top: 3px; }
+    .dim .corner { position: absolute; top: 18px; right: 18px; color: var(--subtle); font-size: 13px; opacity: 0; transition: opacity .2s ease; }
+    .dim:hover .corner { opacity: 1; }
+    .dim.active { background: var(--forest); border-color: var(--forest); color: #EFEDE6; }
+    .dim.active .tag { color: rgba(239,237,230,0.6); }
+    .dim.active .ic { color: var(--gold-soft); }
 
-    .nav-cta {
-      padding: 10px 18px;
-      border-radius: 8px;
-      background: rgba(139,132,232,0.16);
-      border: 1px solid rgba(139,132,232,0.34);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 500;
-      text-decoration: none;
-      transition: all 0.2s ease;
+    .dim-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; margin-top: 64px; padding-top: 44px; border-top: 1px solid var(--line); }
+    @media (max-width: 860px) { .dim-detail { grid-template-columns: 1fr; gap: 20px; } }
+    .dim-detail .dd-l { display: flex; gap: 18px; align-items: flex-start; }
+    .dim-detail .dd-ic { color: var(--sage); font-size: 24px; flex-shrink: 0; }
+    .dim-detail h4 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 26px; margin-bottom: 10px; }
+    .dim-detail p { color: var(--muted); font-size: 15px; max-width: 420px; }
+    .dim-detail .dd-r { border-left: 1px solid var(--line); padding-left: 32px; }
+    @media (max-width: 860px) { .dim-detail .dd-r { border-left: none; padding-left: 0; } }
+    .dim-detail .quote { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 24px; color: var(--sage-deep); margin-bottom: 24px; }
+
+    /* practice section */
+    .practice { background: var(--bg-warm); }
+    .practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+    @media (max-width: 860px) { .practice-grid { grid-template-columns: 1fr; gap: 28px; } }
+    .practice-img {
+      aspect-ratio: 1/1; border-radius: var(--radius-lg); position: relative; overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 46%, #EFE6CC, #D9C89A 48%, #B59E66 86%);
+      display: flex; align-items: center; justify-content: center;
     }
+    .practice-img .atom { width: 62%; height: 62%; position: relative; }
+    .practice-img .pearl { position: absolute; top: 50%; left: 50%; width: 22%; height: 22%; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle at 38% 34%, #fff, #E7DEC2 70%); box-shadow: 0 6px 20px rgba(120,105,62,0.4); }
+    .practice-img .pring { position: absolute; top: 50%; left: 50%; border: 2px solid rgba(255,255,255,0.65); border-radius: 50%; transform: translate(-50%,-50%) rotate(var(--r)) rotateX(70deg); }
+    .practice-img .pr1 { width: 92%; height: 92%; --r: 0deg; } .practice-img .pr2 { width: 92%; height: 92%; --r: 60deg; } .practice-img .pr3 { width: 92%; height: 92%; --r: 120deg; }
+    .practice-img .cap { position: absolute; bottom: 18px; left: 20px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(60,48,20,0.6); font-weight: 600; }
+    .steps { margin: 28px 0 32px; }
+    .step { display: flex; gap: 18px; padding: 16px 0; border-top: 1px solid var(--line); }
+    .step:first-child { border-top: none; }
+    .step .sn { font-size: 12px; color: var(--subtle); font-weight: 600; padding-top: 3px; min-width: 20px; }
+    .step .st { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .step .sd { font-size: 14px; color: var(--muted); }
 
-    .nav-cta:hover { background: rgba(139,132,232,0.26); transform: translateY(-1px); }
+    /* closing */
+    .closing { background: var(--sage-band); text-align: center; }
+    .closing .star { font-size: 26px; color: var(--sage-deep); display: block; margin-bottom: 18px; }
+    .closing .display { margin: 8px auto 0; }
+    .closing .sub { font-size: 16px; color: var(--sage-deep); margin: 22px auto 30px; max-width: 460px; }
+    .closing .fineprint { font-size: 13px; color: var(--sage-deep); opacity: 0.8; margin-top: 18px; }
 
-    section { position: relative; z-index: 1; }
+    /* footer */
+    footer { padding: 40px 0; border-top: 1px solid var(--line); }
+    .foot-inner { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--muted); }
+    .foot-inner .nav-logo { font-size: 18px; }
+    @media (max-width: 640px) { .foot-inner { flex-direction: column; gap: 14px; text-align: center; } }
 
-    .container {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 96px 48px;
-    }
-
-    .hero {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 1.08fr 0.92fr;
-      gap: 56px;
-      align-items: center;
-      padding-top: 120px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::after {
-      content: '';
-      position: absolute;
-      width: 850px; height: 850px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(139,132,232,0.09) 0%, transparent 68%);
-      top: 45%; left: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .eyebrow {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--source);
-      margin-bottom: 22px;
-    }
-
-    h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(48px, 7vw, 86px);
-      line-height: 0.98;
-      font-weight: 300;
-      letter-spacing: -0.03em;
-      margin-bottom: 24px;
-    }
-
-    h1 em { color: var(--source); font-style: normal; }
-
-    .hero-sub {
-      font-size: 18px;
-      line-height: 1.7;
-      color: var(--muted);
-      max-width: 590px;
-      margin-bottom: 20px;
-    }
-
-    .hero-proof {
-      color: #C7C2D7;
-      font-size: 15px;
-      line-height: 1.7;
-      max-width: 560px;
-      margin-bottom: 34px;
-    }
-
-    .cta-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-
-    .btn-primary, .btn-secondary {
-      min-height: 48px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 14px 28px;
-      border-radius: 9px;
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-      text-decoration: none;
-      transition: all 0.22s ease;
-    }
-
-    .btn-primary { background: var(--source); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
-    .btn-primary:hover { background: #9D96F0; transform: translateY(-1px); }
-
-    .btn-secondary { color: var(--text); border: 1px solid var(--border); background: rgba(255,255,255,0.04); }
-    .btn-secondary:hover { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.07); }
-
-    .micro-note { margin-top: 14px; color: var(--subtle); font-size: 12px; }
-
-    .app-frame {
-      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 16px;
-      box-shadow: 0 30px 90px rgba(0,0,0,0.35);
-    }
-
-    .mock-app {
-      border-radius: 17px;
-      overflow: hidden;
-      background: #F8F7FC;
-      color: #1E1C2A;
-      min-height: 560px;
-    }
-
-    .mock-top {
-      padding: 18px 18px 14px;
-      background: #fff;
-      border-bottom: 1px solid #E7E4F2;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .mock-title { font-weight: 700; color: #1E1C2A; font-size: 15px; }
-    .mock-streak { font-size: 12px; color: #6E6A7D; background: #F1EFFA; padding: 6px 9px; border-radius: 99px; }
-
-    .mock-body { padding: 18px; }
-
-    .mock-card {
-      background: #fff;
-      border: 1px solid #E7E4F2;
-      border-radius: 15px;
-      padding: 15px;
-      margin-bottom: 12px;
-    }
-
-    .mock-label {
-      color: #8B84E8;
-      text-transform: uppercase;
-      letter-spacing: 0.11em;
-      font-size: 10px;
-      font-weight: 800;
-      margin-bottom: 8px;
-    }
-
-    .mock-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 13px; color: #383447; }
-    .mock-check { width: 18px; height: 18px; border-radius: 5px; background: #8B84E8; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: 0 0 auto; }
-    .mock-empty { background: #F1EFFA; color: transparent; border: 1px solid #DAD6EB; }
-
-    .mock-progress { height: 8px; background: #ECE9F7; border-radius: 99px; overflow: hidden; margin-top: 10px; }
-    .mock-fill { height: 100%; width: 75%; background: #8B84E8; border-radius: 99px; }
-
-    .mock-alert {
-      background: #FFF3EF;
-      border: 1px solid #F2BDA9;
-      color: #712B13;
-      border-radius: 13px;
-      padding: 12px;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .section-header { max-width: 760px; margin-bottom: 44px; }
-    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--source); margin-bottom: 16px; }
-    h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(36px, 5vw, 58px); line-height: 1.08; font-weight: 300; letter-spacing: -0.02em; margin-bottom: 18px; }
-    .section-copy { color: var(--muted); font-size: 16px; line-height: 1.8; max-width: 650px; }
-
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      min-height: 100%;
-    }
-
-    .card-num { color: var(--source); font-weight: 700; font-size: 13px; letter-spacing: 0.12em; margin-bottom: 14px; text-transform: uppercase; }
-    .card-title { font-size: 17px; font-weight: 600; margin-bottom: 10px; }
-    .card-text { color: var(--muted); font-size: 14px; line-height: 1.75; }
-
-    .split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px;
-      align-items: start;
-    }
-
-    .bullet-list { list-style: none; display: grid; gap: 12px; margin-top: 22px; }
-    .bullet-list li { display: flex; gap: 11px; color: var(--muted); font-size: 15px; line-height: 1.65; }
-    .bullet-list li::before { content: '→'; color: var(--source); font-weight: 700; flex: 0 0 auto; }
-
-    .consequence {
-      background: linear-gradient(180deg, rgba(232,104,64,0.12), rgba(232,104,64,0.045));
-      border-color: rgba(232,104,64,0.28);
-    }
-
-    .success {
-      background: linear-gradient(180deg, rgba(45,184,138,0.11), rgba(45,184,138,0.04));
-      border-color: rgba(45,184,138,0.25);
-    }
-
-    .domain-card { padding: 18px; }
-    .domain-dot { width: 9px; height: 9px; border-radius: 50%; margin-bottom: 14px; }
-    .domain-name { font-weight: 700; margin-bottom: 6px; }
-    .domain-role { color: var(--muted); font-size: 13px; line-height: 1.55; }
-
-    .quote-section {
-      background: var(--bg2);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .quote {
-      max-width: 840px;
-      margin: 0 auto;
-      text-align: center;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(28px, 4vw, 46px);
-      font-weight: 300;
-      line-height: 1.35;
-    }
-
-    .quote em { color: var(--source); font-style: normal; }
-
-    .final-cta { text-align: center; padding: 110px 48px; }
-    .final-cta h2 { margin-left: auto; margin-right: auto; max-width: 720px; }
-    .final-cta .section-copy { margin: 0 auto 28px; }
-
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 34px 48px;
-      color: var(--subtle);
-      font-size: 12px;
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    @media (max-width: 920px) {
-      .hero { grid-template-columns: 1fr; gap: 34px; min-height: auto; padding-top: 112px; }
-      .split { grid-template-columns: 1fr; }
-      .grid-3, .grid-5 { grid-template-columns: 1fr; }
-      .mock-app { min-height: auto; }
-    }
-
-    @media (max-width: 768px) {
-      nav { padding: 14px 18px; }
-      .nav-logo { font-size: 22px; }
-      .nav-cta { padding: 9px 12px; font-size: 12px; }
-      .container { padding: 72px 18px; }
-      .hero { padding-top: 104px; }
-      h1 { font-size: 42px; line-height: 1.02; }
-      .hero-sub { font-size: 16px; }
-      .hero-proof { font-size: 14px; }
-      .cta-row { width: 100%; }
-      .btn-primary, .btn-secondary { width: 100%; }
-      .app-frame { padding: 10px; border-radius: 18px; }
-      .mock-body { padding: 13px; }
-      .card { padding: 18px; }
-      .final-cta { padding: 82px 18px; }
-      footer { padding: 26px 18px; flex-direction: column; }
-    }
+    .fade { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s ease; }
+    .fade.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; transition: none; } }
   </style>
 </head>
 <body>
+
+  <!-- NAV -->
   <nav>
-    <a href="#" class="nav-logo">Quintave</a>
-    <a href="/index.html" class="nav-cta">Find my baseline →</a>
+    <div class="wrap nav-inner">
+      <a href="/" class="nav-logo"><span class="star">✳</span> quintave</a>
+      <div class="nav-links">
+        <a href="#approach">The approach</a>
+        <a href="#dimensions">Five dimensions</a>
+        <a href="#practice">Daily practice</a>
+      </div>
+      <a href="/index.html" class="btn btn-pill">Find your baseline ↗</a>
+    </div>
   </nav>
 
-  <section class="container hero">
-    <div>
-      <div class="eyebrow">A coherence instrument</div>
-      <h1>Manifestation isn't luck. It's <em>resonance.</em></h1>
-      <p class="hero-sub">At your core you are Source. You move through four frequency bodies — physical, emotional, mental, and subconscious. When they're in tune with Source, creating the life you want becomes deliberate.</p>
-      <p class="hero-proof">Quintave shows you exactly where each body is in tune — and where it's drifted. A daily tuning practice that brings all four back into resonance, so your best life isn't something you chase. It's what emerges.</p>
-      <div class="cta-row">
-        <a href="/index.html" class="btn-primary">Find my coherence baseline →</a>
-      </div>
-      <p class="micro-note">Free to start · No credit card required · About 7–10 minutes</p>
-    </div>
-
-    <div class="app-frame" aria-label="Quintave app preview">
-      <div class="mock-app">
-        <div class="mock-top">
-          <div class="mock-title">Today’s Tuning</div>
-          <div class="mock-streak">In tune · 3 days</div>
+  <!-- HERO -->
+  <header class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-left">
+        <span class="label"><span class="dot"></span> A coherence instrument</span>
+        <h1>Less resistance.<br>More <span class="ital">resonance.</span></h1>
+        <p class="hero-sub">A quieter way to come back to yourself. Bring your body, emotions, mind, and patterns into tune with who you are.</p>
+        <div class="hero-cta-row">
+          <a href="/index.html" class="btn btn-primary">Discover your coherence <span class="arrow">↗</span></a>
+          <div class="hero-meta">About 7&ndash;10 minutes <span class="sep">·</span> No right or wrong answers</div>
         </div>
-        <div class="mock-body">
-          <div class="mock-card">
-            <div class="mock-label">Morning · Initialize</div>
-            <div class="mock-row"><span class="mock-check">✓</span>Stillness Exposure <strong style="color:#8B84E8">Critical</strong></div>
-            <div class="mock-row"><span class="mock-check">✓</span>Morning Directive</div>
-            <div class="mock-row"><span class="mock-check mock-empty">.</span>Sun + Circadian Anchor</div>
-            <div class="mock-progress"><div class="mock-fill"></div></div>
+        <div class="hero-note">
+          <span class="spark">✦</span>
+          <p>You don&rsquo;t need to become someone new. You need a little space to hear yourself.</p>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="orbit-stage">
+          <div class="orbit-glow"></div>
+          <div class="orbit-ring r1"></div>
+          <div class="orbit-ring r2"></div>
+          <div class="orbit-ring r3"></div>
+          <div class="orbit-ring r4"></div>
+          <span class="orbit-node n1"></span><span class="orbit-node n2"></span><span class="orbit-node n3"></span><span class="orbit-node n4"></span><span class="orbit-node n5"></span>
+          <div class="orbit-core"></div>
+          <div class="orbit-chip chip-source"><span class="ci">✦</span><span>Source<span class="sub">Your steady center</span></span></div>
+          <div class="orbit-chip chip-mind"><span class="ci">◈</span> Mind</div>
+          <div class="orbit-chip chip-form"><span class="ci">♥</span> Form</div>
+        </div>
+      </div>
+    </div>
+    <div class="strip">
+      <div class="wrap strip-inner">
+        <span class="label">Find your center. Change your frequency.</span>
+        <a href="#approach" class="link-arrow">Explore the approach ↓</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- APPROACH -->
+  <section id="approach">
+    <div class="wrap">
+      <div class="split fade">
+        <div class="split-l">
+          <div class="sec-num">01 / The approach</div>
+          <div class="display">One you.<br><span class="ital">Five dimensions.</span></div>
+        </div>
+        <div class="split-r">
+          <h3>When one part of you feels out of tune, the rest of you feels it too.</h3>
+          <p>Quintave is a daily practice built around a simple idea: your inner world is connected. Your physical energy, emotional landscape, thoughts, and deeper patterns all shape your experience.</p>
+          <p>Start by noticing where you are. Then create a little more harmony, one intentional practice at a time.</p>
+          <a href="#dimensions" class="link-arrow">Get to know your five dimensions →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIMENSIONS -->
+  <section id="dimensions" style="padding-top:0;">
+    <div class="wrap">
+      <div class="sec-num fade">02 / Your inner landscape</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;" class="fade">
+        <div class="display">Everything begins <span class="ital">with you.</span></div>
+        <p style="color:var(--muted);font-size:14px;max-width:220px;">Five connected dimensions. Each one shapes the others.</p>
+      </div>
+      <div class="dims fade">
+        <div class="dim active"><span class="ic">✦</span><span class="corner">↗</span><span class="nm">Source</span><span class="tag">The tuning fork</span></div>
+        <div class="dim"><span class="ic">♥</span><span class="corner">↗</span><span class="nm">Form</span><span class="tag">The vessel</span></div>
+        <div class="dim"><span class="ic">∿</span><span class="corner">↗</span><span class="nm">Field</span><span class="tag">The emotional field</span></div>
+        <div class="dim"><span class="ic">◈</span><span class="corner">↗</span><span class="nm">Mind</span><span class="tag">The director</span></div>
+        <div class="dim"><span class="ic">☽</span><span class="corner">↗</span><span class="nm">Code</span><span class="tag">The deeper pattern</span></div>
+      </div>
+
+      <div class="dim-detail fade">
+        <div class="dd-l">
+          <span class="dd-ic">✦</span>
+          <div>
+            <h4>Source. Your steady center.</h4>
+            <p>The awareness beneath the noise. A connection to who you are beyond your thoughts, roles, and circumstances.</p>
           </div>
-          <div class="mock-card success">
-            <div class="mock-label" style="color:#2DB88A">In resonance</div>
-            <div class="card-text" style="color:#4D465E">All four bodies in tune with Source. Tomorrow builds from this state.</div>
+        </div>
+        <div class="dd-r">
+          <div class="quote">&ldquo;When did I last feel fully present?&rdquo;</div>
+          <a href="/index.html" class="link-arrow">Explore in your baseline ↗</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section id="practice" class="practice">
+    <div class="wrap">
+      <div class="practice-grid">
+        <div class="practice-img fade">
+          <div class="atom">
+            <div class="pring pr1"></div><div class="pring pr2"></div><div class="pring pr3"></div>
+            <div class="pearl"></div>
           </div>
-          <div class="mock-alert">
-            <strong>Drift detected:</strong> Code has fallen out of tune. Today’s practice brings it back into resonance.
+          <div class="cap">A small ritual. A different rhythm.</div>
+        </div>
+        <div class="practice-right fade">
+          <div class="sec-num">03 / A practice, not a finish line</div>
+          <div class="display">Come back to yourself.<br><span class="ital">A little, every day.</span></div>
+          <p style="color:var(--muted);font-size:16px;margin:22px 0 8px;max-width:440px;">Coherence isn&rsquo;t a perfect state to hold. It&rsquo;s a relationship you return to.</p>
+          <div class="steps">
+            <div class="step"><span class="sn">01</span><div><div class="st">Notice your starting point</div><div class="sd">A guided baseline across all five dimensions.</div></div></div>
+            <div class="step"><span class="sn">02</span><div><div class="st">See your own pattern</div><div class="sd">A personal snapshot of what feels aligned and what needs attention.</div></div></div>
+            <div class="step"><span class="sn">03</span><div><div class="st">Make room for a daily return</div><div class="sd">Choose a small practice for the dimension calling you.</div></div></div>
           </div>
+          <a href="/index.html" class="btn btn-primary">Begin with where you are <span class="arrow">↗</span></a>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="how" class="container">
-    <div class="section-header">
-      <div class="section-label">How it works</div>
-      <h2>Three phases. One daily tuning practice.</h2>
-      <p class="section-copy">Quintave reads where each body resonates, sets today’s practice, and keeps it simple — so you always know the one thing to do next.</p>
-    </div>
-    <div class="grid-3">
-      <div class="card">
-        <div class="card-num">01 · Morning</div>
-        <div class="card-title">Initialize your state</div>
-        <p class="card-text">Set direction before the day pulls your attention outward. Morning establishes the signal everything else builds from.</p>
-      </div>
-      <div class="card">
-        <div class="card-num">02 · Midday</div>
-        <div class="card-title">Correct drift</div>
-        <p class="card-text">Return to center when stress, reaction, distraction, or old patterns start pulling the system apart.</p>
-      </div>
-      <div class="card">
-        <div class="card-num">03 · Evening</div>
-        <div class="card-title">Stabilize the signal</div>
-        <p class="card-text">Close the day cleanly. Process what surfaced, encode the next direction, and protect tomorrow’s baseline.</p>
-      </div>
+  <!-- CLOSING -->
+  <section class="closing">
+    <div class="wrap fade">
+      <span class="star">✳</span>
+      <span class="label" style="justify-content:center;color:var(--sage-deep);">Your next chapter starts with a pause</span>
+      <div class="display" style="margin-top:14px;">Find your own <span class="ital">frequency.</span></div>
+      <p class="sub">25 thoughtful questions. Five dimensions. One clearer starting point.</p>
+      <a href="/index.html" class="btn btn-primary">Find my baseline ↗</a>
+      <p class="fineprint">Free to begin &middot; Create an account to save your baseline and return daily.</p>
     </div>
   </section>
 
-  <section class="container">
-    <div class="split">
-      <div>
-        <div class="section-label">Why it works</div>
-        <h2>Most systems track behavior. Quintave tunes it.</h2>
-        <p class="section-copy">You don’t need more tracking. You need to see where each body is in tune — and a simple daily practice that brings the rest back into resonance with Source.</p>
-      </div>
-      <div class="grid-3" style="grid-template-columns: 1fr; gap: 12px;">
-        <div class="card success">
-          <div class="card-title">Practice consistently</div>
-          <p class="card-text">Resonance builds. Your bodies harmonize with Source, and creating the life you want gets easier.</p>
-        </div>
-        <div class="card consequence">
-          <div class="card-title">Drift happens</div>
-          <p class="card-text">Life pulls the bodies out of tune. Quintave shows you exactly which one — no guilt, just the next step back.</p>
-        </div>
-        <div class="card">
-          <div class="card-title">Return anytime</div>
-          <p class="card-text">Resonance is always one practice away. There’s no streak to lose — only your tuning to deepen.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="quote-section">
-    <div class="container">
-      <p class="quote">The goal isn’t to do more. It’s to bring every part of you back into <em>resonance</em> with who you already are.</p>
-    </div>
-  </section>
-
-  <section class="container">
-    <div class="section-header">
-      <div class="section-label">The five frequency bodies</div>
-      <h2>Five frequencies. One you.</h2>
-      <p class="section-copy">Your experience is shaped by five interacting frequencies. When they drift out of tune, life feels like resistance. Quintave brings them back into resonance, daily.</p>
-    </div>
-    <div class="grid-5">
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--source)"></div>
-        <div class="domain-name" style="color:var(--source)">Source</div>
-        <div class="domain-role">Baseline signal beneath noise, roles, and reaction.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--form)"></div>
-        <div class="domain-name" style="color:var(--form)">Form</div>
-        <div class="domain-role">Physical state, energy, sleep, movement, and recovery.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--field)"></div>
-        <div class="domain-name" style="color:var(--field)">Field</div>
-        <div class="domain-role">Emotional stability, charge, regulation, and release.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--mind)"></div>
-        <div class="domain-name" style="color:var(--mind)">Mind</div>
-        <div class="domain-role">Direction, belief, focus, and conscious intention.</div>
-      </div>
-      <div class="card domain-card">
-        <div class="domain-dot" style="background:var(--code)"></div>
-        <div class="domain-name" style="color:var(--code)">Code</div>
-        <div class="domain-role">Subconscious patterns and automated behavior.</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="container">
-    <div class="split">
-      <div>
-        <div class="section-label">Frequency model</div>
-        <h2>Your state changes gradually — not instantly.</h2>
-        <p class="section-copy">Progress isn’t a spike. It’s built through consistent tuning, a strong Source anchor, and less drift across the bodies.</p>
-      </div>
-      <div class="card">
-        <div class="card-title">Zone progression</div>
-        <ul class="bullet-list">
-          <li><span><strong style="color:var(--danger)">Red Zone</strong> — below Level 5, unstable connection and reactive drift.</span></li>
-          <li><span><strong style="color:var(--mind)">Blue Zone</strong> — Level 5–9, Source connection and domain harmonization.</span></li>
-          <li><span><strong style="color:#B6B2C7">Gray Zone</strong> — Level 10–11, neutrality and full signal stabilization.</span></li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="final-cta" id="start">
-    <div class="section-label">Begin today</div>
-    <h2>Find your coherence baseline.</h2>
-    <p class="section-copy">Take the assessment, see exactly where each body resonates, and get your first day of tuning.</p>
-    <div class="cta-row" style="justify-content:center;">
-      <a href="/index.html" class="btn-primary">Find my coherence baseline →</a>
-    </div>
-    <p class="micro-note">Free to start · No credit card required · About 7–10 minutes</p>
-  </section>
-
+  <!-- FOOTER -->
   <footer>
-    <div>Quintave</div>
-    <div>A daily tuning practice across Source, Form, Field, Mind, and Code. © 2026</div>
+    <div class="wrap foot-inner">
+      <a href="/" class="nav-logo"><span class="star" style="color:var(--sage-deep);">✳</span> quintave</a>
+      <span>A daily return to resonance.</span>
+      <span>© 2026 Quintave</span>
+    </div>
   </footer>
+
+  <script>
+    // Gentle scroll reveal — purely decorative, degrades to visible.
+    (function () {
+      try {
+        var els = document.querySelectorAll('.fade');
+        if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+        }, { threshold: 0.12 });
+        els.forEach(function (e) { io.observe(e); });
+      } catch (e) {
+        document.querySelectorAll('.fade').forEach(function (el) { el.classList.add('in'); });
+      }
+    })();
+  </script>
 </body>
 </html>
